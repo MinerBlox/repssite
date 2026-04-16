@@ -114,6 +114,39 @@
       background: var(--surface2);
     }
 
+    
+    .nav-dropdown { position: relative; }
+    .nav-dropdown summary { list-style: none; cursor: pointer; }
+    .nav-dropdown summary::-webkit-details-marker { display: none; }
+    .nav-dropdown[open] summary,
+    .nav-dropdown:hover summary { color: var(--text); background: var(--surface2); }
+    .dropdown-menu {
+      position: absolute;
+      top: calc(100% + 10px);
+      left: 0;
+      min-width: 180px;
+      padding: 8px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+      display: none;
+      z-index: 60;
+    }
+    .nav-dropdown[open] .dropdown-menu,
+    .nav-dropdown:hover .dropdown-menu,
+    .nav-dropdown:focus-within .dropdown-menu { display: block; }
+    .dropdown-link {
+      display: block;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .dropdown-link:hover { background: var(--surface2); }
+
     .nav-theme {
       display: inline-flex;
       align-items: center;
@@ -164,10 +197,11 @@
 
     .page-title {
       font-family: 'Syne', sans-serif;
+      font-family: 'Syne', sans-serif;
       font-weight: 800;
-      font-size: clamp(32px, 6vw, 56px);
+      font-size: clamp(34px, 6vw, 58px);
       line-height: 0.95;
-      letter-spacing: -0.5px;
+      letter-spacing: -1.2px;
       margin-bottom: 10px;
     }
 
@@ -535,13 +569,18 @@
 
     <nav>
       <a href="index.html?noPopup=1" class="nav-logo">repscentral</a>
-      <div class="nav-links">
-        <a href="spreadsheet.html" class="nav-link active">Spreadsheet</a>
-        <a href="#" class="nav-link">Quality Checks</a>
-        <a href="#" class="nav-link">Outfits</a>
-        <a href="#" class="nav-link">Sellers</a>
-        <a href="#" class="nav-link">Tools</a>
-      </div>
+    <div class="nav-links">
+      <a href="spreadsheet.html" class="nav-link active">Spreadsheet</a>
+      <a href="#" class="nav-link">Quality Checks</a>
+      <a href="#" class="nav-link">Outfits</a>
+      <a href="#" class="nav-link">Sellers</a>
+      <details class="nav-dropdown">
+        <summary class="nav-link">Links ▾</summary>
+        <div class="dropdown-menu">
+          <a href="link-converter.html" class="dropdown-link">Link Converter</a>
+        </div>
+      </details>
+    </div>
       <button class="nav-theme" id="theme-btn" onclick="toggleTheme()">
         <svg id="theme-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
         <span id="theme-label">Light</span>
