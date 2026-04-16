@@ -1,1 +1,901 @@
-REPLACED
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <title>cadenreps</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.383.0/umd/lucide.min.js"></script>
+  <style>
+    /* ── RESET & BASE ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; min-height: 100vh; }
+    a { text-decoration: none; }
+    button { border: none; cursor: pointer; font-family: inherit; background: none; }
+
+    /* ── THEME VARIABLES ── */
+    body.dark {
+      --bg: #0a0a0b;
+      --surface: #111114;
+      --surface2: #18181c;
+      --border: #252529;
+      --text: #f0f0f0;
+      --muted: #888888;
+      --nav-bg: rgba(10,10,11,0.88);
+    }
+    body.light {
+      --bg: #f5f8ff;
+      --surface: #ffffff;
+      --surface2: #e8eef8;
+      --border: #dde4f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --nav-bg: rgba(245,248,255,0.92);
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes rc-ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-33.333%); } }
+    @keyframes rc-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    @keyframes rc-fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes rc-slideup { from { opacity: 0; transform: translateY(24px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes rc-shimmer { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+    @keyframes rc-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+    @keyframes rc-modal-fadein { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes rc-fade-out { from { opacity: 1; transform: scale(1) translateY(0); } to { opacity: 0; transform: scale(0.96) translateY(10px); } }
+    @keyframes rc-fade-in-step { from { opacity: 0; transform: scale(0.96) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+    /* ── LAYOUT ── */
+    #root { background: var(--bg); color: var(--text); min-height: 100vh; transition: background 0.2s, color 0.2s; }
+
+    /* ── BANNER ── */
+    #banner { background: #4da6ff; color: #fff; text-align: center; padding: 10px 20px; font-size: 13px; font-weight: 500; }
+    #banner a { color: #fff; font-weight: 700; text-decoration: underline; }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; align-items: center; gap: 8px; padding: 0 28px; height: 60px;
+      border-bottom: 1px solid var(--border);
+      background: var(--nav-bg);
+      backdrop-filter: blur(14px);
+    }
+    .nav-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 17px; letter-spacing: -0.5px; margin-right: 12px; color: var(--text); }
+    .nav-links { display: flex; gap: 2px; flex: 1; }
+    .nav-link {
+      padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 500;
+      color: var(--muted); transition: color 0.15s, background 0.15s;
+    }
+    .nav-link:hover { color: var(--text); background: var(--surface2); }
+    .nav-search {
+      display: flex; align-items: center; gap: 8px; border-radius: 9px; padding: 6px 12px;
+      font-size: 13px; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); cursor: pointer;
+    }
+    .nav-search kbd { border-radius: 5px; padding: 0 4px; font-size: 11px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); }
+    .nav-theme {
+      display: flex; align-items: center; gap: 6px; border-radius: 9px; padding: 6px 12px;
+      font-size: 13px; font-weight: 500; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); cursor: pointer; margin-left: 4px;
+      transition: opacity 0.15s;
+    }
+    .nav-theme:hover { opacity: 0.75; }
+
+    /* ── TICKER ── */
+    #ticker {
+      overflow: hidden; height: 36px; display: flex; align-items: center; position: relative;
+      background: var(--bg); border-bottom: 1px solid var(--border);
+    }
+    .ticker-fade-left { position: absolute; left: 0; top: 0; bottom: 0; width: 80px; background: linear-gradient(to right, var(--bg), transparent); z-index: 2; pointer-events: none; }
+    .ticker-fade-right { position: absolute; right: 0; top: 0; bottom: 0; width: 80px; background: linear-gradient(to left, var(--bg), transparent); z-index: 2; pointer-events: none; }
+    .ticker-live {
+      position: absolute; left: 12px; z-index: 3; display: flex; align-items: center; gap: 5px; padding-right: 8px; background: var(--bg);
+    }
+    .live-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(77,166,255,0.15); border: 1px solid rgba(77,166,255,0.3); color: #4da6ff;
+      font-size: 9px; font-weight: 800; letter-spacing: 0.1em; padding: 2px 7px; border-radius: 99px;
+    }
+    .live-dot { width: 5px; height: 5px; border-radius: 50%; background: #4da6ff; display: inline-block; animation: rc-pulse 1.5s ease-in-out infinite; }
+    .ticker-inner { display: flex; align-items: center; animation: rc-ticker 55s linear infinite; white-space: nowrap; padding-left: 120px; }
+    .ticker-item { display: inline-flex; align-items: center; }
+    .ticker-dot { display: inline-block; width: 3px; height: 3px; border-radius: 50%; background: var(--muted); margin: 0 20px; flex-shrink: 0; }
+
+    /* ── HERO ── */
+    #hero { position: relative; padding: 96px 40px; text-align: center; overflow: hidden; animation: rc-fadein 0.5s ease both; }
+    #hero .hero-glow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(77,166,255,0.09) 0%, transparent 70%); }
+    .hero-badge {
+      display: inline-block; border-radius: 99px; padding: 4px 14px; font-size: 12px; margin-bottom: 24px;
+      text-transform: uppercase; letter-spacing: 0.1em; border: 1px solid var(--border); background: var(--surface2); color: var(--muted);
+    }
+    .hero-title { font-family: 'Syne', sans-serif; font-weight: 800; line-height: 1; letter-spacing: -3px; margin-bottom: 16px; font-size: clamp(42px, 8vw, 90px); color: var(--text); animation: rc-fadein 0.6s ease 0.1s both; }
+    .hero-sub { font-size: 17px; max-width: 480px; margin: 0 auto 36px; color: var(--muted); animation: rc-fadein 0.6s ease 0.2s both; }
+    .hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; animation: rc-fadein 0.6s ease 0.3s both; }
+    .btn-primary { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 600; background: #4da6ff; color: #fff; box-shadow: 0 4px 18px rgba(77,166,255,0.3); transition: opacity 0.15s, transform 0.15s; }
+    .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn-secondary { display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 600; background: var(--surface2); color: var(--text); border: 1px solid var(--border); transition: opacity 0.15s, transform 0.15s; }
+    .btn-secondary:hover { opacity: 0.85; transform: translateY(-1px); }
+
+    /* ── SECTION COMMON ── */
+    .section { padding: 64px 40px; max-width: 1300px; margin: 0 auto; animation: rc-fadein 0.5s ease both; }
+    .section-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+    .section-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 28px; letter-spacing: -0.5px; color: var(--text); }
+    .section-sub { font-size: 13px; margin-top: 4px; color: var(--muted); }
+    .section-link { font-size: 13px; border-radius: 8px; padding: 6px 14px; border: 1px solid var(--border); color: var(--muted); transition: opacity 0.15s; }
+    .section-link:hover { opacity: 0.75; }
+    hr.divider { border: none; border-top: 1px solid var(--border); }
+
+    /* ── PRODUCT CARD ── */
+    .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+    .product-card {
+      border-radius: 14px; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      background: var(--surface); border: 1px solid var(--border);
+    }
+    .product-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); border-color: rgba(77,166,255,0.27); }
+    .product-img { width: 100%; aspect-ratio: 1; position: relative; display: flex; align-items: center; justify-content: center; background: var(--surface2); }
+    .product-img svg { opacity: 0.2; color: var(--muted); }
+    .badge { position: absolute; top: 10px; left: 10px; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #fff; }
+    .badge-best { background: #4da6ff; }
+    .badge-budget { background: #7dd3fc; }
+    .badge-random { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+    .product-body { padding: 14px; }
+    .product-name { font-size: 13px; font-weight: 500; margin-bottom: 4px; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .product-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 8px; }
+    .product-price { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: #4da6ff; }
+    .product-cat { font-size: 11px; color: var(--muted); }
+    .product-btn {
+      display: block; margin-top: 10px; padding: 6px; border-radius: 7px; text-align: center;
+      font-size: 12px; font-weight: 600; background: var(--surface2); border: 1px solid var(--border); color: var(--text); transition: opacity 0.15s;
+    }
+    .product-btn:hover { opacity: 0.75; }
+
+    /* ── PODIUM CARDS ── */
+    .podium-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+    .podium-card {
+      position: relative; border-radius: 18px; overflow: hidden;
+      transition: transform 0.3s;
+      animation: rc-fadein 0.5s ease both;
+    }
+    .podium-card:hover { transform: translateY(-6px); }
+    .podium-rank {
+      position: absolute; top: 12px; right: 12px; z-index: 10;
+      display: flex; align-items: center; gap: 4px; padding: 4px 10px;
+      border-radius: 99px; font-size: 11px; font-weight: 900;
+    }
+    .podium-img { width: 100%; aspect-ratio: 16/9; position: relative; display: flex; align-items: center; justify-content: center; background: var(--surface2); }
+    .podium-watermark { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+    .podium-watermark span { font-size: 72px; font-weight: 900; opacity: 0.08; font-family: 'Syne', sans-serif; }
+    .podium-body { padding: 16px; background: var(--surface); }
+    .podium-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; margin-bottom: 4px; color: var(--text); }
+    .podium-desc { font-size: 12px; line-height: 1.5; margin-bottom: 12px; color: var(--muted); }
+    .podium-footer { display: flex; align-items: center; justify-content: space-between; }
+    .podium-price { font-family: 'Syne', sans-serif; font-weight: 900; font-size: 18px; }
+    .podium-cat { font-size: 11px; padding: 2px 8px; border-radius: 5px; border: 1px solid var(--border); color: var(--muted); background: var(--surface2); }
+    .podium-btn { display: block; margin-top: 12px; padding: 8px; border-radius: 10px; text-align: center; font-size: 13px; font-weight: 700; transition: opacity 0.15s; }
+    .podium-btn:hover { opacity: 0.9; }
+
+    /* ── COMMUNITY RANKED BADGE ── */
+    .community-badge { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 99px; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.25); color: #FFD700; }
+
+    /* ── SEASON TABS ── */
+    .season-tabs { display: flex; gap: 6px; margin-bottom: 24px; flex-wrap: wrap; }
+    .season-tab { padding: 6px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; border: 1px solid var(--border); color: var(--muted); background: transparent; transition: all 0.15s; cursor: pointer; }
+    .season-tab.active { background: var(--surface2); color: var(--text); border-color: rgba(77,166,255,0.33); }
+    .season-tab:hover { color: var(--text); }
+
+    /* ── SELLERS ── */
+    .sellers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+    .seller-card { border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 1px solid var(--border); transition: transform 0.15s, border-color 0.15s; }
+    .seller-card:hover { transform: translateY(-2px); border-color: rgba(77,166,255,0.27); }
+    .seller-header { display: flex; align-items: center; justify-content: space-between; }
+    .seller-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: var(--text); }
+    .seller-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 5px; background: rgba(77,166,255,0.1); border: 1px solid rgba(77,166,255,0.25); color: #4da6ff; }
+    .seller-desc { font-size: 13px; line-height: 1.5; color: var(--muted); }
+    .seller-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #4da6ff; margin-top: 4px; transition: opacity 0.15s; }
+    .seller-link:hover { opacity: 0.8; }
+
+    /* ── HIPOBUY CTA ── */
+    #hipobuy-cta { padding: 64px 40px; max-width: 1300px; margin: 0 auto; }
+    .cta-box {
+      border-radius: 16px; padding: 48px; text-align: center; position: relative; overflow: hidden;
+      border: 1px solid rgba(77,166,255,0.2);
+    }
+    body.dark .cta-box { background: linear-gradient(135deg, #0d1b2e 0%, #0a1628 60%, #0d2040 100%); }
+    body.light .cta-box { background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 60%, #e0f2fe 100%); }
+    .cta-glow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(77,166,255,0.07) 0%, transparent 70%); }
+    .cta-inner { position: relative; }
+    .cta-badge { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 99px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; background: rgba(77,166,255,0.12); border: 1px solid rgba(77,166,255,0.25); color: #4da6ff; }
+    .cta-title { font-family: 'Syne', sans-serif; font-weight: 900; font-size: 32px; letter-spacing: -0.5px; margin-bottom: 12px; color: var(--text); }
+    .cta-sub { font-size: 15px; max-width: 460px; margin: 0 auto 32px; color: var(--muted); }
+    .cta-btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 32px; border-radius: 12px; font-size: 15px; font-weight: 700; background: #4da6ff; color: #fff; box-shadow: 0 4px 20px rgba(77,166,255,0.35); transition: opacity 0.15s, transform 0.15s; }
+    .cta-btn:hover { opacity: 0.9; transform: translateY(-2px); }
+
+    /* ── TOOLS ── */
+    .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+    .tool-card { border-radius: 14px; padding: 22px; transition: transform 0.15s, border-color 0.15s; }
+    .tool-card:hover { transform: translateY(-2px); }
+    .tool-icon { font-size: 24px; margin-bottom: 10px; }
+    .tool-featured .tool-icon { animation: rc-float 3s ease-in-out infinite; }
+    .tool-rec-badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; padding: 2px 8px; border-radius: 5px; margin-bottom: 14px; background: rgba(77,166,255,0.12); color: #4da6ff; }
+    .tool-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; margin-bottom: 6px; color: var(--text); }
+    .tool-desc { font-size: 13px; margin-bottom: 14px; line-height: 1.5; color: var(--muted); }
+    .tool-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; border: 1px solid var(--border); background: var(--surface2); color: var(--text); transition: opacity 0.15s, transform 0.15s; }
+    .tool-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    .tool-btn.primary { background: #4da6ff; color: #fff; border-color: transparent; }
+
+    /* ── FOOTER ── */
+    footer { padding: 36px 40px; max-width: 1300px; margin: 0 auto; border-top: 1px solid var(--border); }
+    .footer-inner { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+    .footer-logo { font-family: 'Syne', sans-serif; font-weight: 900; font-size: 18px; margin-bottom: 8px; color: var(--text); }
+    .footer-desc { font-size: 12px; max-width: 420px; line-height: 1.6; color: var(--muted); }
+    .footer-links { display: flex; gap: 16px; font-size: 13px; color: var(--muted); }
+    .footer-links a { color: var(--muted); transition: opacity 0.15s; }
+    .footer-links a:hover { opacity: 0.75; }
+    .footer-copy { font-size: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--muted); }
+
+    /* ── VIEW MORE BTN ── */
+    .view-more { text-align: center; margin-top: 28px; }
+
+    /* ── MODAL ── */
+    #modal-overlay {
+      position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px;
+      backdrop-filter: blur(8px);
+      animation: rc-modal-fadein 0.25s ease;
+    }
+    body.dark #modal-overlay { background: rgba(0,0,0,0.85); }
+    body.light #modal-overlay { background: rgba(10,20,50,0.60); }
+    .modal-box {
+      position: relative; border-radius: 16px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+      width: 100%; max-width: 430px; background: var(--bg); border: 1px solid var(--border);
+      animation: rc-slideup 0.3s cubic-bezier(0.22,1,0.36,1);
+      transition: max-width 0.4s cubic-bezier(0.22,1,0.36,1);
+    }
+    .modal-box.wide { max-width: 560px; }
+    .modal-top-bar { height: 3px; background: linear-gradient(90deg, #4da6ff 0%, #7dd3fc 50%, #4da6ff 100%); background-size: 200% 100%; animation: rc-shimmer 3s linear infinite; }
+    .modal-close { position: absolute; top: 16px; right: 16px; padding: 6px; border-radius: 8px; color: var(--muted); transition: opacity 0.15s; z-index: 10; cursor: pointer; background: none; border: none; }
+    .modal-close:hover { opacity: 0.6; }
+    .modal-body { padding: 28px 28px 28px; }
+    .modal-content { transition: opacity 0.35s ease, transform 0.35s ease; }
+    .modal-content.fading { opacity: 0; transform: scale(0.96) translateY(10px); }
+
+    /* Modal intro */
+    .modal-intro-badge { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 99px; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 12px; background: rgba(77,166,255,0.12); border: 1px solid rgba(77,166,255,0.25); color: #4da6ff; }
+    .modal-title { font-family: 'Syne', sans-serif; font-weight: 900; font-size: 22px; letter-spacing: -0.5px; line-height: 1; margin-bottom: 8px; color: var(--text); }
+    .modal-title span { color: #4da6ff; }
+    .modal-sub { font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 20px; }
+    .intro-steps { display: flex; gap: 8px; margin-bottom: 20px; }
+    .intro-step { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; border-radius: 14px; padding: 16px 8px; text-align: center; background: var(--surface2); border: 1px solid var(--border); transition: transform 0.15s; animation: rc-fadein 0.4s ease both; }
+    .intro-step:hover { transform: scale(1.03); }
+    .intro-step-emoji { font-size: 26px; filter: drop-shadow(0 2px 8px rgba(77,166,255,0.3)); }
+    .intro-step-label { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; line-height: 1.3; color: #4da6ff; }
+    .intro-step-num { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; background: #4da6ff; color: #fff; }
+    .modal-cta {
+      display: flex; align-items: center; justify-content: space-between; width: 100%;
+      padding: 16px 20px; border-radius: 14px; background: linear-gradient(135deg, #4da6ff 0%, #3b9eff 100%);
+      color: #fff; box-shadow: 0 4px 20px rgba(77,166,255,0.35); margin-bottom: 8px; cursor: pointer;
+      transition: opacity 0.15s, transform 0.15s; border: none; font-family: inherit;
+    }
+    .modal-cta:hover { opacity: 0.9; transform: translateY(-2px); }
+    .modal-cta-left { display: flex; align-items: center; gap: 12px; }
+    .modal-cta-info .title { font-size: 14px; font-weight: 900; letter-spacing: -0.3px; }
+    .modal-cta-info .sub { font-size: 11px; opacity: 0.75; }
+    .modal-dismiss { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; padding: 10px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; background: none; border: none; font-family: inherit; transition: opacity 0.15s; }
+    .modal-dismiss:hover { opacity: 0.6; }
+    .modal-counter { margin-top: 20px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); }
+    .counter-label { font-size: 11px; font-weight: 500; margin-bottom: 2px; color: var(--muted); }
+    .counter-number { font-family: 'Syne', sans-serif; font-weight: 900; font-size: 18px; color: #4da6ff; }
+    .counter-sub { font-size: 11px; color: var(--muted); }
+    .counter-live { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; font-size: 10px; font-weight: 700; background: rgba(77,166,255,0.1); border: 1px solid rgba(77,166,255,0.2); color: #4da6ff; }
+
+    /* Modal steps */
+    .progress-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; }
+    .progress-bar-inner { display: flex; gap: 6px; flex: 1; }
+    .progress-segment { flex: 1; height: 4px; border-radius: 99px; background: var(--border); transition: background 0.3s; }
+    .progress-segment.done { background: #4da6ff; }
+    .progress-label { font-size: 11px; font-weight: 700; color: #4da6ff; flex-shrink: 0; }
+    .step-badge { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 99px; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 16px; background: rgba(77,166,255,0.12); border: 1px solid rgba(77,166,255,0.25); color: #4da6ff; }
+    .step-title { font-family: 'Syne', sans-serif; font-weight: 900; font-size: 20px; letter-spacing: -0.5px; margin-bottom: 20px; color: var(--text); }
+    .step-link { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-radius: 14px; background: linear-gradient(135deg, #4da6ff 0%, #3b9eff 100%); color: #fff; box-shadow: 0 4px 20px rgba(77,166,255,0.3); text-decoration: none; margin-bottom: 8px; transition: opacity 0.15s, transform 0.15s; }
+    .step-link:hover { opacity: 0.9; transform: translateY(-2px); }
+    .step-link-left { display: flex; align-items: center; gap: 12px; }
+    .step-link .title { font-size: 14px; font-weight: 900; letter-spacing: -0.3px; }
+    .step-link .sub { font-size: 11px; opacity: 0.75; }
+    .checkbox-row { display: flex; align-items: center; gap: 12px; margin-top: 20px; cursor: pointer; user-select: none; }
+    .checkbox-box { width: 20px; height: 20px; border-radius: 6px; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+    .checkbox-box.checked { background: #4da6ff; border-color: #4da6ff; box-shadow: 0 0 10px rgba(77,166,255,0.4); }
+    .checkbox-label { font-size: 13px; font-weight: 500; color: var(--text); transition: color 0.2s; }
+    .checkbox-label.checked { color: #4da6ff; }
+    .step-progress-note { margin-top: 20px; border-radius: 12px; padding: 12px 16px; text-align: center; background: var(--surface); border: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--muted); }
+    .step-progress-note span { color: #4da6ff; font-weight: 800; }
+    .yt-embed { border-radius: 14px; overflow: hidden; margin-bottom: 20px; border: 1px solid var(--border); aspect-ratio: 16/9; background: #000; }
+    .yt-embed iframe { width: 100%; height: 100%; border: none; display: block; }
+
+    /* Modal done */
+    .done-emoji { font-size: 56px; margin-bottom: 16px; display: block; text-align: center; animation: rc-float 2s ease-in-out infinite; }
+    .done-bars { display: flex; gap: 6px; justify-content: center; margin-bottom: 24px; }
+    .done-bar { height: 4px; width: 40px; border-radius: 99px; background: #4da6ff; }
+    .done-cta { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px 20px; border-radius: 14px; background: linear-gradient(135deg, #4da6ff 0%, #3b9eff 100%); color: #fff; box-shadow: 0 4px 20px rgba(77,166,255,0.35); text-decoration: none; font-size: 14px; font-weight: 900; margin-bottom: 8px; transition: opacity 0.15s, transform 0.15s; }
+    .done-cta:hover { opacity: 0.9; transform: translateY(-2px); }
+    .done-close { font-size: 12px; color: var(--muted); cursor: pointer; background: none; border: none; font-family: inherit; transition: opacity 0.15s; width: 100%; text-align: center; padding: 8px; }
+    .done-close:hover { opacity: 0.6; }
+  </style>
+</head>
+<body class="dark">
+
+<!-- ── MODAL ── -->
+<div id="modal-overlay">
+  <div class="modal-box" id="modal-box">
+    <div class="modal-top-bar"></div>
+    <button class="modal-close" onclick="closeModal()" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="modal-body">
+      <div class="modal-content" id="modal-content">
+        <!-- Intro step injected by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="root">
+
+  <!-- BANNER -->
+  <div id="banner">
+    HipoBuy - The cheapest, best and most reliable Chinese agent.&nbsp;
+    <a href="https://hipobuy.com/register?inviteCode=QTYP3P8P5" target="_blank" rel="noopener noreferrer">Sign up today and get up to 40% off your shipping fee →</a>
+  </div>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo">repscentral</div>
+    <div class="nav-links">
+      <a href="#" class="nav-link">Spreadsheet</a>
+      <a href="#" class="nav-link">Browse Finds</a>
+      <a href="#" class="nav-link">Quality Checks</a>
+      <a href="#" class="nav-link">Outfits</a>
+      <a href="#" class="nav-link">Sellers</a>
+      <a href="#" class="nav-link">Tools ▾</a>
+    </div>
+    <button class="nav-search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Search...
+      <kbd>⌘K</kbd>
+    </button>
+    <button class="nav-theme" id="theme-btn" onclick="toggleTheme()">
+      <svg id="theme-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      <span id="theme-label">Light</span>
+    </button>
+  </nav>
+
+  <!-- LIVE TICKER -->
+  <div id="ticker">
+    <div class="ticker-fade-left"></div>
+    <div class="ticker-fade-right"></div>
+    <div class="ticker-live">
+      <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+    </div>
+    <div class="ticker-inner" id="ticker-inner"></div>
+  </div>
+
+  <!-- HERO -->
+  <section id="hero">
+    <div class="hero-glow"></div>
+    <div class="hero-badge">✦ Premium Rep Discoveries</div>
+    <h1 class="hero-title">repscentral</h1>
+    <p class="hero-sub">Reps made easy. All your favourite items, sellers, tools and coupons all in one place.</p>
+    <div class="hero-btns">
+      <a href="#" class="btn-primary">Browse Finds</a>
+      <a href="https://discord.gg/3zzVWQcN36" target="_blank" rel="noopener noreferrer" class="btn-secondary">Join the community →</a>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- BEST SELLERS (PODIUM) -->
+  <div class="section">
+    <div class="section-header">
+      <div>
+        <div class="community-badge">🏆 Community Ranked</div>
+        <h2 class="section-title">Best Sellers</h2>
+        <p class="section-sub">The top 3 community-voted rep finds right now</p>
+      </div>
+      <a href="#" class="section-link">View all →</a>
+    </div>
+    <div class="podium-grid" id="podium-grid"></div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- OUR PICKS -->
+  <div class="section">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Our Picks</h2>
+        <p class="section-sub">Hand-picked products by our team — the best quality and style in one place</p>
+      </div>
+      <a href="#" class="section-link">View all →</a>
+    </div>
+    <div class="product-grid" id="our-picks-grid"></div>
+    <div class="view-more">
+      <a href="#" class="btn-secondary">View More Products</a>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- SEASON FINDS -->
+  <div class="section">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Season Finds</h2>
+        <p class="section-sub">Curated picks for every season</p>
+      </div>
+      <a href="#" class="section-link">View all →</a>
+    </div>
+    <div class="season-tabs">
+      <button class="season-tab active" data-season="summer" onclick="setSeason('summer')">☀️ Summer Finds</button>
+      <button class="season-tab" data-season="autumn" onclick="setSeason('autumn')">🍂 Autumn Finds</button>
+      <button class="season-tab" data-season="winter" onclick="setSeason('winter')">❄️ Winter Finds</button>
+    </div>
+    <div class="product-grid" id="season-grid"></div>
+    <div class="view-more">
+      <a href="#" class="btn-secondary">View More Products</a>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- TOP SELLERS -->
+  <div class="section">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Top Sellers</h2>
+        <p class="section-sub">Browse the best Weidian and Taobao sellers</p>
+      </div>
+      <a href="#" class="section-link">View all →</a>
+    </div>
+    <div class="sellers-grid" id="sellers-grid"></div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- HIPOBUY CTA -->
+  <div id="hipobuy-cta">
+    <div class="cta-box">
+      <div class="cta-glow"></div>
+      <div class="cta-inner">
+        <div class="cta-badge">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Exclusive Offer
+        </div>
+        <h2 class="cta-title">Save up to 40% on shipping</h2>
+        <p class="cta-sub">Sign up to HipoBuy using our exclusive link and unlock massive discounts on every shipment.</p>
+        <a href="https://hipobuy.com/register?inviteCode=QTYP3P8P5" target="_blank" rel="noopener noreferrer" class="cta-btn">Sign up to HipoBuy — it's free →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ESSENTIAL TOOLS -->
+  <div class="section" style="padding-top: 0;">
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Essential Tools</h2>
+        <p class="section-sub">Everything you need in one place</p>
+      </div>
+    </div>
+    <div class="tools-grid" id="tools-grid"></div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <div>
+        <div class="footer-logo">repscentral</div>
+        <p class="footer-desc">We are not affiliated with Weidian, Taobao, 1688, Tmall, or any other shopping platform. This site is informational and helps buyers navigate Chinese e-commerce. All trademarks, logos, and brand names are the property of their respective owners.</p>
+      </div>
+      <div class="footer-links">
+        <a href="#">Legal</a>
+        <a href="https://discord.gg/3zzVWQcN36" target="_blank" rel="noopener noreferrer">Discord</a>
+        <a href="https://hipobuy.com/register?inviteCode=QTYP3P8P5" target="_blank" rel="noopener noreferrer">HipoBuy</a>
+      </div>
+    </div>
+    <div class="footer-copy">© 2026 repscentral. All rights reserved. Built by RepsCentral with a little bit of AI.</div>
+  </footer>
+
+</div><!-- /#root -->
+
+<script>
+/* ── DATA ── */
+const HIPOBUY_LINK = "https://hipobuy.com/register?inviteCode=QTYP3P8P5";
+const DISCORD_LINK = "https://discord.gg/3zzVWQcN36";
+
+const tickerItems = [
+  { label: "Ralph Lauren Slim Fit Tee", price: "$9.85", emoji: "🔥" },
+  { label: "Lanvin Curb Light Gray Blue", price: "$85.59", emoji: "💎" },
+  { label: "Corteiz Italy Shorts", price: "$25.54", emoji: "⚡" },
+  { label: "Broken Planet Hoodie", price: "$42.59", emoji: "🎯" },
+  { label: "Nike NOCTA Tech Fleece", price: "$20.10", emoji: "🏆" },
+  { label: "Chrome Hearts Trucker Cap", price: "$12.02", emoji: "🔥" },
+  { label: "Gallery Dept Souvenir Tee", price: "$10.22", emoji: "💡" },
+  { label: "Adidas Samba Wales Bonner", price: "$42.07", emoji: "⭐" },
+  { label: "Stone Island Hoodie", price: "$62.45", emoji: "🎖️" },
+  { label: "Peace in War Sweden Hoodie", price: "$35.42", emoji: "🌊" },
+];
+
+const medals = [
+  { rank: 1, label: "1st", borderColor: "#FFD700", glowColor: "rgba(255,215,0,0.18)", badgeColor: "#FFD700", badgeText: "#000", textColor: "#FFD700", emoji: "🥇" },
+  { rank: 2, label: "2nd", borderColor: "#C0C0C0", glowColor: "rgba(192,192,192,0.14)", badgeColor: "#C0C0C0", badgeText: "#000", textColor: "#C0C0C0", emoji: "🥈" },
+  { rank: 3, label: "3rd", borderColor: "#CD7F32", glowColor: "rgba(205,127,50,0.16)", badgeColor: "#CD7F32", badgeText: "#fff", textColor: "#CD7F32", emoji: "🥉" },
+];
+
+const bestSellers = [
+  { id: "bs1", name: "Lanvin Curb Light Gray Blue", price: "$85.59", category: "Shoes", desc: "Undisputed #1 rep find of the season — flawless quality." },
+  { id: "bs2", name: "Broken Planet Performance Hoodie", price: "$42.59", category: "Hoodies", desc: "Incredibly detailed, near-perfect construction." },
+  { id: "bs3", name: "Corteiz Italy Shorts", price: "$25.54", category: "Shorts", desc: "Best budget find right now — high quality, low price." },
+];
+
+const ourPicks = [
+  { id: "p1", name: "Lanvin Curb Light Gray Blue", price: "$85.59", category: "Shoes", badge: "best" },
+  { id: "p2", name: "Lanvin Curb White Black", price: "$84.54", category: "Shoes", badge: "best" },
+  { id: "p3", name: 'Broken Planet Gray "Performance" Hoodie', price: "$42.59", category: "Hoodies", badge: "best" },
+  { id: "p4", name: "Peace in War Sweden Hoodie", price: "$35.42", category: "Hoodies", badge: "best" },
+  { id: "p5", name: "Nike Nocta Tech Fleece Pants", price: "$20.10", category: "Pants", badge: "budget" },
+  { id: "p6", name: "Adidas Samba Wales Bonner Pony Tonal", price: "$42.07", category: "Shoes", badge: "random" },
+];
+
+const seasonFinds = {
+  summer: [
+    { id: "s1", name: "Ralph Lauren Slim Fit T-Shirt", price: "$9.85", category: "T-shirts", badge: "random" },
+    { id: "s2", name: "Denim Tears Shorts", price: "$28.89", category: "Shorts", badge: "random" },
+    { id: "s3", name: "Burberry Shorts", price: "$31.01", category: "Shorts", badge: "random" },
+    { id: "s4", name: "Chrome Hearts Trucker Cap", price: "$12.02", category: "Headwear", badge: "random" },
+    { id: "s5", name: "Nike Shorts", price: "$17.74", category: "Shorts", badge: "budget" },
+    { id: "s6", name: "Corteiz Italy Shorts", price: "$25.54", category: "Shorts", badge: "best" },
+    { id: "s7", name: "Broken Planet Button-Up Shirt", price: "$32.26", category: "T-shirts", badge: "random" },
+    { id: "s8", name: "Gallery Dept Souvenir Tee", price: "$10.22", category: "T-shirts", badge: "budget" },
+  ],
+  autumn: [
+    { id: "a1", name: "Stone Island Shadow Project Hoodie", price: "$62.45", category: "Hoodies", badge: "best" },
+    { id: "a2", name: "Carhartt WIP Detroit Jacket", price: "$48.30", category: "Jackets", badge: "budget" },
+    { id: "a3", name: "Needles Track Pants", price: "$38.90", category: "Pants", badge: "best" },
+    { id: "a4", name: "Our Legacy Balloon Jeans", price: "$44.20", category: "Pants", badge: "random" },
+    { id: "a5", name: "Stüssy 8 Ball Crewneck", price: "$28.50", category: "Sweatshirts", badge: "budget" },
+    { id: "a6", name: "Supreme Box Logo Tee", price: "$31.00", category: "T-shirts", badge: "best" },
+  ],
+  winter: [
+    { id: "w1", name: "Moncler Maya Short Down Jacket", price: "$120.00", category: "Jackets", badge: "best" },
+    { id: "w2", name: "Arcteryx Beta AR Jacket", price: "$95.50", category: "Jackets", badge: "budget" },
+    { id: "w3", name: "Canada Goose Parka", price: "$140.00", category: "Jackets", badge: "best" },
+    { id: "w4", name: "The North Face 700 Puffer", price: "$72.00", category: "Jackets", badge: "random" },
+    { id: "w5", name: "Bottega Veneta Intrecciato Beanie", price: "$22.00", category: "Headwear", badge: "best" },
+    { id: "w6", name: "Acne Studios Face Scarf", price: "$18.50", category: "Accessories", badge: "budget" },
+  ],
+};
+
+const sellers = [
+  { id: "sel1", name: "fireSup", desc: "Top quality supreme clothing" },
+  { id: "sel2", name: "Chrometop", desc: "Great seller for any Chrome Hearts hoodies, t-shirts etc." },
+  { id: "sel3", name: "hallR", desc: "Great Number Nine items and other underground fashion brands, 9.2/10" },
+  { id: "sel4", name: "Lara Luxury", desc: "Has luxury clothing such as Louis Vuitton, Burberry, Gucci, Prada and more" },
+  { id: "sel5", name: "GolfClub", desc: "New seller for Ralph Lauren, has some actually good items" },
+  { id: "sel6", name: "Concepts Market", desc: "Great seller for almost all shoes (Jordans, Dunks and more) — good quality regardless of product" },
+];
+
+const tools = [
+  { id: "t1", icon: "🛒", name: "HipoBuy Agent", desc: "Register on HipoBuy and get up to 40% off your shipping fee.", featured: true, badge: "Recommended", cta: "Register Now", ctaPrimary: true, href: HIPOBUY_LINK },
+  { id: "t2", icon: "🏆", name: "Agent Ranking", desc: "Compare all shopping agents and find the best one for you.", featured: false, cta: "View", ctaPrimary: false, href: "#" },
+  { id: "t3", icon: "📦", name: "Tracking", desc: "Track your parcel status with ease.", featured: false, cta: "Check", ctaPrimary: false, href: "#" },
+  { id: "t4", icon: "🔗", name: "Link Converter", desc: "Convert links from multiple platforms instantly.", featured: false, cta: "Use", ctaPrimary: false, href: "#" },
+  { id: "t5", icon: "🚢", name: "Shipping Calculator", desc: "Calculate shipping costs before ordering.", featured: false, cta: "Calculate", ctaPrimary: false, href: "#" },
+];
+
+/* ── THEME ── */
+let theme = localStorage.getItem("rc-theme") || "dark";
+function applyTheme() {
+  document.body.className = theme;
+  const label = document.getElementById("theme-label");
+  const icon = document.getElementById("theme-icon");
+  if (label) label.textContent = theme === "dark" ? "Light" : "Dark";
+  if (icon) {
+    if (theme === "dark") {
+      icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+    } else {
+      icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+    }
+  }
+}
+function toggleTheme() {
+  theme = theme === "dark" ? "light" : "dark";
+  localStorage.setItem("rc-theme", theme);
+  applyTheme();
+}
+applyTheme();
+
+/* ── TICKER ── */
+function buildTicker() {
+  const items = [...tickerItems, ...tickerItems, ...tickerItems];
+  const inner = document.getElementById("ticker-inner");
+  inner.innerHTML = items.map(item => `
+    <span class="ticker-item">
+      <span style="font-size:13px;margin-right:6px">${item.emoji}</span>
+      <span style="font-size:12px;font-weight:500;color:var(--text)">${item.label}</span>
+      <span style="font-size:12px;font-weight:700;color:#4da6ff;margin-left:5px">${item.price}</span>
+      <span class="ticker-dot"></span>
+    </span>
+  `).join("");
+}
+buildTicker();
+
+/* ── PRODUCT CARD ── */
+function imgPlaceholder() {
+  return `<div class="product-img"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l4-4 4 4 4-4 4 4"/><path d="M3 15l4-4 4 4 4-4 4 4"/></svg></div>`;
+}
+
+function badgeEl(type) {
+  if (type === "best") return `<span class="badge badge-best">Best Batch</span>`;
+  if (type === "budget") return `<span class="badge badge-budget">Budget Batch</span>`;
+  return `<span class="badge badge-random">Random Batch</span>`;
+}
+
+function productCard(p) {
+  return `
+    <div class="product-card">
+      <div style="position:relative">
+        ${imgPlaceholder()}
+        ${badgeEl(p.badge)}
+      </div>
+      <div class="product-body">
+        <div class="product-name">${p.name}</div>
+        <div class="product-meta">
+          <span class="product-price">${p.price}</span>
+          <span class="product-cat">${p.category}</span>
+        </div>
+        <a href="#" class="product-btn">Check more →</a>
+      </div>
+    </div>
+  `;
+}
+
+/* ── PODIUM ── */
+function podiumCard(product, medal, delay) {
+  return `
+    <div class="podium-card" style="border:2px solid ${medal.borderColor};box-shadow:0 0 28px ${medal.glowColor},0 4px 20px rgba(0,0,0,0.2);animation-delay:${delay}s">
+      <div class="podium-rank" style="background:${medal.badgeColor};color:${medal.badgeText}">${medal.emoji} ${medal.label}</div>
+      <div class="podium-img">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l4-4 4 4 4-4 4 4"/><path d="M3 15l4-4 4 4 4-4 4 4"/></svg>
+        <div class="podium-watermark"><span style="color:${medal.borderColor}">#${medal.rank}</span></div>
+      </div>
+      <div class="podium-body">
+        <div class="podium-name">${product.name}</div>
+        <p class="podium-desc">${product.desc}</p>
+        <div class="podium-footer">
+          <span class="podium-price" style="color:${medal.textColor}">${product.price}</span>
+          <span class="podium-cat">${product.category}</span>
+        </div>
+        <a href="#" class="podium-btn" style="background:${medal.badgeColor};color:${medal.badgeText}">View Find →</a>
+      </div>
+    </div>
+  `;
+}
+
+/* ── SELLERS ── */
+function sellerCard(s) {
+  return `
+    <div class="seller-card">
+      <div class="seller-header">
+        <span class="seller-name">${s.name}</span>
+        <span class="seller-badge">Top Rated</span>
+      </div>
+      <p class="seller-desc">${s.desc}</p>
+      <a href="#" class="seller-link">View products →</a>
+    </div>
+  `;
+}
+
+/* ── TOOLS ── */
+function toolCard(t) {
+  const featuredBorder = "1px solid rgba(77,166,255,0.3)";
+  const normalBorder = "1px solid var(--border)";
+  const featuredBg = "rgba(77,166,255,0.04)";
+  return `
+    <div class="tool-card ${t.featured ? "tool-featured" : ""}" 
+      style="background:${t.featured ? featuredBg : "var(--surface)"};border:${t.featured ? featuredBorder : normalBorder}">
+      <div class="tool-icon">${t.icon}</div>
+      ${t.badge ? `<div class="tool-rec-badge">${t.badge}</div>` : ""}
+      <div class="tool-name">${t.name}</div>
+      <p class="tool-desc">${t.desc}</p>
+      <a href="${t.href}" ${t.href !== "#" ? 'target="_blank" rel="noopener noreferrer"' : ""} class="tool-btn ${t.ctaPrimary ? "primary" : ""}">${t.cta}</a>
+    </div>
+  `;
+}
+
+/* ── RENDER ── */
+function render() {
+  document.getElementById("podium-grid").innerHTML = bestSellers.map((p, i) => podiumCard(p, medals[i], i * 0.1)).join("");
+  document.getElementById("our-picks-grid").innerHTML = ourPicks.map(productCard).join("");
+  document.getElementById("sellers-grid").innerHTML = sellers.map(sellerCard).join("");
+  document.getElementById("tools-grid").innerHTML = tools.map(toolCard).join("");
+  renderSeason("summer");
+}
+
+let activeSeason = "summer";
+function setSeason(s) {
+  activeSeason = s;
+  document.querySelectorAll(".season-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.season === s));
+  renderSeason(s);
+}
+function renderSeason(s) {
+  document.getElementById("season-grid").innerHTML = seasonFinds[s].map(productCard).join("");
+}
+
+render();
+
+/* ── MODAL ── */
+let modalStep = "intro";
+let step1Done = false;
+let step2Done = false;
+let counterVal = 1281271;
+
+setInterval(() => {
+  counterVal += Math.floor(Math.random() * 2) + 1;
+  const el = document.getElementById("modal-counter-num");
+  if (el) el.textContent = counterVal.toLocaleString();
+}, 2800);
+
+function closeModal() {
+  const overlay = document.getElementById("modal-overlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+function goToStep(next) {
+  const content = document.getElementById("modal-content");
+  if (!content) return;
+  content.classList.add("fading");
+  setTimeout(() => {
+    modalStep = next;
+    renderModal();
+    content.classList.remove("fading");
+  }, 350);
+}
+
+function checkStep1(checked) {
+  step1Done = checked;
+  renderModal();
+  if (checked) setTimeout(() => goToStep("step2"), 600);
+}
+
+function checkStep2(checked) {
+  step2Done = checked;
+  renderModal();
+  if (checked) setTimeout(() => goToStep("done"), 600);
+}
+
+function renderModal() {
+  const content = document.getElementById("modal-content");
+  const box = document.getElementById("modal-box");
+  if (!content || !box) return;
+
+  box.classList.toggle("wide", modalStep === "step2");
+
+  if (modalStep === "intro") {
+    content.innerHTML = `
+      <div style="text-align:center;margin-bottom:20px">
+        <div class="modal-intro-badge">✦ REPSCENTRAL x HIPOBUY</div>
+        <h2 class="modal-title">BRINGING YOU <span>35% OFF</span> SHIPPING</h2>
+        <p class="modal-sub">in 3 simple steps...</p>
+      </div>
+      <div class="intro-steps">
+        ${[["🦛","SIGN UP TO HIPOBUY"],["🛒","BROWSE SPREADSHEET"],["📦","SHIP YOUR HAUL!"]].map(([emoji,label],i)=>`
+          <div class="intro-step" style="animation-delay:${i*0.08}s">
+            <div class="intro-step-emoji">${emoji}</div>
+            <div class="intro-step-label">${label}</div>
+            <div class="intro-step-num">${i+1}</div>
+          </div>
+        `).join("")}
+      </div>
+      <p style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:16px">Still confused? Watch our tutorial.</p>
+      <button class="modal-cta" onclick="goToStep('step1')">
+        <div class="modal-cta-left">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <div class="modal-cta-info">
+            <div class="title">START TUTORIAL</div>
+            <div class="sub">Learn everything in 2 minutes — completely free.</div>
+          </div>
+        </div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+      <button class="modal-dismiss" onclick="closeModal()">Skip to spreadsheet
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <div class="modal-counter">
+        <div>
+          <div class="counter-label">Trusted by 1M+ users</div>
+          <div style="display:flex;align-items:baseline;gap:6px">
+            <span class="counter-number" id="modal-counter-num">${counterVal.toLocaleString()}</span>
+            <span class="counter-sub">people already signed up</span>
+          </div>
+        </div>
+        <div class="counter-live"><span class="live-dot"></span>LIVE</div>
+      </div>
+    `;
+  } else if (modalStep === "step1") {
+    content.innerHTML = `
+      <div style="animation:rc-fadein 0.4s ease">
+        <div class="progress-bar">
+          <div class="progress-bar-inner">
+            <div class="progress-segment done"></div>
+            <div class="progress-segment"></div>
+            <div class="progress-segment"></div>
+          </div>
+          <span class="progress-label">1 / 3</span>
+        </div>
+        <div class="step-badge">STEP 1</div>
+        <h2 class="step-title">First, sign up to HipoBuy.</h2>
+        <a href="${HIPOBUY_LINK}" target="_blank" rel="noopener noreferrer" class="step-link">
+          <div class="step-link-left">
+            <span style="font-size:20px">🦛</span>
+            <div>
+              <div class="title">SIGN UP TO HIPOBUY</div>
+              <div class="sub">(includes 35% off shipping coupons)</div>
+            </div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.8"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </a>
+        <div class="checkbox-row" onclick="checkStep1(${!step1Done})">
+          <div class="checkbox-box ${step1Done ? "checked" : ""}">
+            ${step1Done ? `<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ""}
+          </div>
+          <span class="checkbox-label ${step1Done ? "checked" : ""}">I've done this ✓</span>
+        </div>
+        <div class="step-progress-note">You're <span>1/3</span> of the way to your future hauls! 🚀</div>
+      </div>
+    `;
+  } else if (modalStep === "step2") {
+    content.innerHTML = `
+      <div style="animation:rc-fadein 0.4s ease">
+        <div class="progress-bar">
+          <div class="progress-bar-inner">
+            <div class="progress-segment done"></div>
+            <div class="progress-segment done"></div>
+            <div class="progress-segment"></div>
+          </div>
+          <span class="progress-label">2 / 3</span>
+        </div>
+        <div class="step-badge">STEP 2</div>
+        <h2 class="step-title">Watch the quick tutorial.</h2>
+        <div class="yt-embed">
+          <iframe src="https://www.youtube.com/embed/XsZZQPKLChY" title="HipoBuy Tutorial"
+            allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+        </div>
+        <div class="checkbox-row" onclick="checkStep2(${!step2Done})">
+          <div class="checkbox-box ${step2Done ? "checked" : ""}">
+            ${step2Done ? `<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ""}
+          </div>
+          <span class="checkbox-label ${step2Done ? "checked" : ""}">I've done this ✓</span>
+        </div>
+        <div class="step-progress-note">You're <span>2/3</span> of the way to your future hauls! 🔥</div>
+      </div>
+    `;
+  } else if (modalStep === "done") {
+    content.innerHTML = `
+      <div style="text-align:center;padding:16px 0;animation:rc-fadein 0.5s ease">
+        <span class="done-emoji">🎉</span>
+        <div class="modal-intro-badge">✦ TUTORIAL COMPLETE</div>
+        <h2 class="modal-title" style="margin-bottom:12px">You're all set!</h2>
+        <p style="font-size:14px;color:var(--muted);margin-bottom:24px">Head over to the spreadsheet and start finding your next haul.</p>
+        <div class="done-bars"><div class="done-bar"></div><div class="done-bar"></div><div class="done-bar"></div></div>
+        <a href="#" onclick="closeModal()" class="done-cta">Go to Spreadsheet →</a>
+        <button class="done-close" onclick="closeModal()">Close</button>
+      </div>
+    `;
+  }
+}
+
+renderModal();
+
+// Close modal on overlay click
+document.getElementById("modal-overlay").addEventListener("click", function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+</body>
+</html>
