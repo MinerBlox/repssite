@@ -105,7 +105,8 @@
     #hero .hero-glow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(77,166,255,0.09) 0%, transparent 70%); }
     .hero-badge {
       display: inline-block; border-radius: 99px; padding: 4px 14px; font-size: 12px; margin-bottom: 24px;
-      text-transform: uppercase; letter-spacing: 0.1em; border: 1px solid var(--border); background: var(--surface2); color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.1em; border: 1px solid rgba(77,166,255,0.32); background: var(--surface2); color: #9fceff;
+      box-shadow: 0 0 18px rgba(77,166,255,0.18), inset 0 0 18px rgba(77,166,255,0.04);
     }
     .hero-title { font-family: 'Syne', sans-serif; font-weight: 800; line-height: 1; letter-spacing: -3px; margin-bottom: 16px; font-size: clamp(42px, 8vw, 90px); color: var(--text); animation: rc-fadein 0.6s ease 0.1s both; }
     .hero-sub { font-size: 17px; max-width: 480px; margin: 0 auto 36px; color: var(--muted); animation: rc-fadein 0.6s ease 0.2s both; }
@@ -172,6 +173,11 @@
     .podium-cat { font-size: 11px; padding: 2px 8px; border-radius: 5px; border: 1px solid var(--border); color: var(--muted); background: var(--surface2); }
     .podium-btn { display: block; margin-top: 12px; padding: 8px; border-radius: 10px; text-align: center; font-size: 13px; font-weight: 700; transition: opacity 0.15s; }
     .podium-btn:hover { opacity: 0.9; }
+    .podium-more-card { display:flex; align-items:center; justify-content:center; min-height:100%; border-radius:18px; padding:20px; background: linear-gradient(180deg, var(--surface) 0%, var(--surface2) 100%); border:1px dashed rgba(77,166,255,0.35); color: var(--text); transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; }
+    .podium-more-card:hover { transform: translateY(-6px); border-color: rgba(77,166,255,0.6); box-shadow: 0 10px 28px rgba(0,0,0,0.18); }
+    .podium-more-inner { text-align:center; }
+    .podium-more-count { font-family: 'Syne', sans-serif; font-size: 34px; font-weight: 800; letter-spacing: -1px; color: #4da6ff; margin-bottom: 8px; }
+    .podium-more-label { font-size: 13px; color: var(--muted); }
 
     /* ── COMMUNITY RANKED BADGE ── */
     .community-badge { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 99px; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.25); color: #FFD700; }
@@ -349,7 +355,6 @@
     <div class="nav-logo">repscentral</div>
     <div class="nav-links">
       <a href="spreadsheet.html" class="nav-link">Spreadsheet</a>
-      <a href="#" class="nav-link">Browse Finds</a>
       <a href="#" class="nav-link">Quality Checks</a>
       <a href="#" class="nav-link">Outfits</a>
       <a href="#" class="nav-link">Sellers</a>
@@ -383,7 +388,7 @@
     <h1 class="hero-title">repscentral</h1>
     <p class="hero-sub">Reps made easy. All your favourite items, sellers, tools and coupons all in one place.</p>
     <div class="hero-btns">
-      <a href="#" class="btn-primary">Browse Finds</a>
+      <a href="spreadsheet.html" class="btn-primary">Browse Finds</a>
       <a href="https://discord.gg/3zzVWQcN36" target="_blank" rel="noopener noreferrer" class="btn-secondary">Join the community →</a>
     </div>
   </section>
@@ -395,8 +400,8 @@
     <div class="section-header">
       <div>
         <div class="community-badge">🏆 Community Ranked</div>
-        <h2 class="section-title">Best Sellers</h2>
-        <p class="section-sub">The top 3 community-voted rep finds right now</p>
+        <h2 class="section-title">MOST POPULAR</h2>
+        <p class="section-sub">The top community-voted rep finds right now</p>
       </div>
       <a href="#" class="section-link">View all →</a>
     </div>
@@ -677,6 +682,17 @@ function podiumCard(product, medal, delay) {
   `;
 }
 
+function podiumMoreCard() {
+  return `
+    <a href="spreadsheet.html" class="podium-more-card">
+      <div class="podium-more-inner">
+        <div class="podium-more-count">+100 more</div>
+        <div class="podium-more-label">Browse the full spreadsheet →</div>
+      </div>
+    </a>
+  `;
+}
+
 /* ── SELLERS ── */
 function sellerCard(s) {
   return `
@@ -710,7 +726,7 @@ function toolCard(t) {
 
 /* ── RENDER ── */
 function render() {
-  document.getElementById("podium-grid").innerHTML = bestSellers.map((p, i) => podiumCard(p, medals[i], i * 0.1)).join("");
+  document.getElementById("podium-grid").innerHTML = bestSellers.map((p, i) => podiumCard(p, medals[i], i * 0.1)).join("") + podiumMoreCard();
   document.getElementById("our-picks-grid").innerHTML = ourPicks.map(productCard).join("");
   document.getElementById("sellers-grid").innerHTML = sellers.map(sellerCard).join("");
   document.getElementById("tools-grid").innerHTML = tools.map(toolCard).join("");
