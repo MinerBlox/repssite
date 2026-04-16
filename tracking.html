@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <title>repscentral — Tracking</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; min-height: 100vh; background: #0a0a0b; }
+    a { text-decoration: none; }
+    button, input { font-family: inherit; }
+    button { border: none; cursor: pointer; background: none; }
+
+    body.dark {
+      --bg: #0a0a0b;
+      --surface: #111114;
+      --surface2: #18181c;
+      --border: #252529;
+      --text: #f0f0f0;
+      --muted: #888888;
+      --nav-bg: rgba(10,10,11,0.88);
+      --blue: #4da6ff;
+      --blue-soft: rgba(77,166,255,0.12);
+    }
+
+    body.light {
+      --bg: #f5f8ff;
+      --surface: #ffffff;
+      --surface2: #e8eef8;
+      --border: #dde4f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --nav-bg: rgba(245,248,255,0.92);
+      --blue: #4da6ff;
+      --blue-soft: rgba(77,166,255,0.12);
+    }
+
+    @keyframes rc-fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes rc-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+    #root { min-height: 100vh; background: var(--bg); color: var(--text); transition: background 0.2s, color 0.2s; }
+    #banner { background: var(--blue); color: #fff; text-align: center; padding: 10px 20px; font-size: 13px; font-weight: 500; }
+    #banner a { color: #fff; font-weight: 700; text-decoration: underline; }
+
+    nav {
+      position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 8px; padding: 0 28px; height: 60px;
+      border-bottom: 1px solid var(--border); background: var(--nav-bg); backdrop-filter: blur(14px);
+    }
+    .nav-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 17px; letter-spacing: -0.5px; margin-right: 12px; color: var(--text); }
+    .nav-links { display: flex; gap: 2px; flex: 1; overflow-x: auto; scrollbar-width: none; }
+    .nav-links::-webkit-scrollbar { display: none; }
+    .nav-link { padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--muted); transition: color 0.15s, background 0.15s; white-space: nowrap; }
+    .nav-link:hover, .nav-link.active { color: var(--text); background: var(--surface2); }
+    .nav-theme {
+      display: inline-flex; align-items: center; gap: 6px; border-radius: 9px; padding: 6px 12px; font-size: 13px; font-weight: 500;
+      color: var(--muted); background: var(--surface2); border: 1px solid var(--border); cursor: pointer; margin-left: 4px;
+    }
+
+    .page-shell { max-width: 1300px; margin: 0 auto; padding: 40px 40px 64px; animation: rc-fadein 0.45s ease both; }
+    .hero {
+      border: 1px solid var(--border); background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+      border-radius: 24px; padding: 40px; margin-bottom: 24px;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 14px; font-size: 11px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 16px; border: 1px solid rgba(77,166,255,0.24);
+      background: var(--blue-soft); color: var(--blue);
+    }
+    .hero-title { font-family: 'Syne', sans-serif; font-size: clamp(38px, 7vw, 72px); line-height: 0.95; letter-spacing: -2px; margin-bottom: 12px; }
+    .hero-sub { max-width: 760px; font-size: 15px; line-height: 1.6; color: var(--muted); }
+
+    .grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 18px; }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 20px; }
+    .panel-title { font-family: 'Syne', sans-serif; font-size: 18px; margin-bottom: 8px; }
+    .panel-sub { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 18px; }
+
+    .track-box { border: 1px solid var(--border); background: var(--surface2); border-radius: 18px; padding: 18px; }
+    .track-input {
+      width: 100%; border: 1px solid var(--border); background: var(--surface); color: var(--text); outline: none;
+      padding: 15px 16px; border-radius: 14px; font-size: 15px; margin-bottom: 12px;
+    }
+    .track-actions, .carrier-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .btn, .carrier-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 16px; border-radius: 12px; font-size: 13px; font-weight: 700;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+    .btn:hover, .carrier-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary { background: var(--blue); color: #fff; }
+    .btn-secondary, .carrier-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); }
+
+    .status-card, .tip {
+      margin-top: 18px; border-radius: 16px; padding: 16px; background: var(--surface2); border: 1px solid var(--border);
+    }
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border);
+      font-size: 12px; font-weight: 700; color: var(--text); background: var(--surface); margin-bottom: 10px;
+    }
+    .status-text, .tip p { font-size: 14px; line-height: 1.7; color: var(--muted); }
+    .tip h3 { font-size: 14px; margin-bottom: 6px; }
+
+    footer { max-width: 1300px; margin: 0 auto; padding: 0 40px 36px; }
+    .footer-box { border-top: 1px solid var(--border); padding-top: 24px; font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+    @media (max-width: 960px) { .grid { grid-template-columns: 1fr; } }
+    @media (max-width: 720px) {
+      nav { padding: 0 16px; }
+      .page-shell, footer { padding-left: 16px; padding-right: 16px; }
+      .page-shell { padding-top: 22px; }
+      .hero, .panel { padding: 18px; }
+      .hero-title { letter-spacing: -1.2px; }
+      .track-actions, .carrier-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body class="dark">
+<div id="root">
+  <div id="banner">
+    HipoBuy - The cheapest, best and most reliable Chinese agent.
+    <a href="https://hipobuy.com/register?inviteCode=QTYP3P8P5" target="_blank" rel="noopener noreferrer">Sign up today and get up to 40% off your shipping fee →</a>
+  </div>
+
+  <nav>
+    <a href="index.html" class="nav-logo">repscentral</a>
+    <div class="nav-links">
+      <a href="spreadsheet.html" class="nav-link">Spreadsheet</a>
+      <a href="tracking.html" class="nav-link active">Tracking</a>
+      <a href="#" class="nav-link">Browse Finds</a>
+      <a href="#" class="nav-link">Quality Checks</a>
+      <a href="#" class="nav-link">Outfits</a>
+      <a href="#" class="nav-link">Sellers</a>
+    </div>
+    <button class="nav-theme" id="theme-btn" onclick="toggleTheme()"><span id="theme-label">Light</span></button>
+  </nav>
+
+  <main class="page-shell">
+    <section class="hero">
+      <div class="hero-badge">✦ Universal Parcel Tracking</div>
+      <h1 class="hero-title">TRACKING</h1>
+      <p class="hero-sub">Paste any tracking number and jump straight to the best live tracker. Start with the universal option for China-origin parcels, then try the destination courier if the parcel has handed over locally.</p>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2 class="panel-title">Track your parcel</h2>
+        <p class="panel-sub">This version is launch-friendly for a static site: it recommends the best live tracker and opens the right tracking page in a new tab.</p>
+
+        <div class="track-box">
+          <input id="tracking-input" class="track-input" type="text" placeholder="Enter a tracking number" />
+          <div class="track-actions">
+            <button class="btn btn-primary" onclick="trackUniversal()">Track with 17TRACK</button>
+            <button class="btn btn-secondary" onclick="copyTrackingNumber()">Copy number</button>
+          </div>
+        </div>
+
+        <div class="status-card">
+          <div class="status-pill" id="detected-carrier">Carrier: Auto-detect</div>
+          <div id="status-text" class="status-text">Enter a tracking number and this page will recommend where to check it live.</div>
+        </div>
+
+        <div class="carrier-grid">
+          <button class="carrier-btn" onclick="trackUniversal()">17TRACK</button>
+          <button class="carrier-btn" onclick="openRoyalMail()">Royal Mail</button>
+          <button class="carrier-btn" onclick="openParcelforce()">Parcelforce</button>
+          <button class="carrier-btn" onclick="openDHL()">DHL</button>
+          <button class="carrier-btn" onclick="openDPD()">DPD</button>
+          <button class="carrier-btn" onclick="openUPS()">UPS</button>
+          <button class="carrier-btn" onclick="openFedEx()">FedEx</button>
+          <button class="carrier-btn" onclick="openParcelsApp()">ParcelsApp</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">How to use it</h2>
+        <p class="panel-sub">Built for rep shipments that often move across more than one network.</p>
+        <div class="tip"><h3>Start universal</h3><p>Universal trackers are the best first stop for most parcels coming from China or moving across multiple couriers.</p></div>
+        <div class="tip"><h3>Switch local later</h3><p>When the parcel reaches the destination country, local couriers often show better final-mile scans.</p></div>
+        <div class="tip"><h3>Fresh label?</h3><p>Many shipments take 24–48 hours before the first event appears.</p></div>
+        <div class="tip"><h3>Future upgrade</h3><p>If you want live events shown directly on your site, the next step is a backend or serverless function with a tracking API.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-box">
+      <span>© 2026 repscentral. Tracking page added.</span>
+      <span>Ready for future API integration.</span>
+    </div>
+  </footer>
+</div>
+
+<script>
+let theme = localStorage.getItem('rc-theme') || 'dark';
+
+function applyTheme() {
+  document.body.className = theme;
+  const label = document.getElementById('theme-label');
+  if (label) label.textContent = theme === 'dark' ? 'Light' : 'Dark';
+}
+
+function toggleTheme() {
+  theme = theme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('rc-theme', theme);
+  applyTheme();
+}
+
+function getTrackingNumber() {
+  return document.getElementById('tracking-input').value.trim();
+}
+
+function requireTrackingNumber() {
+  const tracking = getTrackingNumber();
+  if (!tracking) {
+    alert('Please enter a tracking number first.');
+    return null;
+  }
+  updateRecommendation(tracking);
+  return tracking;
+}
+
+function detectCarrier(tracking) {
+  const value = tracking.toUpperCase();
+  if (/^[A-Z]{2}\d{9}GB$/.test(value)) {
+    if (/^(EA|EB|EC|ED|EE|CP)/.test(value)) return 'Parcelforce';
+    return 'Royal Mail';
+  }
+  if (/^1Z[0-9A-Z]{16}$/.test(value) || /^T\d{10}$/.test(value) || /^\d{9}$/.test(value) || /^\d{12}$/.test(value)) return 'UPS';
+  if (/^(JJD|JD)/.test(value) || /^\d{10}$/.test(value)) return 'DHL';
+  if (/^(SF|YT|LP|LZ|RV|R[A-Z]|U[A-Z]|SY|CY|GM|UG|AQ)/.test(value)) return 'China / Universal';
+  if (/^\d{12,15}$/.test(value)) return 'FedEx or courier';
+  return 'Auto-detect';
+}
+
+function updateRecommendation(tracking) {
+  const carrier = detectCarrier(tracking);
+  document.getElementById('detected-carrier').textContent = `Carrier: ${carrier}`;
+  document.getElementById('status-text').innerHTML = `Best first step: <strong>${carrier === 'Royal Mail' || carrier === 'Parcelforce' || carrier === 'UPS' || carrier === 'DHL' ? 'try the official courier button below' : 'use 17TRACK'}</strong>, then try a local courier if the parcel has already handed over in the destination country.`;
+}
+
+function openUrl(url) {
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function trackUniversal() {
+  const tracking = requireTrackingNumber();
+  if (!tracking) return;
+  openUrl(`https://www.17track.net/en/tracking?nums=${encodeURIComponent(tracking)}`);
+}
+
+function openParcelsApp() {
+  const tracking = requireTrackingNumber();
+  if (!tracking) return;
+  openUrl(`https://parcelsapp.com/en/tracking/${encodeURIComponent(tracking)}`);
+}
+
+function openRoyalMail() {
+  const tracking = requireTrackingNumber();
+  if (!tracking) return;
+  openUrl(`https://www.royalmail.com/portal/rm/track?trackNumber=${encodeURIComponent(tracking)}`);
+}
+
+function openParcelforce() {
+  const tracking = requireTrackingNumber();
+  if (!tracking) return;
+  openUrl(`https://www.parcelforce.com/portal/pw/track?trackNumber=${encodeURIComponent(tracking)}`);
+}
+
+function openDHL() {
+  const tracking = requireTrackingNumber();
+  if (!tracking) return;
+  openUrl(`https://www.dhl.com/gb-en/home/tracking.html?submit=1&tracking-id=${encodeURIComponent(tracking)}`);
+}
+
+function openDPD() {
+  const tracking = requireTrackingNumber();
+  if (!tracking) return;
+  openUrl(`https://track.dpd.co.uk/search?reference=${encodeURIComponent(tracking)}`);
+}
+
+function openUPS() {
+  const tracking = requireTrackingNumber();
+  if (!tracking) return;
+  openUrl(`https://www.ups.com/track?loc=en-GB&tracknum=${encodeURIComponent(tracking)}`);
+}
+
+function openFedEx() {
+  const tracking = requireTrackingNumber();
+  if (!tracking) return;
+  openUrl('https://www.fedex.com/en-gb/tracking.html');
+}
+
+async function copyTrackingNumber() {
+  const tracking = requireTrackingNumber();
+  if (!tracking) return;
+  try {
+    await navigator.clipboard.writeText(tracking);
+    alert('Tracking number copied.');
+  } catch (error) {
+    alert('Could not copy the tracking number.');
+  }
+}
+
+document.getElementById('tracking-input').addEventListener('input', (event) => {
+  const value = event.target.value.trim();
+  if (!value) {
+    document.getElementById('detected-carrier').textContent = 'Carrier: Auto-detect';
+    document.getElementById('status-text').textContent = 'Enter a tracking number and this page will recommend where to check it live.';
+    return;
+  }
+  updateRecommendation(value);
+});
+
+applyTheme();
+</script>
+</body>
+</html>
