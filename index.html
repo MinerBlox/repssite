@@ -80,6 +80,39 @@
     }
     .nav-theme:hover { opacity: 0.75; }
 
+    .nav-dropdown { position: relative; }
+    .nav-dropdown summary { list-style: none; cursor: pointer; }
+    .nav-dropdown summary::-webkit-details-marker { display: none; }
+    .nav-dropdown[open] summary,
+    .nav-dropdown:hover summary { color: var(--text); background: var(--surface2); }
+    .dropdown-menu {
+      position: absolute;
+      top: calc(100% + 10px);
+      left: 0;
+      min-width: 180px;
+      padding: 8px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+      display: none;
+      z-index: 60;
+    }
+    .nav-dropdown[open] .dropdown-menu,
+    .nav-dropdown:hover .dropdown-menu,
+    .nav-dropdown:focus-within .dropdown-menu { display: block; }
+    .dropdown-link {
+      display: block;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .dropdown-link:hover { background: var(--surface2); }
+
+
     /* ── TICKER ── */
     #ticker {
       overflow: hidden; height: 36px; display: flex; align-items: center; position: relative;
@@ -105,8 +138,7 @@
     #hero .hero-glow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(77,166,255,0.09) 0%, transparent 70%); }
     .hero-badge {
       display: inline-block; border-radius: 99px; padding: 4px 14px; font-size: 12px; margin-bottom: 24px;
-      text-transform: uppercase; letter-spacing: 0.1em; border: 1px solid rgba(77,166,255,0.32); background: var(--surface2); color: #9fceff;
-      box-shadow: 0 0 18px rgba(77,166,255,0.18), inset 0 0 18px rgba(77,166,255,0.04);
+      text-transform: uppercase; letter-spacing: 0.1em; border: 1px solid var(--border); background: var(--surface2); color: var(--muted);
     }
     .hero-title { font-family: 'Syne', sans-serif; font-weight: 800; line-height: 1; letter-spacing: -3px; margin-bottom: 16px; font-size: clamp(42px, 8vw, 90px); color: var(--text); animation: rc-fadein 0.6s ease 0.1s both; }
     .hero-sub { font-size: 17px; max-width: 480px; margin: 0 auto 36px; color: var(--muted); animation: rc-fadein 0.6s ease 0.2s both; }
@@ -173,11 +205,6 @@
     .podium-cat { font-size: 11px; padding: 2px 8px; border-radius: 5px; border: 1px solid var(--border); color: var(--muted); background: var(--surface2); }
     .podium-btn { display: block; margin-top: 12px; padding: 8px; border-radius: 10px; text-align: center; font-size: 13px; font-weight: 700; transition: opacity 0.15s; }
     .podium-btn:hover { opacity: 0.9; }
-    .podium-more-card { display:flex; align-items:center; justify-content:center; min-height:100%; border-radius:18px; padding:20px; background: linear-gradient(180deg, var(--surface) 0%, var(--surface2) 100%); border:1px dashed rgba(77,166,255,0.35); color: var(--text); transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; }
-    .podium-more-card:hover { transform: translateY(-6px); border-color: rgba(77,166,255,0.6); box-shadow: 0 10px 28px rgba(0,0,0,0.18); }
-    .podium-more-inner { text-align:center; }
-    .podium-more-count { font-family: 'Syne', sans-serif; font-size: 34px; font-weight: 800; letter-spacing: -1px; color: #4da6ff; margin-bottom: 8px; }
-    .podium-more-label { font-size: 13px; color: var(--muted); }
 
     /* ── COMMUNITY RANKED BADGE ── */
     .community-badge { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 99px; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 12px; background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.25); color: #FFD700; }
@@ -228,6 +255,31 @@
     .tool-btn:hover { opacity: 0.85; transform: translateY(-1px); }
     .tool-btn.primary { background: #4da6ff; color: #fff; border-color: transparent; }
 
+    /* ── LINK CONVERTER ── */
+    .converter-shell { max-width: 1300px; margin: 0 auto; padding: 0 40px 64px; }
+    .converter-box { background: linear-gradient(180deg, var(--surface) 0%, var(--surface2) 100%); border: 1px solid var(--border); border-radius: 18px; padding: 26px; }
+    .converter-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+    .converter-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 28px; letter-spacing: -0.5px; color: var(--text); }
+    .converter-sub { font-size: 13px; color: var(--muted); margin-top: 6px; max-width: 760px; line-height: 1.6; }
+    .converter-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; background: rgba(77,166,255,0.12); border: 1px solid rgba(77,166,255,0.25); color: #4da6ff; }
+    .converter-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 18px; }
+    .converter-panel { border: 1px solid var(--border); background: var(--surface); border-radius: 16px; padding: 16px; }
+    .converter-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 10px; }
+    .converter-input, .converter-output { width: 100%; min-height: 116px; resize: vertical; border-radius: 14px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); padding: 14px 16px; font-size: 14px; line-height: 1.6; outline: none; }
+    .converter-output { min-height: 92px; }
+    .converter-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .converter-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; border: 1px solid var(--border); background: var(--surface2); color: var(--text); transition: opacity 0.15s, transform 0.15s; }
+    .converter-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .converter-btn.primary { background: #4da6ff; color: #fff; border-color: transparent; }
+    .converter-meta { display: grid; gap: 12px; }
+    .converter-card { border: 1px solid var(--border); background: var(--surface); border-radius: 16px; padding: 16px; }
+    .converter-card h3 { font-size: 14px; margin-bottom: 6px; color: var(--text); }
+    .converter-card p, .converter-note, .converter-list { font-size: 13px; line-height: 1.6; color: var(--muted); }
+    .converter-list { padding-left: 18px; }
+    .converter-list li + li { margin-top: 6px; }
+    .converter-status { margin-top: 12px; font-size: 13px; color: var(--muted); }
+    .converter-status strong { color: #4da6ff; }
+
     /* ── FOOTER ── */
     footer { padding: 36px 40px; max-width: 1300px; margin: 0 auto; border-top: 1px solid var(--border); }
     .footer-inner { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
@@ -240,6 +292,17 @@
 
     /* ── VIEW MORE BTN ── */
     .view-more { text-align: center; margin-top: 28px; }
+
+    @media (max-width: 920px) {
+      .converter-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 720px) {
+      .converter-shell { padding-left: 16px; padding-right: 16px; padding-bottom: 48px; }
+      .converter-box { padding: 18px; }
+      .converter-actions { flex-direction: column; }
+      .converter-btn { width: 100%; }
+    }
 
     /* ── MODAL ── */
     #modal-overlay {
@@ -358,7 +421,12 @@
       <a href="#" class="nav-link">Quality Checks</a>
       <a href="#" class="nav-link">Outfits</a>
       <a href="#" class="nav-link">Sellers</a>
-      <a href="#" class="nav-link">Tools ▾</a>
+      <details class="nav-dropdown">
+        <summary class="nav-link">Links ▾</summary>
+        <div class="dropdown-menu">
+          <a href="link-converter.html" class="dropdown-link">Link Converter</a>
+        </div>
+      </details>
     </div>
     <button class="nav-search">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -400,8 +468,8 @@
     <div class="section-header">
       <div>
         <div class="community-badge">🏆 Community Ranked</div>
-        <h2 class="section-title">MOST POPULAR</h2>
-        <p class="section-sub">The top community-voted rep finds right now</p>
+        <h2 class="section-title">Best Sellers</h2>
+        <p class="section-sub">The top 3 community-voted rep finds right now</p>
       </div>
       <a href="#" class="section-link">View all →</a>
     </div>
@@ -589,8 +657,9 @@ const tools = [
   { id: "t1", icon: "🛒", name: "HipoBuy Agent", desc: "Register on HipoBuy and get up to 40% off your shipping fee.", featured: true, badge: "Recommended", cta: "Register Now", ctaPrimary: true, href: HIPOBUY_LINK },
   { id: "t2", icon: "🏆", name: "Agent Ranking", desc: "Compare all shopping agents and find the best one for you.", featured: false, cta: "View", ctaPrimary: false, href: "#" },
   { id: "t3", icon: "📦", name: "Tracking", desc: "Track your parcel status with ease.", featured: false, cta: "Check", ctaPrimary: false, href: "#" },
-  { id: "t4", icon: "🔗", name: "Link Converter", desc: "Convert links from multiple platforms instantly.", featured: false, cta: "Use", ctaPrimary: false, href: "#" },
+  { id: "t4", icon: "🔗", name: "Link Converter", desc: "Convert links from multiple platforms instantly.", featured: false, cta: "Open", ctaPrimary: false, href: "link-converter.html" },
   { id: "t5", icon: "🚢", name: "Shipping Calculator", desc: "Calculate shipping costs before ordering.", featured: false, cta: "Calculate", ctaPrimary: false, href: "#" },
+  { id: "t6", icon: "🔗", name: "Link Converter", desc: "Convert marketplace and agent links into HipoBuy-ready links.", featured: false, cta: "Convert", ctaPrimary: false, href: "#link-converter" },
 ];
 
 /* ── THEME ── */
@@ -682,17 +751,6 @@ function podiumCard(product, medal, delay) {
   `;
 }
 
-function podiumMoreCard() {
-  return `
-    <a href="spreadsheet.html" class="podium-more-card">
-      <div class="podium-more-inner">
-        <div class="podium-more-count">+100 more</div>
-        <div class="podium-more-label">Browse the full spreadsheet →</div>
-      </div>
-    </a>
-  `;
-}
-
 /* ── SELLERS ── */
 function sellerCard(s) {
   return `
@@ -726,7 +784,7 @@ function toolCard(t) {
 
 /* ── RENDER ── */
 function render() {
-  document.getElementById("podium-grid").innerHTML = bestSellers.map((p, i) => podiumCard(p, medals[i], i * 0.1)).join("") + podiumMoreCard();
+  document.getElementById("podium-grid").innerHTML = bestSellers.map((p, i) => podiumCard(p, medals[i], i * 0.1)).join("");
   document.getElementById("our-picks-grid").innerHTML = ourPicks.map(productCard).join("");
   document.getElementById("sellers-grid").innerHTML = sellers.map(sellerCard).join("");
   document.getElementById("tools-grid").innerHTML = tools.map(toolCard).join("");
@@ -741,6 +799,193 @@ function setSeason(s) {
 }
 function renderSeason(s) {
   document.getElementById("season-grid").innerHTML = seasonFinds[s].map(productCard).join("");
+}
+
+
+function safeDecode(value) {
+  let output = value || "";
+  for (let i = 0; i < 4; i++) {
+    try {
+      const decoded = decodeURIComponent(output);
+      if (decoded === output) break;
+      output = decoded;
+    } catch (error) {
+      break;
+    }
+  }
+  return output;
+}
+
+function normalizePlatform(value) {
+  if (!value) return null;
+  const v = value.toLowerCase();
+  if (v.includes("weidian") || v === "wd") return "weidian";
+  if (v.includes("taobao") || v === "tb" || v.includes("tmall")) return "taobao";
+  if (v.includes("1688") || v === "alibaba") return "1688";
+  return null;
+}
+
+function firstUrlFromText(value) {
+  const match = value.match(/https?:\/\/[^\s"'<>]+/i);
+  return match ? match[0] : value.trim();
+}
+
+function extract1688Id(urlString) {
+  const offerMatch = urlString.match(/offer\/(\d+)\.html/i);
+  if (offerMatch) return offerMatch[1];
+  try {
+    const url = new URL(urlString);
+    return url.searchParams.get("offerId") || url.searchParams.get("id") || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function unwrapAgentLink(rawInput) {
+  let current = firstUrlFromText(rawInput);
+  const seen = new Set();
+  const paramCandidates = ["url", "target", "targetUrl", "redirect", "redirectUrl", "searchInfo", "originKeywordUrl", "originUrl", "itemUrl", "goodsLink", "productLink", "link", "ru", "u"];
+
+  for (let i = 0; i < 5; i++) {
+    current = safeDecode(current).replace(/&amp;/g, "&").trim();
+    if (!current || seen.has(current)) break;
+    seen.add(current);
+
+    try {
+      const url = new URL(current);
+      let nested = null;
+      for (const key of paramCandidates) {
+        const value = url.searchParams.get(key);
+        if (value && /^https?:/i.test(safeDecode(value))) {
+          nested = safeDecode(value);
+          break;
+        }
+      }
+      if (nested) {
+        current = nested;
+        continue;
+      }
+    } catch (error) {
+      break;
+    }
+    break;
+  }
+
+  return current;
+}
+
+function convertLinkValue(rawInput) {
+  const cleanedInput = (rawInput || "").trim();
+  if (!cleanedInput) return { ok: false, reason: "Paste a link first." };
+
+  const candidate = unwrapAgentLink(cleanedInput);
+  let url;
+  try {
+    url = new URL(candidate);
+  } catch (error) {
+    return { ok: false, reason: "That does not look like a valid URL." };
+  }
+
+  const host = url.hostname.toLowerCase();
+  const path = url.pathname;
+
+  if (host.includes("hipobuy.com")) {
+    if (/\/product\/(weidian|taobao|1688)\/\d+/i.test(path)) {
+      return { ok: true, link: url.toString(), platform: path.split("/")[2] };
+    }
+    return { ok: false, reason: "This is already a HipoBuy link, but it is not in a direct product format I can normalize safely." };
+  }
+
+  if (host.includes("weidian.com") || host.includes("youshop10.com")) {
+    const id = url.searchParams.get("itemID") || url.searchParams.get("itemId") || url.searchParams.get("id");
+    if (id) return { ok: true, link: `https://hipobuy.com/product/weidian/${id}`, platform: "weidian" };
+  }
+
+  if (host.includes("taobao.com") || host.includes("tmall.com")) {
+    const id = url.searchParams.get("id");
+    if (id) return { ok: true, link: `https://hipobuy.com/product/taobao/${id}`, platform: "taobao" };
+  }
+
+  if (host.includes("1688.com") || host.includes("alibaba.com")) {
+    const id = extract1688Id(url.toString());
+    if (id) return { ok: true, link: `https://hipobuy.com/product/1688/${id}`, platform: "1688" };
+  }
+
+  if (host.includes("cnfans.com")) {
+    const id = url.searchParams.get("id") || url.searchParams.get("spuNo");
+    const platform = normalizePlatform(url.searchParams.get("shop_type") || url.searchParams.get("platform"));
+    if (id && platform) return { ok: true, link: `https://hipobuy.com/product/${platform}/${id}`, platform };
+  }
+
+  if (host.includes("mulebuy.com")) {
+    const id = url.searchParams.get("id");
+    const platform = normalizePlatform(url.searchParams.get("platform"));
+    if (id && platform) return { ok: true, link: `https://hipobuy.com/product/${platform}/${id}`, platform };
+  }
+
+  if (host.includes("acbuy.com")) {
+    const id = url.searchParams.get("id");
+    const platform = normalizePlatform(url.searchParams.get("source"));
+    if (id && platform) return { ok: true, link: `https://hipobuy.com/product/${platform}/${id}`, platform };
+  }
+
+  if (host.includes("oopbuy.com")) {
+    const match = path.match(/\/product\/(weidian|taobao|1688)\/(\d+)/i);
+    if (match) return { ok: true, link: `https://hipobuy.com/product/${match[1].toLowerCase()}/${match[2]}`, platform: match[1].toLowerCase() };
+  }
+
+  if (host.includes("pandabuy.com") || host.includes("kakobuy.com") || host.includes("hoobuy.com") || host.includes("lovegobuy.com") || host.includes("orientdig.com") || host.includes("allchinabuy.com") || host.includes("superbuy.com") || host.includes("cssbuy.com")) {
+    const maybeUnwrapped = unwrapAgentLink(url.toString());
+    if (maybeUnwrapped !== url.toString()) return convertLinkValue(maybeUnwrapped);
+  }
+
+  const cssbuyMatch = url.toString().match(/item-(\d+)\.html/i);
+  if (host.includes("cssbuy.com") && cssbuyMatch) {
+    return { ok: false, reason: "I found the item ID, but CSSBuy links do not reliably expose the source platform. Paste the original Weidian, Taobao or 1688 link for a precise conversion." };
+  }
+
+  return { ok: false, reason: "I could not read a supported item ID from that link. Try the original Weidian, Taobao or 1688 product URL instead of a shortened or heavily wrapped agent link." };
+}
+
+function convertToHipoBuy() {
+  const input = document.getElementById("converter-input").value;
+  const output = document.getElementById("converter-output");
+  const status = document.getElementById("converter-status");
+  const result = convertLinkValue(input);
+
+  if (!result.ok) {
+    output.value = "";
+    status.innerHTML = `<strong>Could not convert:</strong> ${result.reason}`;
+    return;
+  }
+
+  output.value = result.link;
+  status.innerHTML = `<strong>Converted:</strong> detected ${result.platform} and built a HipoBuy-ready link.`;
+}
+
+async function copyConvertedLink() {
+  const output = document.getElementById("converter-output").value.trim();
+  const status = document.getElementById("converter-status");
+  if (!output) {
+    status.innerHTML = `<strong>Nothing to copy:</strong> convert a link first.`;
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(output);
+    status.innerHTML = `<strong>Copied:</strong> your HipoBuy link is now on the clipboard.`;
+  } catch (error) {
+    status.innerHTML = `<strong>Copy failed:</strong> try copying from the output box manually.`;
+  }
+}
+
+function openConvertedLink() {
+  const output = document.getElementById("converter-output").value.trim();
+  const status = document.getElementById("converter-status");
+  if (!output) {
+    status.innerHTML = `<strong>Nothing to open:</strong> convert a link first.`;
+    return;
+  }
+  window.open(output, "_blank", "noopener,noreferrer");
 }
 
 render();
