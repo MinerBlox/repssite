@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <title>repscentral — Link Converter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; min-height: 100vh; background: #0a0a0b; }
+    a { text-decoration: none; }
+    button, input { font-family: inherit; }
+    button { border: none; cursor: pointer; background: none; }
+
+    body.dark {
+      --bg: #0a0a0b;
+      --surface: #111114;
+      --surface2: #18181c;
+      --surface3: #141418;
+      --border: #252529;
+      --text: #f0f0f0;
+      --muted: #888888;
+      --nav-bg: rgba(10,10,11,0.88);
+      --blue: #4da6ff;
+      --blue-soft: rgba(77,166,255,0.12);
+    }
+
+    body.light {
+      --bg: #f5f8ff;
+      --surface: #ffffff;
+      --surface2: #e8eef8;
+      --surface3: #f0f4fb;
+      --border: #dde4f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --nav-bg: rgba(245,248,255,0.92);
+      --blue: #4da6ff;
+      --blue-soft: rgba(77,166,255,0.12);
+    }
+
+    @keyframes rc-fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes rc-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+    #root {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      transition: background 0.2s, color 0.2s;
+    }
+
+    #banner {
+      background: var(--blue);
+      color: #fff;
+      text-align: center;
+      padding: 10px 20px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    #banner a {
+      color: #fff;
+      font-weight: 700;
+      text-decoration: underline;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 28px;
+      height: 60px;
+      border-bottom: 1px solid var(--border);
+      background: var(--nav-bg);
+      backdrop-filter: blur(14px);
+    }
+
+    .nav-logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 17px;
+      letter-spacing: -0.5px;
+      margin-right: 12px;
+      color: var(--text);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2px;
+      flex: 1;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .nav-links::-webkit-scrollbar { display: none; }
+
+    .nav-link {
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      transition: color 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+
+    .nav-link:hover,
+    .nav-link.active {
+      color: var(--text);
+      background: var(--surface2);
+    }
+
+    
+    .nav-dropdown { position: relative; }
+    .nav-dropdown summary { list-style: none; cursor: pointer; }
+    .nav-dropdown summary::-webkit-details-marker { display: none; }
+    .nav-dropdown[open] summary,
+    .nav-dropdown:hover summary { color: var(--text); background: var(--surface2); }
+    .dropdown-menu {
+      position: absolute;
+      top: calc(100% + 10px);
+      left: 0;
+      min-width: 180px;
+      padding: 8px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+      display: none;
+      z-index: 60;
+    }
+    .nav-dropdown[open] .dropdown-menu,
+    .nav-dropdown:hover .dropdown-menu,
+    .nav-dropdown:focus-within .dropdown-menu { display: block; }
+    .dropdown-link {
+      display: block;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .dropdown-link:hover { background: var(--surface2); }
+
+    .nav-theme {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 9px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      margin-left: 4px;
+      white-space: nowrap;
+    }
+
+    .page-shell {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 26px 40px 64px;
+      animation: rc-fadein 0.45s ease both;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 14px;
+      border: 1px solid rgba(77,166,255,0.22);
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    .page-title {
+      font-family: 'Syne', sans-serif;
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: clamp(34px, 6vw, 58px);
+      line-height: 0.95;
+      letter-spacing: -1.2px;
+      margin-bottom: 10px;
+    }
+
+    .page-sub {
+      max-width: 720px;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+
+    .header-stats {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .stat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 13px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--blue);
+      animation: rc-pulse 1.5s ease-in-out infinite;
+    }
+
+    .controls-shell {
+      background: linear-gradient(180deg, var(--surface) 0%, var(--surface3) 100%);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 18px;
+      margin-bottom: 22px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    .search-row {
+      display: grid;
+      grid-template-columns: 1.5fr auto;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .search-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 16px;
+    }
+
+    .search-wrap svg {
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .search-input {
+      width: 100%;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .search-input::placeholder { color: var(--muted); }
+
+    .ghost-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 16px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      min-height: 50px;
+    }
+
+    .category-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .category-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .category-chip {
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+
+    .category-chip:hover {
+      color: var(--text);
+      transform: translateY(-1px);
+      background: var(--surface2);
+    }
+
+    .category-chip.active {
+      background: var(--blue-soft);
+      border-color: rgba(77,166,255,0.32);
+      color: var(--blue);
+    }
+
+    .mini-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .results-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .results-copy h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 22px;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+
+    .results-copy p {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .product-card {
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .product-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(77,166,255,0.28);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.16);
+    }
+
+    .product-top {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .product-top svg {
+      opacity: 0.2;
+      color: var(--muted);
+    }
+
+    .item-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 4px 9px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #fff;
+    }
+
+    .item-badge.best { background: var(--blue); }
+    .item-badge.budget { background: #7dd3fc; color: #062033; }
+    .item-badge.popular { background: #111827; }
+    .item-badge.new { background: #22c55e; }
+
+    .product-body { padding: 14px; }
+
+    .product-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      min-height: 40px;
+    }
+
+    .product-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .product-price {
+      font-family: 'Syne', sans-serif;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--blue);
+    }
+
+    .product-category {
+      font-size: 11px;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--surface2);
+    }
+
+    .product-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .product-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+
+    .product-btn:hover {
+      opacity: 0.85;
+      transform: translateY(-1px);
+    }
+
+    .product-btn.primary {
+      background: var(--blue);
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .empty-state {
+      padding: 44px 24px;
+      text-align: center;
+      border-radius: 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+
+    .empty-state h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 24px;
+      margin-bottom: 10px;
+      letter-spacing: -0.4px;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--muted);
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    footer {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 0 40px 36px;
+    }
+
+    /* ── LINK CONVERTER ── */
+    .converter-shell { max-width: 1300px; margin: 0 auto; padding: 0 40px 64px; }
+    .converter-box { background: linear-gradient(180deg, var(--surface) 0%, var(--surface2) 100%); border: 1px solid var(--border); border-radius: 18px; padding: 26px; }
+    .converter-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+    .converter-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 28px; letter-spacing: -0.5px; color: var(--text); }
+    .converter-sub { font-size: 13px; color: var(--muted); margin-top: 6px; max-width: 760px; line-height: 1.6; }
+    .converter-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; background: rgba(77,166,255,0.12); border: 1px solid rgba(77,166,255,0.25); color: #4da6ff; }
+    .converter-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 18px; }
+    .converter-panel { border: 1px solid var(--border); background: var(--surface); border-radius: 16px; padding: 16px; }
+    .converter-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 10px; }
+    .converter-input, .converter-output { width: 100%; min-height: 116px; resize: vertical; border-radius: 14px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); padding: 14px 16px; font-size: 14px; line-height: 1.6; outline: none; }
+    .converter-output { min-height: 92px; }
+    .converter-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .converter-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 16px; border-radius: 12px; font-size: 13px; font-weight: 700; border: 1px solid var(--border); background: var(--surface2); color: var(--text); transition: opacity 0.15s, transform 0.15s; }
+    .converter-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .converter-btn.primary { background: #4da6ff; color: #fff; border-color: transparent; }
+    .converter-meta { display: grid; gap: 12px; }
+    .converter-card { border: 1px solid var(--border); background: var(--surface); border-radius: 16px; padding: 16px; }
+    .converter-card h3 { font-size: 14px; margin-bottom: 6px; color: var(--text); }
+    .converter-card p, .converter-note, .converter-list { font-size: 13px; line-height: 1.6; color: var(--muted); }
+    .converter-list { padding-left: 18px; }
+    .converter-list li + li { margin-top: 6px; }
+    .converter-status { margin-top: 12px; font-size: 13px; color: var(--muted); }
+    .converter-status strong { color: #4da6ff; }
+
+    
+
+    .footer-box {
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 920px) {
+      .search-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      nav {
+        padding: 0 16px;
+      }
+
+      .page-shell,
+      footer {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .page-shell {
+        padding-top: 18px;
+      }
+
+      .controls-shell {
+        padding: 14px;
+      }
+
+      .product-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 520px) {
+      .product-grid,
+      .product-actions {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body class="dark">
+  <div id="root">
+    <div id="banner">
+      HipoBuy - The cheapest, best and most reliable Chinese agent.&nbsp;
+      <a href="https://hipobuy.com/register?inviteCode=QTYP3P8P5" target="_blank" rel="noopener noreferrer">Sign up today and get up to 40% off your shipping fee →</a>
+    </div>
+
+    <nav>
+      <a href="index.html?noPopup=1" class="nav-logo">repscentral</a>
+    <div class="nav-links">
+      <a href="spreadsheet.html" class="nav-link">Spreadsheet</a>
+      <a href="#" class="nav-link">Quality Checks</a>
+      <a href="#" class="nav-link">Outfits</a>
+      <a href="#" class="nav-link">Sellers</a>
+      <details class="nav-dropdown">
+        <summary class="nav-link active">Links ▾</summary>
+        <div class="dropdown-menu">
+          <a href="link-converter.html" class="dropdown-link">Link Converter</a>
+        </div>
+      </details>
+    </div>
+      <button class="nav-theme" id="theme-btn" onclick="toggleTheme()">
+        <svg id="theme-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <span id="theme-label">Light</span>
+      </button>
+    </nav>
+
+    <main class="page-shell">
+      <section class="topbar">
+        <div>
+          <div class="eyebrow">✦ RepsCentral Utilities</div>
+          <h1 class="page-title">LINK CONVERTER</h1>
+          <p class="page-sub">Paste a marketplace or supported agent link and turn it into a HipoBuy-ready product URL.</p>
+        </div>
+      </section>
+
+      <div class="converter-shell" id="link-converter">
+    <div class="converter-box">
+      <div class="converter-head">
+        <div>
+          <div class="converter-badge">🔗 Link Converter</div>
+          <h2 class="converter-title">Convert any marketplace or agent link to HipoBuy</h2>
+          <p class="converter-sub">Paste a Weidian, Taobao, 1688 or supported agent link and this tool will try to build the matching HipoBuy product URL automatically. It works best on normal product pages and agent links that still expose the original item URL or product ID.</p>
+        </div>
+      </div>
+
+      <div class="converter-grid">
+        <div class="converter-panel">
+          <div class="converter-label">Paste your link</div>
+          <textarea id="converter-input" class="converter-input" placeholder="Paste any Weidian, Taobao, 1688, CNFans, PandaBuy, Kakobuy, MuleBuy, ACBuy, OopBuy or HipoBuy link here..."></textarea>
+          <div class="converter-actions">
+            <button class="converter-btn primary" onclick="convertToHipoBuy()">Convert to HipoBuy</button>
+            <button class="converter-btn" onclick="copyConvertedLink()">Copy result</button>
+            <button class="converter-btn" onclick="openConvertedLink()">Open result</button>
+          </div>
+          <div class="converter-status" id="converter-status">Ready when you are.</div>
+
+          <div style="margin-top:16px">
+            <div class="converter-label">Converted HipoBuy link</div>
+            <textarea id="converter-output" class="converter-output" readonly placeholder="Your converted HipoBuy link will appear here."></textarea>
+          </div>
+        </div>
+
+        <div class="converter-meta">
+          <div class="converter-card">
+            <h3>What works best</h3>
+            <ul class="converter-list">
+              <li>Direct Weidian, Taobao and 1688 product links</li>
+              <li>Agent links with visible item IDs and platform fields</li>
+              <li>Agent links that still include the original marketplace URL</li>
+            </ul>
+          </div>
+          <div class="converter-card">
+            <h3>Supported patterns</h3>
+            <p>Weidian item pages, Taobao item pages, 1688 offer pages, plus common agent formats from CNFans, PandaBuy, Kakobuy, MuleBuy, ACBuy, OopBuy and HipoBuy.</p>
+          </div>
+          <div class="converter-card">
+            <h3>Heads up</h3>
+            <p>Some shortened links or affiliate redirects need server-side resolving. If the tool cannot convert one, try opening the original product page first and paste the full destination URL instead.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+    </main>
+
+    <footer>
+      <div class="footer-box">
+        <span>© 2026 repscentral. Spreadsheet page concept ready for Firebase integration.</span>
+        <span>Dedicated converter page.</span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    let theme = localStorage.getItem('rc-theme') || 'dark';
+    let selectedCategory = 'All';
+    let searchTerm = '';
+
+    function applyTheme() {
+      document.body.className = theme;
+      const label = document.getElementById('theme-label');
+      const icon = document.getElementById('theme-icon');
+      if (label) label.textContent = theme === 'dark' ? 'Light' : 'Dark';
+      if (icon) {
+        if (theme === 'dark') {
+          icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+        } else {
+          icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+        }
+      }
+    }
+
+    function toggleTheme() {
+      theme = theme === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('rc-theme', theme);
+      applyTheme();
+    }
+
+    function safeDecode(value) {
+  let output = value || "";
+  for (let i = 0; i < 4; i++) {
+    try {
+      const decoded = decodeURIComponent(output);
+      if (decoded === output) break;
+      output = decoded;
+    } catch (error) {
+      break;
+    }
+  }
+  return output;
+}
+
+function normalizePlatform(value) {
+  if (!value) return null;
+  const v = value.toLowerCase();
+  if (v.includes("weidian") || v === "wd") return "weidian";
+  if (v.includes("taobao") || v === "tb" || v.includes("tmall")) return "taobao";
+  if (v.includes("1688") || v === "alibaba") return "1688";
+  return null;
+}
+
+function firstUrlFromText(value) {
+  const match = value.match(/https?:\/\/[^\s"'<>]+/i);
+  return match ? match[0] : value.trim();
+}
+
+function extract1688Id(urlString) {
+  const offerMatch = urlString.match(/offer\/(\d+)\.html/i);
+  if (offerMatch) return offerMatch[1];
+  try {
+    const url = new URL(urlString);
+    return url.searchParams.get("offerId") || url.searchParams.get("id") || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function unwrapAgentLink(rawInput) {
+  let current = firstUrlFromText(rawInput);
+  const seen = new Set();
+  const paramCandidates = ["url", "target", "targetUrl", "redirect", "redirectUrl", "searchInfo", "originKeywordUrl", "originUrl", "itemUrl", "goodsLink", "productLink", "link", "ru", "u"];
+
+  for (let i = 0; i < 5; i++) {
+    current = safeDecode(current).replace(/&amp;/g, "&").trim();
+    if (!current || seen.has(current)) break;
+    seen.add(current);
+
+    try {
+      const url = new URL(current);
+      let nested = null;
+      for (const key of paramCandidates) {
+        const value = url.searchParams.get(key);
+        if (value && /^https?:/i.test(safeDecode(value))) {
+          nested = safeDecode(value);
+          break;
+        }
+      }
+      if (nested) {
+        current = nested;
+        continue;
+      }
+    } catch (error) {
+      break;
+    }
+    break;
+  }
+
+  return current;
+}
+
+function convertLinkValue(rawInput) {
+  const cleanedInput = (rawInput || "").trim();
+  if (!cleanedInput) return { ok: false, reason: "Paste a link first." };
+
+  const candidate = unwrapAgentLink(cleanedInput);
+  let url;
+  try {
+    url = new URL(candidate);
+  } catch (error) {
+    return { ok: false, reason: "That does not look like a valid URL." };
+  }
+
+  const host = url.hostname.toLowerCase();
+  const path = url.pathname;
+
+  if (host.includes("hipobuy.com")) {
+    if (/\/product\/(weidian|taobao|1688)\/\d+/i.test(path)) {
+      return { ok: true, link: url.toString(), platform: path.split("/")[2] };
+    }
+    return { ok: false, reason: "This is already a HipoBuy link, but it is not in a direct product format I can normalize safely." };
+  }
+
+  if (host.includes("weidian.com") || host.includes("youshop10.com")) {
+    const id = url.searchParams.get("itemID") || url.searchParams.get("itemId") || url.searchParams.get("id");
+    if (id) return { ok: true, link: `https://hipobuy.com/product/weidian/${id}`, platform: "weidian" };
+  }
+
+  if (host.includes("taobao.com") || host.includes("tmall.com")) {
+    const id = url.searchParams.get("id");
+    if (id) return { ok: true, link: `https://hipobuy.com/product/taobao/${id}`, platform: "taobao" };
+  }
+
+  if (host.includes("1688.com") || host.includes("alibaba.com")) {
+    const id = extract1688Id(url.toString());
+    if (id) return { ok: true, link: `https://hipobuy.com/product/1688/${id}`, platform: "1688" };
+  }
+
+  if (host.includes("cnfans.com")) {
+    const id = url.searchParams.get("id") || url.searchParams.get("spuNo");
+    const platform = normalizePlatform(url.searchParams.get("shop_type") || url.searchParams.get("platform"));
+    if (id && platform) return { ok: true, link: `https://hipobuy.com/product/${platform}/${id}`, platform };
+  }
+
+  if (host.includes("mulebuy.com")) {
+    const id = url.searchParams.get("id");
+    const platform = normalizePlatform(url.searchParams.get("platform"));
+    if (id && platform) return { ok: true, link: `https://hipobuy.com/product/${platform}/${id}`, platform };
+  }
+
+  if (host.includes("acbuy.com")) {
+    const id = url.searchParams.get("id");
+    const platform = normalizePlatform(url.searchParams.get("source"));
+    if (id && platform) return { ok: true, link: `https://hipobuy.com/product/${platform}/${id}`, platform };
+  }
+
+  if (host.includes("oopbuy.com")) {
+    const match = path.match(/\/product\/(weidian|taobao|1688)\/(\d+)/i);
+    if (match) return { ok: true, link: `https://hipobuy.com/product/${match[1].toLowerCase()}/${match[2]}`, platform: match[1].toLowerCase() };
+  }
+
+  if (host.includes("pandabuy.com") || host.includes("kakobuy.com") || host.includes("hoobuy.com") || host.includes("lovegobuy.com") || host.includes("orientdig.com") || host.includes("allchinabuy.com") || host.includes("superbuy.com") || host.includes("cssbuy.com")) {
+    const maybeUnwrapped = unwrapAgentLink(url.toString());
+    if (maybeUnwrapped !== url.toString()) return convertLinkValue(maybeUnwrapped);
+  }
+
+  const cssbuyMatch = url.toString().match(/item-(\d+)\.html/i);
+  if (host.includes("cssbuy.com") && cssbuyMatch) {
+    return { ok: false, reason: "I found the item ID, but CSSBuy links do not reliably expose the source platform. Paste the original Weidian, Taobao or 1688 link for a precise conversion." };
+  }
+
+  return { ok: false, reason: "I could not read a supported item ID from that link. Try the original Weidian, Taobao or 1688 product URL instead of a shortened or heavily wrapped agent link." };
+}
+
+function convertToHipoBuy() {
+  const input = document.getElementById("converter-input").value;
+  const output = document.getElementById("converter-output");
+  const status = document.getElementById("converter-status");
+  const result = convertLinkValue(input);
+
+  if (!result.ok) {
+    output.value = "";
+    status.innerHTML = `<strong>Could not convert:</strong> ${result.reason}`;
+    return;
+  }
+
+  output.value = result.link;
+  status.innerHTML = `<strong>Converted:</strong> detected ${result.platform} and built a HipoBuy-ready link.`;
+}
+
+async function copyConvertedLink() {
+  const output = document.getElementById("converter-output").value.trim();
+  const status = document.getElementById("converter-status");
+  if (!output) {
+    status.innerHTML = `<strong>Nothing to copy:</strong> convert a link first.`;
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(output);
+    status.innerHTML = `<strong>Copied:</strong> your HipoBuy link is now on the clipboard.`;
+  } catch (error) {
+    status.innerHTML = `<strong>Copy failed:</strong> try copying from the output box manually.`;
+  }
+}
+
+function openConvertedLink() {
+  const output = document.getElementById("converter-output").value.trim();
+  const status = document.getElementById("converter-status");
+  if (!output) {
+    status.innerHTML = `<strong>Nothing to open:</strong> convert a link first.`;
+    return;
+  }
+  window.open(output, "_blank", "noopener,noreferrer");
+}
+
+    applyTheme();
+  </script>
+</body>
+</html>
