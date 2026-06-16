@@ -182,19 +182,28 @@
     .product-btn:hover { opacity: 0.75; }
 
     /* ── PODIUM CARDS ── */
-    .podium-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+    .podium-grid {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.92fr) minmax(240px, 1.08fr) minmax(220px, 0.84fr);
+      align-items: end;
+      gap: 20px;
+    }
     .podium-card {
       position: relative; border-radius: 18px; overflow: hidden;
+      display: flex; flex-direction: column;
       transition: transform 0.3s;
       animation: rc-fadein 0.5s ease both;
     }
+    .podium-card.rank-1 { min-height: 440px; order: 2; }
+    .podium-card.rank-2 { min-height: 390px; order: 1; }
+    .podium-card.rank-3 { min-height: 340px; order: 3; }
     .podium-card:hover { transform: translateY(-6px); }
     .podium-rank {
       position: absolute; top: 12px; right: 12px; z-index: 10;
       display: flex; align-items: center; gap: 4px; padding: 4px 10px;
       border-radius: 99px; font-size: 11px; font-weight: 900;
     }
-    .podium-img { width: 100%; aspect-ratio: 16/9; position: relative; display: flex; align-items: center; justify-content: center; background: var(--surface2); }
+    .podium-img { width: 100%; flex: 1; min-height: 170px; position: relative; display: flex; align-items: center; justify-content: center; background: var(--surface2); }
     .podium-watermark { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
     .podium-watermark span { font-size: 72px; font-weight: 900; opacity: 0.08; font-family: 'Syne', sans-serif; }
     .podium-body { padding: 16px; background: var(--surface); }
@@ -294,6 +303,11 @@
     .view-more { text-align: center; margin-top: 28px; }
 
     @media (max-width: 920px) {
+      .podium-grid { grid-template-columns: 1fr; align-items: stretch; }
+      .podium-card.rank-1,
+      .podium-card.rank-2,
+      .podium-card.rank-3 { min-height: 0; order: initial; }
+      .podium-img { aspect-ratio: 16/9; flex: initial; }
       .converter-grid { grid-template-columns: 1fr; }
     }
 
@@ -732,7 +746,7 @@ function productCard(p) {
 /* ── PODIUM ── */
 function podiumCard(product, medal, delay) {
   return `
-    <div class="podium-card" style="border:2px solid ${medal.borderColor};box-shadow:0 0 28px ${medal.glowColor},0 4px 20px rgba(0,0,0,0.2);animation-delay:${delay}s">
+    <div class="podium-card rank-${medal.rank}" style="border:2px solid ${medal.borderColor};box-shadow:0 0 28px ${medal.glowColor},0 4px 20px rgba(0,0,0,0.2);animation-delay:${delay}s">
       <div class="podium-rank" style="background:${medal.badgeColor};color:${medal.badgeText}">${medal.emoji} ${medal.label}</div>
       <div class="podium-img">
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l4-4 4 4 4-4 4 4"/><path d="M3 15l4-4 4 4 4-4 4 4"/></svg>
