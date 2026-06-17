@@ -1,8 +1,4 @@
-.product-top { overflow: hidden; }
-    .product-image { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .item-badge:empty { display: none; }
-  </style>  <script type="module" src="firebase-products.js"></script>
-</body><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -562,7 +558,10 @@
         grid-template-columns: 1fr;
       }
     }
-      .product-price, .podium-price, .counter-number, .progress-label, .intro-step-num, .podium-watermark span, .ticker-item span:nth-child(3) { font-family: Arial, Helvetica, sans-serif !important; font-variant-numeric: tabular-nums; letter-spacing: 0 !important; } </style>
+      .product-price, .podium-price, .counter-number, .progress-label, .intro-step-num, .podium-watermark span, .ticker-item span:nth-child(3) { font-family: Arial, Helvetica, sans-serif !important; font-variant-numeric: tabular-nums; letter-spacing: 0 !important; }     .product-top { overflow: hidden; }
+    .product-image { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .item-badge:empty { display: none; }
+  </style>
 </head>
 <body class="dark">
   <div id="root">
@@ -786,5 +785,6 @@
     renderCategoryChips();
     renderItems();
   </script>
+  <script type="module" src="firebase-products.js"></script>
 </body>
 </html>
