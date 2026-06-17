@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getFirestore, collection, getDocs, orderBy, query, where } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA",
@@ -37,11 +37,15 @@ function formatPrice(item) {
   return `${symbol}${value.toFixed(2)}`;
 }
 
+function escapeAttr(value) {
+  return String(value || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+}
+
 function productImage(item) {
   if (!item.imageUrl) {
     return `<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l4-4 4 4 4-4 4 4"/><path d="M3 15l4-4 4 4 4-4 4 4"/></svg>`;
   }
-  return `<img class="product-image" src="${item.imageUrl}" alt="${item.name || "Product image"}" loading="lazy">`;
+  return `<img class="product-image" src="${escapeAttr(item.imageUrl)}" alt="${escapeAttr(item.name || "Product image")}" loading="lazy">`;
 }
 
 function productHref(item) {
@@ -65,7 +69,7 @@ function itemCard(item) {
           <span class="product-category">${item.category || "Unsorted"}</span>
         </div>
         <div class="product-actions">
-          <a href="${href}" ${targetAttrs} class="product-btn primary">View Item</a>
+          <a href="${escapeAttr(href)}" ${targetAttrs} class="product-btn primary">View Item</a>
           <button class="product-btn" type="button" onclick="copyProductLink('${href.replace(/'/g, "\\'")}')">Copy Link</button>
         </div>
       </div>
@@ -138,13 +142,11 @@ function clearCategory() {
 
 async function loadProducts() {
   try {
-    const productQuery = query(
-      collection(db, "products"),
-      where("isActive", "==", true),
-      orderBy("sortOrder", "asc")
-    );
-    const snapshot = await getDocs(productQuery);
-    firebaseItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const snapshot = await getDocs(collection(db, "products"));
+    firebaseItems = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(item => item.isActive !== false)
+      .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
   } catch (error) {
     console.error("Could not load Firebase products:", error);
     firebaseItems = [];
