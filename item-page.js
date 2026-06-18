@@ -100,7 +100,7 @@ function originalProductLink(item) {
   return link;
 }
 
-function acbuyGoodsId(rawUrl) {
+function parseMarketplaceLink(rawUrl) {
   qcLog("Parsing product URL", rawUrl);
   if (!rawUrl) {
     qcWarn("No productUrl/originalUrl/itemUrl found on product", { rawUrl });
@@ -117,35 +117,42 @@ function acbuyGoodsId(rawUrl) {
 
   const host = url.hostname.toLowerCase();
   const href = url.href;
-  let goodsId = null;
+  let itemId = null;
   let platform = "unsupported";
 
   if (host.includes("weidian.com") || host.includes("youshop10.com")) {
-    const id = url.searchParams.get("itemID") || url.searchParams.get("itemId") || url.searchParams.get("id");
-    goodsId = id ? `WD${id}` : null;
-    platform = "weidian";
+    itemId = url.searchParams.get("itemID") || url.searchParams.get("itemId") || url.searchParams.get("id");
+    platform = "WD";
   } else if (host.includes("1688.com") || host.includes("alibaba.com")) {
     const match = href.match(/offer\/(\d+)\.html/i);
-    const id = match?.[1] || url.searchParams.get("offerId") || url.searchParams.get("id");
-    goodsId = id ? `AL${id}` : null;
-    platform = "1688";
+    itemId = match?.[1] || url.searchParams.get("offerId") || url.searchParams.get("id");
+    platform = "AL";
   } else if (host.includes("taobao.com") || host.includes("tmall.com")) {
-    const id = url.searchParams.get("id");
-    goodsId = id ? `TB${id}` : null;
-    platform = "taobao";
+    itemId = url.searchParams.get("id");
+    platform = "TB";
   }
 
-  qcLog("Parsed ACBuy goods id", { host, platform, goodsId });
+  const cleanItemId = itemId ? String(itemId).replace(/\D/g, "") : "";
+  const goodsId = cleanItemId ? `${platform}${cleanItemId}` : "";
+  const details = cleanItemId ? { host, platform, itemId: cleanItemId, goodsId } : null;
+  qcLog("Parsed marketplace details", details || { host, platform, itemId, goodsId: null });
+  window.__rcQcDebug.marketplace = details;
   window.__rcQcDebug.goodsId = goodsId;
-  return goodsId;
+  return details;
 }
 
-function acbuyPhotosUrl(item) {
-  const goodsId = acbuyGoodsId(originalProductLink(item));
-  const apiUrl = goodsId ? `https://www.acbuy.com/prefix-api/store-product/product/api/item/Photos?goodsId=${goodsId}` : "";
-  qcLog("Built ACBuy photos API URL", { goodsId, apiUrl });
-  window.__rcQcDebug.apiUrl = apiUrl;
-  return apiUrl;
+function qcApiUrls(item) {
+  const details = parseMarketplaceLink(originalProductLink(item));
+  if (!details) return null;
+
+  const proxyUrl = `/api/qc?platform=${encodeURIComponent(details.platform)}&goodsId=${encodeURIComponent(details.itemId)}`;
+  const directUrl = `https://www.acbuy.com/prefix-api/store-product/product/api/item/Photos?goodsId=${encodeURIComponent(details.goodsId)}`;
+  const urls = { ...details, proxyUrl, directUrl };
+  qcLog("Built QC API URLs", urls);
+  window.__rcQcDebug.apiUrl = proxyUrl;
+  window.__rcQcDebug.proxyUrl = proxyUrl;
+  window.__rcQcDebug.directUrl = directUrl;
+  return urls;
 }
 
 function extractQcPhotos(payload) {
@@ -161,6 +168,46 @@ function extractQcPhotos(payload) {
   qcLog("Extracted QC photo URLs", { count: photos.length, photos });
   window.__rcQcDebug.photos = photos;
   return photos;
+}
+
+async function fetchJsonWithDebug(url, label) {
+  qcLog(`Fetching ${label}`, url);
+  const response = await fetch(url, { headers: { "Accept": "application/json,text/plain,*/*" } });
+  const responseInfo = {
+    ok: response.ok,
+    status: response.status,
+    statusText: response.statusText,
+    type: response.type,
+    url: response.url,
+    contentType: response.headers.get("content-type") || ""
+  };
+  qcLog(`${label} response`, responseInfo);
+  window.__rcQcDebug.response = responseInfo;
+
+  const text = await response.text();
+  window.__rcQcDebug.rawText = text.slice(0, 5000);
+  if (!response.ok) throw new Error(`${label} returned ${response.status}: ${text.slice(0, 200)}`);
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error(`${label} returned invalid JSON: ${text.slice(0, 200)}`);
+  }
+}
+
+async function fetchQcPayload(urls) {
+  try {
+    const proxyPayload = await fetchJsonWithDebug(urls.proxyUrl, "QC proxy API");
+    window.__rcQcDebug.proxyPayload = proxyPayload;
+    return proxyPayload.data || proxyPayload;
+  } catch (proxyError) {
+    qcWarn("QC proxy failed, trying direct ACBuy fallback", { message: proxyError.message });
+    window.__rcQcDebug.proxyError = proxyError.message;
+  }
+
+  const directPayload = await fetchJsonWithDebug(urls.directUrl, "direct ACBuy API");
+  window.__rcQcDebug.directPayload = directPayload;
+  return directPayload;
 }
 
 function renderNotFound(message = "This product could not be found in Firebase.") {
@@ -185,31 +232,25 @@ async function loadQcPictures(item) {
   qcLog("Starting QC picture load", { id: item.id, name: item.name });
   const qcGrid = document.getElementById("qc-grid");
   const qcCopy = document.getElementById("qc-copy");
-  const apiUrl = acbuyPhotosUrl(item);
+  const urls = qcApiUrls(item);
 
-  if (!apiUrl) {
-    renderQcState("Add the original Weidian, 1688 or Taobao link in productUrl to load QC pictures.");
+  if (!urls) {
+    renderQcState("Add the original Weidian, 1688 or Taobao link in Product URL to load QC pictures.");
     return;
   }
 
-  if (qcCopy) qcCopy.textContent = "Loading QC pictures from ACBuy...";
+  if (qcCopy) qcCopy.textContent = "Loading QC pictures...";
 
   try {
-    qcLog("Fetching ACBuy QC API", apiUrl);
-    const response = await fetch(apiUrl);
-    qcLog("ACBuy QC API response", { ok: response.ok, status: response.status, statusText: response.statusText, type: response.type, url: response.url });
-    window.__rcQcDebug.response = { ok: response.ok, status: response.status, statusText: response.statusText, type: response.type, url: response.url };
-    if (!response.ok) throw new Error(`ACBuy returned ${response.status}`);
-
-    const payload = await response.json();
+    const payload = await fetchQcPayload(urls);
     const photos = extractQcPhotos(payload);
 
     if (!photos.length) {
-      renderQcState("No QC pictures were found for this product yet.");
+      renderQcState("No QC pictures were found for this product yet. Open the console and search [RC QC] for the raw API response.");
       return;
     }
 
-    if (qcCopy) qcCopy.textContent = `${photos.length} QC picture${photos.length === 1 ? "" : "s"} loaded from ACBuy.`;
+    if (qcCopy) qcCopy.textContent = `${photos.length} QC picture${photos.length === 1 ? "" : "s"} loaded.`;
     qcGrid.innerHTML = photos.map((photo, index) => `
       <a class="qc-link" href="${escapeHtml(photo)}" target="_blank" rel="noopener noreferrer">
         <img class="qc-image" src="${escapeHtml(photo)}" alt="QC picture ${index + 1}" loading="lazy">
@@ -218,7 +259,7 @@ async function loadQcPictures(item) {
     qcLog("QC pictures rendered", { count: photos.length });
   } catch (error) {
     qcWarn("Could not load QC pictures", { message: error.message, name: error.name, stack: error.stack });
-    renderQcState("Could not load QC pictures from ACBuy right now. Open the console and search [RC QC].");
+    renderQcState("Could not load QC pictures yet. Open the console and search [RC QC].");
   }
 }
 
@@ -230,7 +271,8 @@ function renderProduct(item) {
     : `<div class="image-empty">No image yet</div>`;
   const description = item.description || "No description has been added yet.";
   const agentButton = item.agentUrl ? `<a class="action-btn primary" href="${escapeHtml(item.agentUrl)}" target="_blank" rel="noopener noreferrer">Open Agent Link</a>` : "";
-  const productButton = originalProductLink(item) ? `<a class="action-btn" href="${escapeHtml(originalProductLink(item))}" target="_blank" rel="noopener noreferrer">Original Link</a>` : "";
+  const productLink = originalProductLink(item);
+  const productButton = productLink ? `<a class="action-btn" href="${escapeHtml(productLink)}" target="_blank" rel="noopener noreferrer">Original Link</a>` : "";
 
   root.innerHTML = `
     <a class="back-link" href="${sitePath("spreadsheet.html")}">Back to spreadsheet</a>
