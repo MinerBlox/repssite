@@ -46,8 +46,8 @@
 </head>
 <body>
   <nav>
-    <a href="/index.html?noPopup=1" class="nav-logo">repscentral</a>
-    <a href="/spreadsheet.html" class="nav-link">Spreadsheet</a>
+    <a href="../index.html?noPopup=1" class="nav-logo">repscentral</a>
+    <a href="../spreadsheet.html" class="nav-link">Spreadsheet</a>
   </nav>
   <main id="app">
     <section class="loading">
@@ -55,6 +55,9 @@
       <p class="status-copy">Fetching product details from Firebase.</p>
     </section>
   </main>
-  <script type="module" src="/item-page.js"></script>
+  <script type="module">
+    const basePath = window.location.pathname.startsWith('/repssite/') ? '/repssite/' : '/';
+    import(`${basePath}item-page.js`);
+  </script>
 </body>
 </html>
