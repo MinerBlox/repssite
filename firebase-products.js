@@ -49,12 +49,12 @@ function productImage(item) {
 }
 
 function productHref(item) {
-  return item.agentUrl || item.productUrl || "#";
+  if (!item.id) return "#";
+  return `items/${encodeURIComponent(item.id)}/`;
 }
 
 function itemCard(item) {
   const href = productHref(item);
-  const targetAttrs = href === "#" ? "" : "target=\"_blank\" rel=\"noopener noreferrer\"";
 
   return `
     <article class="product-card">
@@ -69,7 +69,7 @@ function itemCard(item) {
           <span class="product-category">${item.category || "Unsorted"}</span>
         </div>
         <div class="product-actions">
-          <a href="${escapeAttr(href)}" ${targetAttrs} class="product-btn primary">View Item</a>
+          <a href="${escapeAttr(href)}" class="product-btn primary">View Item</a>
           <button class="product-btn" type="button" onclick="copyProductLink('${href.replace(/'/g, "\\'")}')">Copy Link</button>
         </div>
       </div>
@@ -125,7 +125,7 @@ function renderItems() {
 
 async function copyProductLink(url) {
   if (!url || url === "#") return;
-  await navigator.clipboard.writeText(url);
+  await navigator.clipboard.writeText(new URL(url, window.location.href).href);
 }
 
 function setCategory(category) {
