@@ -78,7 +78,7 @@ function productCard(item) {
   `;
 }
 
-function podiumImage(item, medal) {
+function podiumImage(item) {
   if (item.imageUrl) {
     return `<img class="podium-img-real" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name || "Product image")}" loading="lazy">`;
   }
@@ -90,7 +90,7 @@ function podiumCard(item, medal, delay) {
     <div class="podium-card rank-${medal.rank}" style="border:2px solid ${medal.borderColor};box-shadow:0 0 28px ${medal.glowColor},0 4px 20px rgba(0,0,0,0.2);animation-delay:${delay}s">
       <div class="podium-rank" style="background:${medal.badgeColor};color:${medal.badgeText}">${medal.emoji} ${medal.label}</div>
       <div class="podium-img">
-        ${podiumImage(item, medal)}
+        ${podiumImage(item)}
         <div class="podium-watermark"><span style="color:${medal.borderColor}">#${medal.rank}</span></div>
       </div>
       <div class="podium-body">
@@ -135,10 +135,16 @@ function seasonalItems(items, season) {
   return (picked.length ? picked : items).slice(0, season === "summer" ? 8 : 6);
 }
 
+function renderSeasonProducts(items, seasonName) {
+  window.activeSeason = seasonName;
+  document.querySelectorAll(".season-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.season === seasonName));
+  const target = document.getElementById("season-grid");
+  if (target) target.innerHTML = seasonalItems(items, seasonName).map(productCard).join("");
+}
+
 function renderHomeProducts(items) {
   const podium = document.getElementById("podium-grid");
   const picks = document.getElementById("our-picks-grid");
-  const season = document.getElementById("season-grid");
   if (!items.length) return;
 
   const best = items.filter(item => item.badge === "best");
@@ -148,15 +154,11 @@ function renderHomeProducts(items) {
   }
 
   if (picks) picks.innerHTML = items.slice(0, 6).map(productCard).join("");
-  if (season) season.innerHTML = seasonalItems(items, window.activeSeason || "summer").map(productCard).join("");
+  renderSeasonProducts(items, window.activeSeason || "summer");
   renderTicker(items);
 
-  window.renderSeason = seasonName => {
-    window.activeSeason = seasonName;
-    document.querySelectorAll(".season-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.season === seasonName));
-    const target = document.getElementById("season-grid");
-    if (target) target.innerHTML = seasonalItems(items, seasonName).map(productCard).join("");
-  };
+  window.setSeason = seasonName => renderSeasonProducts(items, seasonName);
+  window.renderSeason = seasonName => renderSeasonProducts(items, seasonName);
 }
 
 async function loadHomeProducts() {
