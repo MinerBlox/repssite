@@ -14,6 +14,23 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const root = document.getElementById("app");
+const QC_DEBUG_PREFIX = "[RC QC]";
+window.__rcQcDebug = { logs: [] };
+
+function qcLog(label, data) {
+  const entry = { label, data, time: new Date().toISOString() };
+  window.__rcQcDebug.logs.push(entry);
+  window.__rcQcDebug.last = entry;
+  if (data === undefined) console.log(QC_DEBUG_PREFIX, label);
+  else console.log(QC_DEBUG_PREFIX, label, data);
+}
+
+function qcWarn(label, data) {
+  const entry = { label, data, time: new Date().toISOString(), level: "warn" };
+  window.__rcQcDebug.logs.push(entry);
+  window.__rcQcDebug.last = entry;
+  console.warn(QC_DEBUG_PREFIX, label, data);
+}
 
 function basePath() {
   return window.location.pathname.startsWith("/repssite/") ? "/repssite/" : "/";
@@ -54,61 +71,96 @@ function routeSlug() {
 }
 
 async function findProduct(slug) {
+  qcLog("Finding product", { slug, path: window.location.pathname });
   if (!slug) return null;
   const directSnap = await getDoc(doc(db, "products", slug));
-  if (directSnap.exists()) return { id: directSnap.id, ...directSnap.data() };
+  if (directSnap.exists()) {
+    qcLog("Found product by document id", { id: directSnap.id });
+    return { id: directSnap.id, ...directSnap.data() };
+  }
 
+  qcLog("Product id miss, scanning products by slugified name");
   const allSnap = await getDocs(collection(db, "products"));
-  return allSnap.docs
+  const match = allSnap.docs
     .map(productDoc => ({ id: productDoc.id, ...productDoc.data() }))
     .find(item => item.id === slug || slugify(item.name) === slug) || null;
+  qcLog("Slug scan result", match ? { id: match.id, name: match.name } : null);
+  return match;
 }
 
 function originalProductLink(item) {
-  return item.productUrl || item.originalUrl || item.itemUrl || "";
+  const link = item.productUrl || item.originalUrl || item.itemUrl || "";
+  qcLog("Original marketplace link from Firebase", {
+    productUrl: item.productUrl || "",
+    originalUrl: item.originalUrl || "",
+    itemUrl: item.itemUrl || "",
+    chosen: link
+  });
+  window.__rcQcDebug.productUrl = link;
+  return link;
 }
 
 function acbuyGoodsId(rawUrl) {
-  if (!rawUrl) return null;
+  qcLog("Parsing product URL", rawUrl);
+  if (!rawUrl) {
+    qcWarn("No productUrl/originalUrl/itemUrl found on product", { rawUrl });
+    return null;
+  }
 
   let url;
   try {
     url = new URL(rawUrl);
   } catch (error) {
+    qcWarn("Product URL is not a valid URL", { rawUrl, error: error.message });
     return null;
   }
 
   const host = url.hostname.toLowerCase();
   const href = url.href;
+  let goodsId = null;
+  let platform = "unsupported";
 
   if (host.includes("weidian.com") || host.includes("youshop10.com")) {
     const id = url.searchParams.get("itemID") || url.searchParams.get("itemId") || url.searchParams.get("id");
-    return id ? `WD${id}` : null;
-  }
-
-  if (host.includes("1688.com") || host.includes("alibaba.com")) {
+    goodsId = id ? `WD${id}` : null;
+    platform = "weidian";
+  } else if (host.includes("1688.com") || host.includes("alibaba.com")) {
     const match = href.match(/offer\/(\d+)\.html/i);
     const id = match?.[1] || url.searchParams.get("offerId") || url.searchParams.get("id");
-    return id ? `AL${id}` : null;
-  }
-
-  if (host.includes("taobao.com") || host.includes("tmall.com")) {
+    goodsId = id ? `AL${id}` : null;
+    platform = "1688";
+  } else if (host.includes("taobao.com") || host.includes("tmall.com")) {
     const id = url.searchParams.get("id");
-    return id ? `TB${id}` : null;
+    goodsId = id ? `TB${id}` : null;
+    platform = "taobao";
   }
 
-  return null;
+  qcLog("Parsed ACBuy goods id", { host, platform, goodsId });
+  window.__rcQcDebug.goodsId = goodsId;
+  return goodsId;
 }
 
 function acbuyPhotosUrl(item) {
   const goodsId = acbuyGoodsId(originalProductLink(item));
-  return goodsId ? `https://www.acbuy.com/prefix-api/store-product/product/api/item/Photos?goodsId=${goodsId}` : "";
+  const apiUrl = goodsId ? `https://www.acbuy.com/prefix-api/store-product/product/api/item/Photos?goodsId=${goodsId}` : "";
+  qcLog("Built ACBuy photos API URL", { goodsId, apiUrl });
+  window.__rcQcDebug.apiUrl = apiUrl;
+  return apiUrl;
 }
 
 function extractQcPhotos(payload) {
+  qcLog("Extracting QC photos from payload", {
+    type: typeof payload,
+    topLevelKeys: payload && typeof payload === "object" ? Object.keys(payload).slice(0, 20) : []
+  });
+  window.__rcQcDebug.payload = payload;
+
   const raw = JSON.stringify(payload || {});
   const matches = raw.match(/https?:\\?\/\\?\/oss\.acbuy\.com\\?\/temp\\?\/[^"'\\\s]+?\.(?:jpg|jpeg|png|webp)/gi) || [];
-  return [...new Set(matches.map(url => url.replace(/\\\//g, "/")))];
+  const photos = [...new Set(matches.map(url => url.replace(/\\\//g, "/")))];
+  qcLog("Extracted QC photo URLs", { count: photos.length, photos });
+  window.__rcQcDebug.photos = photos;
+  return photos;
 }
 
 function renderNotFound(message = "This product could not be found in Firebase.") {
@@ -122,6 +174,7 @@ function renderNotFound(message = "This product could not be found in Firebase."
 }
 
 function renderQcState(message) {
+  qcLog("QC render state", message);
   const qcGrid = document.getElementById("qc-grid");
   const qcCopy = document.getElementById("qc-copy");
   if (qcCopy) qcCopy.textContent = message;
@@ -129,6 +182,7 @@ function renderQcState(message) {
 }
 
 async function loadQcPictures(item) {
+  qcLog("Starting QC picture load", { id: item.id, name: item.name });
   const qcGrid = document.getElementById("qc-grid");
   const qcCopy = document.getElementById("qc-copy");
   const apiUrl = acbuyPhotosUrl(item);
@@ -141,8 +195,12 @@ async function loadQcPictures(item) {
   if (qcCopy) qcCopy.textContent = "Loading QC pictures from ACBuy...";
 
   try {
+    qcLog("Fetching ACBuy QC API", apiUrl);
     const response = await fetch(apiUrl);
+    qcLog("ACBuy QC API response", { ok: response.ok, status: response.status, statusText: response.statusText, type: response.type, url: response.url });
+    window.__rcQcDebug.response = { ok: response.ok, status: response.status, statusText: response.statusText, type: response.type, url: response.url };
     if (!response.ok) throw new Error(`ACBuy returned ${response.status}`);
+
     const payload = await response.json();
     const photos = extractQcPhotos(payload);
 
@@ -157,13 +215,15 @@ async function loadQcPictures(item) {
         <img class="qc-image" src="${escapeHtml(photo)}" alt="QC picture ${index + 1}" loading="lazy">
       </a>
     `).join("");
+    qcLog("QC pictures rendered", { count: photos.length });
   } catch (error) {
-    console.error("Could not load QC pictures:", error);
-    renderQcState("Could not load QC pictures from ACBuy right now.");
+    qcWarn("Could not load QC pictures", { message: error.message, name: error.name, stack: error.stack });
+    renderQcState("Could not load QC pictures from ACBuy right now. Open the console and search [RC QC].");
   }
 }
 
 function renderProduct(item) {
+  qcLog("Rendering product", { id: item.id, name: item.name, productUrl: item.productUrl });
   document.title = `${item.name || "Item"} - repscentral`;
   const image = item.imageUrl
     ? `<img class="item-image" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name || "Item image")}">`
@@ -210,6 +270,7 @@ function renderProduct(item) {
 }
 
 try {
+  qcLog("Item page script loaded", { path: window.location.pathname, search: window.location.search, basePath: basePath() });
   const parts = window.location.pathname.split("/").filter(Boolean);
   if (!parts.includes("items")) {
     renderNotFound("This page could not be found.");
@@ -219,6 +280,6 @@ try {
     else renderProduct(item);
   }
 } catch (error) {
-  console.error("Could not load item:", error);
+  qcWarn("Could not load item", { message: error.message, name: error.name, stack: error.stack });
   renderNotFound();
 }
