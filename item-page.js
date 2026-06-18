@@ -155,16 +155,39 @@ function qcApiUrls(item) {
   return urls;
 }
 
+function collectImageUrls(value, urls = []) {
+  if (typeof value === "string") {
+    const normalized = value.replace(/\\\//g, "/");
+    const matches = normalized.match(/https?:\/\/[^"'\s<>\\]+?\.(?:jpg|jpeg|png|webp)(?:\?[^"'\s<>\\]*)?/gi) || [];
+    urls.push(...matches);
+    return urls;
+  }
+
+  if (Array.isArray(value)) {
+    value.forEach(entry => collectImageUrls(entry, urls));
+    return urls;
+  }
+
+  if (value && typeof value === "object") {
+    Object.values(value).forEach(entry => collectImageUrls(entry, urls));
+  }
+
+  return urls;
+}
+
 function extractQcPhotos(payload) {
-  qcLog("Extracting QC photos from payload", {
-    type: typeof payload,
-    topLevelKeys: payload && typeof payload === "object" ? Object.keys(payload).slice(0, 20) : []
-  });
+  const topLevelKeys = payload && typeof payload === "object" ? Object.keys(payload).slice(0, 20) : [];
+  const dataCount = Array.isArray(payload?.data) ? payload.data.length : null;
+  qcLog("Extracting QC photos from payload", { type: typeof payload, topLevelKeys, dataCount });
   window.__rcQcDebug.payload = payload;
 
-  const raw = JSON.stringify(payload || {});
-  const matches = raw.match(/https?:\\?\/\\?\/oss\.acbuy\.com\\?\/temp\\?\/[^"'\\\s]+?\.(?:jpg|jpeg|png|webp)/gi) || [];
-  const photos = [...new Set(matches.map(url => url.replace(/\\\//g, "/")))];
+  const raw = JSON.stringify(payload || {}).replace(/\\\//g, "/");
+  const rawMatches = raw.match(/https?:\/\/[^"'\s<>\\]+?\.(?:jpg|jpeg|png|webp)(?:\?[^"'\s<>\\]*)?/gi) || [];
+  const recursiveMatches = collectImageUrls(payload);
+  const photos = [...new Set([...recursiveMatches, ...rawMatches])]
+    .map(url => url.replace(/,+$/, ""))
+    .filter(url => /\.(jpg|jpeg|png|webp)(\?|$)/i.test(url));
+
   qcLog("Extracted QC photo URLs", { count: photos.length, photos });
   window.__rcQcDebug.photos = photos;
   return photos;
@@ -225,7 +248,11 @@ function renderQcState(message) {
   const qcGrid = document.getElementById("qc-grid");
   const qcCopy = document.getElementById("qc-copy");
   if (qcCopy) qcCopy.textContent = message;
-  if (qcGrid) qcGrid.innerHTML = `<div class="qc-placeholder">QC image</div><div class="qc-placeholder">QC image</div><div class="qc-placeholder">QC image</div>`;
+  if (qcGrid) {
+    qcGrid.innerHTML = `
+      <div class="qc-placeholder">${escapeHtml(message)}</div>
+    `;
+  }
 }
 
 async function loadQcPictures(item) {
@@ -246,7 +273,7 @@ async function loadQcPictures(item) {
     const photos = extractQcPhotos(payload);
 
     if (!photos.length) {
-      renderQcState("No QC pictures were found for this product yet. Open the console and search [RC QC] for the raw API response.");
+      renderQcState("ACBuy replied, but there were no QC image links in the response for this item.");
       return;
     }
 
@@ -312,7 +339,7 @@ function renderProduct(item) {
 }
 
 try {
-  qcLog("Item page script loaded", { path: window.location.pathname, search: window.location.search, basePath: basePath() });
+  qcLog("Item page script loaded", { path: window.location.pathname, search: window.location.search, basePath: basePath(), version: "qc-2026-06-18-2" });
   const parts = window.location.pathname.split("/").filter(Boolean);
   if (!parts.includes("items")) {
     renderNotFound("This page could not be found.");
