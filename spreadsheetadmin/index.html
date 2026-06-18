@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <title>Spreadsheet Admin - repscentral</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=DM+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; background: #0a0a0b; color: #f1f1f3; font-family: 'DM Sans', sans-serif; }
+    button, input, textarea, select { font: inherit; }
+    button { border: 0; cursor: pointer; }
+    a { color: inherit; text-decoration: none; }
+    :root { --surface: #111114; --surface2: #18181c; --surface3: #202027; --border: #2a2a31; --muted: #92929c; --blue: #4da6ff; --green: #21c56b; --red: #ff6363; --yellow: #f2c94c; }
+    .login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    .login-card { width: min(420px, 100%); border: 1px solid var(--border); border-radius: 18px; background: var(--surface); padding: 28px; }
+    .brand { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; margin-bottom: 22px; }
+    h1 { font-family: 'Syne', sans-serif; font-size: clamp(30px, 5vw, 46px); line-height: 1; letter-spacing: -0.7px; }
+    .muted { color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .field { display: grid; gap: 7px; }
+    label { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+    input, textarea, select { width: 100%; border: 1px solid var(--border); border-radius: 10px; background: #0e0e11; color: #f1f1f3; padding: 10px 11px; outline: none; }
+    textarea { min-height: 84px; resize: vertical; }
+    input:focus, textarea:focus, select:focus { border-color: rgba(77,166,255,0.7); box-shadow: 0 0 0 3px rgba(77,166,255,0.12); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 14px; border-radius: 10px; background: var(--surface3); color: #fff; font-weight: 800; font-size: 13px; }
+    .btn.primary { background: var(--blue); }
+    .btn.danger { background: rgba(255,99,99,0.12); color: #ff8888; border: 1px solid rgba(255,99,99,0.25); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .login-card .btn { width: 100%; margin-top: 14px; }
+    .login-error { min-height: 20px; color: var(--red); font-size: 13px; margin-top: 10px; }
+    .admin-shell { display: none; min-height: 100vh; }
+    .topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 64px; padding: 12px 24px; border-bottom: 1px solid var(--border); background: rgba(10,10,11,0.9); backdrop-filter: blur(14px); }
+    .topbar-left { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .status-pill { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 12px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); background: var(--surface); font-size: 12px; font-weight: 800; }
+    .dot { width: 7px; height: 7px; border-radius: 999px; background: var(--green); }
+    main { max-width: 1500px; margin: 0 auto; padding: 24px; }
+    .admin-grid { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 18px; align-items: start; }
+    .panel { border: 1px solid var(--border); border-radius: 16px; background: var(--surface); padding: 18px; }
+    .panel h2 { font-family: 'Syne', sans-serif; font-size: 20px; margin-bottom: 12px; }
+    .stack { display: grid; gap: 12px; }
+    .row { display: flex; gap: 8px; align-items: end; }
+    .row .field { flex: 1; }
+    .category-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .chip { display: inline-flex; align-items: center; min-height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface2); color: #d8d8dd; font-size: 12px; font-weight: 800; }
+    .tools { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+    .search { max-width: 340px; }
+    .products { display: grid; gap: 12px; }
+    .product-card { border: 1px solid var(--border); border-radius: 14px; background: #0f0f12; overflow: hidden; }
+    .product-head { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); }
+    .thumb { width: 76px; height: 76px; border-radius: 10px; background: var(--surface2); object-fit: contain; padding: 6px; border: 1px solid var(--border); }
+    .thumb-empty { width: 76px; height: 76px; display: grid; place-items: center; border-radius: 10px; background: var(--surface2); color: var(--muted); font-size: 11px; border: 1px solid var(--border); }
+    .product-title { font-weight: 800; margin-bottom: 5px; overflow-wrap: anywhere; }
+    .product-id { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+    .save-state { min-width: 82px; text-align: right; font-size: 12px; font-weight: 800; color: var(--muted); }
+    .save-state.saving { color: var(--yellow); }
+    .save-state.saved { color: var(--green); }
+    .save-state.error { color: var(--red); }
+    .product-fields { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; padding: 12px; }
+    .span-2 { grid-column: span 2; }
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+    .toggle-line { display: flex; align-items: center; gap: 10px; height: 42px; }
+    .toggle-line input { width: 18px; height: 18px; }
+    .empty { padding: 42px 18px; text-align: center; color: var(--muted); border: 1px dashed var(--border); border-radius: 14px; }
+    @media (max-width: 980px) { .admin-grid { grid-template-columns: 1fr; } .product-head { grid-template-columns: 58px minmax(0, 1fr); } .product-head .save-state { grid-column: 1 / -1; text-align: left; } .thumb, .thumb-empty { width: 58px; height: 58px; } .product-fields { grid-template-columns: 1fr; } .span-2, .span-3, .span-4, .span-6, .span-8, .span-12 { grid-column: span 1; } }
+  </style>
+</head>
+<body>
+  <section class="login-wrap" id="login-view">
+    <form class="login-card" id="login-form">
+      <div class="brand">repscentral</div>
+      <h1>Admin</h1>
+      <p class="muted" style="margin:10px 0 18px;">Enter the spreadsheet admin password to edit Firebase products.</p>
+      <div class="field">
+        <label for="password-input">Password</label>
+        <input id="password-input" type="password" autocomplete="current-password" autofocus>
+      </div>
+      <button class="btn primary" type="submit">Unlock Admin</button>
+      <div class="login-error" id="login-error"></div>
+    </form>
+  </section>
+
+  <section class="admin-shell" id="admin-view">
+    <header class="topbar">
+      <div class="topbar-left">
+        <a class="brand" href="/spreadsheet.html">repscentral admin</a>
+        <div class="status-pill"><span class="dot"></span><span id="global-status">Loading Firebase</span></div>
+      </div>
+      <button class="btn" type="button" id="lock-btn">Lock</button>
+    </header>
+
+    <main>
+      <div class="admin-grid">
+        <aside class="panel stack">
+          <div>
+            <h2>Categories</h2>
+            <p class="muted">Add category names here. They instantly appear in every product dropdown.</p>
+          </div>
+          <form class="row" id="category-form">
+            <div class="field">
+              <label for="category-input">New Category</label>
+              <input id="category-input" placeholder="e.g. Shoes">
+            </div>
+            <button class="btn primary" type="submit">Add</button>
+          </form>
+          <div class="category-list" id="category-list"></div>
+
+          <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+
+          <div>
+            <h2>New Item</h2>
+            <p class="muted">Creates a Firebase product using the slug version of the name.</p>
+          </div>
+          <form class="stack" id="create-form">
+            <div class="field">
+              <label for="new-name">Name</label>
+              <input id="new-name" placeholder="Product name">
+            </div>
+            <div class="row">
+              <div class="field">
+                <label for="new-price">Yuan Price</label>
+                <input id="new-price" type="number" step="0.01" min="0" placeholder="0">
+              </div>
+              <div class="field">
+                <label for="new-category">Category</label>
+                <select id="new-category"></select>
+              </div>
+            </div>
+            <div class="field">
+              <label for="new-image">Image URL</label>
+              <input id="new-image" placeholder="https://...">
+            </div>
+            <div class="field">
+              <label for="new-agent">Agent URL</label>
+              <input id="new-agent" placeholder="https://...">
+            </div>
+            <button class="btn primary" type="submit">Create Item</button>
+          </form>
+        </aside>
+
+        <section class="panel">
+          <div class="tools">
+            <div>
+              <h2>Spreadsheet Items</h2>
+              <p class="muted">Changes autosave after you stop typing.</p>
+            </div>
+            <div class="field search">
+              <label for="search-input">Search</label>
+              <input id="search-input" placeholder="Search item name or category">
+            </div>
+          </div>
+          <div class="products" id="products-list"></div>
+        </section>
+      </div>
+    </main>
+  </section>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { getFirestore, collection, doc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const ADMIN_PASSWORD = "spreadsheetrepscentralbc";
+    const firebaseConfig = {
+      apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA",
+      authDomain: "reps-central.firebaseapp.com",
+      projectId: "reps-central",
+      storageBucket: "reps-central.firebasestorage.app",
+      messagingSenderId: "812299387060",
+      appId: "1:812299387060:web:1c93d1e7bf30b05653d7e1",
+      measurementId: "G-8T7F9F1FZ9"
+    };
+
+    const defaultCategories = ["Shoes", "Hoodies", "T-Shirts", "Pants", "Jackets", "Hats", "Socks", "Accessories", "Bags", "Watches", "Jewellery", "Other"];
+    const badgeOptions = ["", "best", "budget", "new", "popular"];
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const loginView = document.getElementById("login-view");
+    const adminView = document.getElementById("admin-view");
+    const loginForm = document.getElementById("login-form");
+    const loginError = document.getElementById("login-error");
+    const productsList = document.getElementById("products-list");
+    const globalStatus = document.getElementById("global-status");
+    const categoryList = document.getElementById("category-list");
+    const categoryForm = document.getElementById("category-form");
+    const categoryInput = document.getElementById("category-input");
+    const createForm = document.getElementById("create-form");
+    const searchInput = document.getElementById("search-input");
+    const newCategory = document.getElementById("new-category");
+
+    let products = [];
+    let categories = [...defaultCategories];
+    let saveTimers = new Map();
+
+    function slugify(value) {
+      return String(value || "")
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    }
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function categoryOptions(selected) {
+      return [`<option value="">Blank</option>`, ...categories.map(category => `<option value="${escapeHtml(category)}" ${category === selected ? "selected" : ""}>${escapeHtml(category)}</option>`)].join("");
+    }
+
+    function badgeSelect(selected) {
+      return badgeOptions.map(badge => `<option value="${badge}" ${badge === (selected || "") ? "selected" : ""}>${badge || "Blank"}</option>`).join("");
+    }
+
+    function setStatus(text) {
+      globalStatus.textContent = text;
+    }
+
+    function productStatus(id, text, className) {
+      const node = document.querySelector(`[data-save-state="${CSS.escape(id)}"]`);
+      if (!node) return;
+      node.textContent = text;
+      node.className = `save-state ${className || ""}`;
+    }
+
+    function normalizeProduct(raw) {
+      return {
+        name: raw.name || "",
+        price: Number(raw.price || 0),
+        category: raw.category || "",
+        badge: raw.badge || "",
+        imageUrl: raw.imageUrl || "",
+        productUrl: raw.productUrl || "",
+        agentUrl: raw.agentUrl || "",
+        description: raw.description || "",
+        tags: Array.isArray(raw.tags) ? raw.tags : String(raw.tags || "").split(",").map(tag => tag.trim()).filter(Boolean),
+        isActive: raw.isActive !== false,
+        sortOrder: Number(raw.sortOrder || 0)
+      };
+    }
+
+    function productFromCard(card) {
+      return normalizeProduct({
+        name: card.querySelector('[data-field="name"]').value,
+        price: card.querySelector('[data-field="price"]').value,
+        category: card.querySelector('[data-field="category"]').value,
+        badge: card.querySelector('[data-field="badge"]').value,
+        imageUrl: card.querySelector('[data-field="imageUrl"]').value,
+        productUrl: card.querySelector('[data-field="productUrl"]').value,
+        agentUrl: card.querySelector('[data-field="agentUrl"]').value,
+        description: card.querySelector('[data-field="description"]').value,
+        tags: card.querySelector('[data-field="tags"]').value,
+        isActive: card.querySelector('[data-field="isActive"]').checked,
+        sortOrder: card.querySelector('[data-field="sortOrder"]').value
+      });
+    }
+
+    function renderCategories() {
+      categories = [...new Set(categories.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+      categoryList.innerHTML = categories.map(category => `<span class="chip">${escapeHtml(category)}</span>`).join("");
+      newCategory.innerHTML = categoryOptions("");
+      document.querySelectorAll('[data-field="category"]').forEach(select => {
+        const value = select.value;
+        select.innerHTML = categoryOptions(value);
+        select.value = value;
+      });
+    }
+
+    function renderProducts() {
+      const search = searchInput.value.trim().toLowerCase();
+      const filtered = products.filter(item => `${item.name} ${item.category} ${item.id}`.toLowerCase().includes(search));
+      if (!filtered.length) {
+        productsList.innerHTML = `<div class="empty">No products found.</div>`;
+        return;
+      }
+
+      productsList.innerHTML = filtered.map(item => {
+        const thumb = item.imageUrl ? `<img class="thumb" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}">` : `<div class="thumb-empty">No image</div>`;
+        return `
+          <article class="product-card" data-product-id="${escapeHtml(item.id)}">
+            <div class="product-head">
+              ${thumb}
+              <div>
+                <div class="product-title">${escapeHtml(item.name || "Unnamed item")}</div>
+                <div class="product-id">${escapeHtml(item.id)}</div>
+              </div>
+              <div class="save-state saved" data-save-state="${escapeHtml(item.id)}">Saved</div>
+            </div>
+            <div class="product-fields">
+              <div class="field span-4"><label>Name</label><input data-field="name" value="${escapeHtml(item.name)}"></div>
+              <div class="field span-2"><label>Price</label><input data-field="price" type="number" step="0.01" min="0" value="${Number(item.price || 0)}"></div>
+              <div class="field span-3"><label>Category</label><select data-field="category">${categoryOptions(item.category)}</select></div>
+              <div class="field span-3"><label>Badge</label><select data-field="badge">${badgeSelect(item.badge)}</select></div>
+              <div class="field span-6"><label>Image URL</label><input data-field="imageUrl" value="${escapeHtml(item.imageUrl)}"></div>
+              <div class="field span-6"><label>Agent URL</label><input data-field="agentUrl" value="${escapeHtml(item.agentUrl)}"></div>
+              <div class="field span-6"><label>Product URL</label><input data-field="productUrl" value="${escapeHtml(item.productUrl)}"></div>
+              <div class="field span-2"><label>Sort Order</label><input data-field="sortOrder" type="number" step="1" value="${Number(item.sortOrder || 0)}"></div>
+              <label class="toggle-line span-4"><input data-field="isActive" type="checkbox" ${item.isActive !== false ? "checked" : ""}> Active on site</label>
+              <div class="field span-8"><label>Tags, comma separated</label><input data-field="tags" value="${escapeHtml((item.tags || []).join(", "))}"></div>
+              <div class="field span-12"><label>Description</label><textarea data-field="description">${escapeHtml(item.description)}</textarea></div>
+              <div class="span-12"><button class="btn danger" type="button" data-delete>Delete item</button></div>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function queueSave(card) {
+      const id = card.dataset.productId;
+      productStatus(id, "Saving...", "saving");
+      clearTimeout(saveTimers.get(id));
+      saveTimers.set(id, setTimeout(async () => {
+        try {
+          const data = productFromCard(card);
+          await updateDoc(doc(db, "products", id), { ...data, updatedAt: serverTimestamp() });
+          const index = products.findIndex(item => item.id === id);
+          if (index >= 0) products[index] = { id, ...data };
+          productStatus(id, "Saved", "saved");
+        } catch (error) {
+          console.error(error);
+          productStatus(id, "Error", "error");
+          setStatus("Save failed - check Firestore rules");
+        }
+      }, 550));
+    }
+
+    async function loadCategories() {
+      try {
+        const snapshot = await getDocs(collection(db, "categories"));
+        categories = [...defaultCategories, ...snapshot.docs.map(categoryDoc => categoryDoc.data().name || categoryDoc.id)];
+      } catch (error) {
+        console.warn("Could not load categories", error);
+        categories = [...defaultCategories];
+      }
+      renderCategories();
+    }
+
+    async function loadProducts() {
+      setStatus("Loading products");
+      const snapshot = await getDocs(collection(db, "products"));
+      products = snapshot.docs
+        .map(productDoc => ({ id: productDoc.id, ...normalizeProduct(productDoc.data()) }))
+        .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
+      renderProducts();
+      setStatus(`${products.length} products loaded`);
+    }
+
+    async function unlock() {
+      loginView.style.display = "none";
+      adminView.style.display = "block";
+      await loadCategories();
+      await loadProducts();
+    }
+
+    loginForm.addEventListener("submit", event => {
+      event.preventDefault();
+      const password = document.getElementById("password-input").value;
+      if (password !== ADMIN_PASSWORD) {
+        loginError.textContent = "Wrong password.";
+        return;
+      }
+      sessionStorage.setItem("spreadsheet-admin-unlocked", "true");
+      unlock();
+    });
+
+    document.getElementById("lock-btn").addEventListener("click", () => {
+      sessionStorage.removeItem("spreadsheet-admin-unlocked");
+      window.location.reload();
+    });
+
+    categoryForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      const name = categoryInput.value.trim();
+      if (!name) return;
+      categories.push(name);
+      renderCategories();
+      categoryInput.value = "";
+      try {
+        await setDoc(doc(db, "categories", slugify(name)), { name, updatedAt: serverTimestamp() });
+        setStatus("Category saved");
+      } catch (error) {
+        console.error(error);
+        setStatus("Category added locally - Firestore write failed");
+      }
+    });
+
+    createForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      const name = document.getElementById("new-name").value.trim();
+      if (!name) return;
+      const id = slugify(name);
+      const data = normalizeProduct({
+        name,
+        price: document.getElementById("new-price").value,
+        category: document.getElementById("new-category").value,
+        imageUrl: document.getElementById("new-image").value.trim(),
+        agentUrl: document.getElementById("new-agent").value.trim(),
+        isActive: true,
+        sortOrder: products.length + 1
+      });
+      try {
+        await setDoc(doc(db, "products", id), { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        products.push({ id, ...data });
+        products.sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
+        createForm.reset();
+        renderProducts();
+        setStatus("Item created");
+      } catch (error) {
+        console.error(error);
+        setStatus("Create failed - check Firestore rules");
+      }
+    });
+
+    productsList.addEventListener("input", event => {
+      const card = event.target.closest("[data-product-id]");
+      if (card) queueSave(card);
+    });
+
+    productsList.addEventListener("change", event => {
+      const card = event.target.closest("[data-product-id]");
+      if (card) queueSave(card);
+    });
+
+    productsList.addEventListener("click", async event => {
+      const button = event.target.closest("[data-delete]");
+      if (!button) return;
+      const card = button.closest("[data-product-id]");
+      const id = card.dataset.productId;
+      if (!window.confirm(`Delete ${id}?`)) return;
+      try {
+        await deleteDoc(doc(db, "products", id));
+        products = products.filter(item => item.id !== id);
+        renderProducts();
+        setStatus("Item deleted");
+      } catch (error) {
+        console.error(error);
+        setStatus("Delete failed - check Firestore rules");
+      }
+    });
+
+    searchInput.addEventListener("input", renderProducts);
+
+    if (sessionStorage.getItem("spreadsheet-admin-unlocked") === "true") {
+      unlock();
+    }
+  </script>
+</body>
+</html>
