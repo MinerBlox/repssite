@@ -15,6 +15,14 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const root = document.getElementById("app");
 
+function basePath() {
+  return window.location.pathname.startsWith("/repssite/") ? "/repssite/" : "/";
+}
+
+function sitePath(path) {
+  return `${basePath()}${String(path || "").replace(/^\/+/, "")}`;
+}
+
 function slugify(value) {
   return String(value || "")
     .toLowerCase()
@@ -108,7 +116,7 @@ function renderNotFound(message = "This product could not be found in Firebase."
     <section class="not-found">
       <h1>Item not found</h1>
       <p class="status-copy">${escapeHtml(message)}</p>
-      <div class="actions" style="justify-content:center;"><a class="action-btn primary" href="/spreadsheet.html">Back to spreadsheet</a></div>
+      <div class="actions" style="justify-content:center;"><a class="action-btn primary" href="${sitePath("spreadsheet.html")}">Back to spreadsheet</a></div>
     </section>
   `;
 }
@@ -165,7 +173,7 @@ function renderProduct(item) {
   const productButton = originalProductLink(item) ? `<a class="action-btn" href="${escapeHtml(originalProductLink(item))}" target="_blank" rel="noopener noreferrer">Original Link</a>` : "";
 
   root.innerHTML = `
-    <a class="back-link" href="/spreadsheet.html">Back to spreadsheet</a>
+    <a class="back-link" href="${sitePath("spreadsheet.html")}">Back to spreadsheet</a>
     <section class="item-layout">
       <div class="image-panel">${image}</div>
       <aside class="details-panel">
