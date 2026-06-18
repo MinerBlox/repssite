@@ -55,6 +55,9 @@
       <p class="status-copy">Fetching product details from Firebase.</p>
     </section>
   </main>
-  <script type="module" src="/item-page.js"></script>
+  <script type="module">
+    const basePath = window.location.pathname.startsWith('/repssite/') ? '/repssite/' : '/';
+    import(`${basePath}item-page.js`);
+  </script>
 </body>
 </html>
