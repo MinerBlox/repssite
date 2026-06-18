@@ -36,7 +36,7 @@
     .qc-section h2 { font-family: 'Syne', sans-serif; font-size: 24px; margin-bottom: 10px; }
     .qc-section p, .status-copy { color: var(--muted); font-size: 14px; line-height: 1.6; }
     .qc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-top: 18px; }
-    .qc-placeholder { min-height: 150px; border: 1px dashed #34343a; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--muted); background: #0f0f12; font-size: 13px; }
+    .qc-placeholder { min-height: 150px; border: 1px dashed #34343a; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--muted); background: #0f0f12; font-size: 13px; padding: 16px; text-align: center; }
     .qc-link { display: block; min-height: 170px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--surface2); }
     .qc-image { width: 100%; height: 100%; min-height: 170px; object-fit: contain; display: block; background: var(--surface2); }
     .loading, .not-found { max-width: 680px; margin: 80px auto; padding: 30px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); text-align: center; }
@@ -57,7 +57,7 @@
   </main>
   <script type="module">
     const basePath = window.location.pathname.startsWith('/repssite/') ? '/repssite/' : '/';
-    import(`${basePath}item-page.js`);
+    import(`${basePath}item-page.js?v=qc-2026-06-18-2`);
   </script>
 </body>
 </html>
