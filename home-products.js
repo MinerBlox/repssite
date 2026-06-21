@@ -133,6 +133,34 @@ function renderTicker(items) {
   `).join("");
 }
 
+function renderHeroParticles(items) {
+  const target = document.getElementById("hero-particles");
+  if (!target) return;
+
+  const positions = [
+    { x: 8, y: 52, dx: -64, dy: -12, delay: -2, duration: 16 },
+    { x: 22, y: 24, dx: -42, dy: -54, delay: -7, duration: 18 },
+    { x: 40, y: 16, dx: -14, dy: -62, delay: -11, duration: 15 },
+    { x: 60, y: 16, dx: 14, dy: -62, delay: -4, duration: 17 },
+    { x: 78, y: 24, dx: 42, dy: -54, delay: -13, duration: 19 },
+    { x: 92, y: 52, dx: 64, dy: -12, delay: -9, duration: 16 },
+    { x: 72, y: 82, dx: 34, dy: 54, delay: -5, duration: 18 },
+    { x: 28, y: 82, dx: -34, dy: 54, delay: -15, duration: 20 }
+  ];
+
+  const images = items.filter(item => item.imageUrl).slice(0, positions.length);
+  target.innerHTML = images.map((item, index) => {
+    const position = positions[index];
+    return `<img
+      class="hero-product-particle"
+      src="${escapeHtml(item.imageUrl)}"
+      alt=""
+      decoding="async"
+      style="--particle-x:${position.x}%;--particle-y:${position.y}%;--particle-dx:${position.dx}px;--particle-dy:${position.dy}px;--particle-delay:${position.delay}s;--particle-duration:${position.duration}s"
+    >`;
+  }).join("");
+}
+
 function categoryMatches(item, categories) {
   const category = String(item.category || "").toLowerCase();
   return categories.some(value => category.includes(value));
@@ -190,6 +218,7 @@ function renderHomeProducts(items) {
 
   renderProductRows(items);
   renderTicker(items);
+  renderHeroParticles(items);
 
   window.setSeason = seasonName => renderSeasonProducts(currentHomeItems, seasonName);
   window.renderSeason = seasonName => renderSeasonProducts(currentHomeItems, seasonName);
