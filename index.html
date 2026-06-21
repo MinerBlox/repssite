@@ -226,16 +226,21 @@
     .season-tab.active { background: var(--surface2); color: var(--text); border-color: rgba(77,166,255,0.33); }
     .season-tab:hover { color: var(--text); }
 
-    /* ── SELLERS ── */
-    .sellers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
-    .seller-card { border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 8px; background: var(--surface); border: 1px solid var(--border); transition: transform 0.15s, border-color 0.15s; }
-    .seller-card:hover { transform: translateY(-2px); border-color: rgba(77,166,255,0.27); }
-    .seller-header { display: flex; align-items: center; justify-content: space-between; }
-    .seller-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; color: var(--text); }
-    .seller-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 5px; background: rgba(77,166,255,0.1); border: 1px solid rgba(77,166,255,0.25); color: #4da6ff; }
-    .seller-desc { font-size: 13px; line-height: 1.5; color: var(--muted); }
-    .seller-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #4da6ff; margin-top: 4px; transition: opacity 0.15s; }
-    .seller-link:hover { opacity: 0.8; }
+    /* ── BRANDS ── */
+    .brands-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .brand-card {
+      min-height: 170px; padding: 28px 20px; border-radius: 14px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+      color: var(--text); background: var(--surface); border: 1px solid var(--border);
+      transition: transform 0.2s, border-color 0.2s, background 0.2s;
+    }
+    .brand-card:hover { transform: translateY(-3px); border-color: rgba(77,166,255,0.35); background: var(--surface2); }
+    .brand-card:focus-visible { outline: 3px solid rgba(77,166,255,0.45); outline-offset: 3px; }
+    .brand-mark { width: min(75%, 240px); height: 66px; display: flex; align-items: center; justify-content: center; }
+    .brand-mark svg, .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
+    .brand-mark-mertra { width: 72px; }
+    .brand-name { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: var(--muted); }
+    body.dark .brand-logo-image { filter: invert(1) brightness(1.1); }
 
     /* ── HIPOBUY CTA ── */
     #hipobuy-cta { padding: 64px 40px; max-width: 1300px; margin: 0 auto; }
@@ -549,16 +554,39 @@
 
   <hr class="divider">
 
-  <!-- TOP SELLERS -->
+  <!-- VIEW BRANDS -->
   <div class="section">
     <div class="section-header">
       <div>
-        <h2 class="section-title">Top Sellers</h2>
-        <p class="section-sub">Browse the best Weidian and Taobao sellers</p>
+        <h2 class="section-title">View Brands</h2>
+        <p class="section-sub">Browse finds from the brands you know</p>
       </div>
-      <a href="#" class="section-link">View all →</a>
+      <a href="spreadsheet.html" class="section-link">View all →</a>
     </div>
-    <div class="sellers-grid" id="sellers-grid"></div>
+    <div class="brands-grid">
+      <a href="spreadsheet.html" class="brand-card" aria-label="View Nike products">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="135.5 361.38 1000 356.39" role="img">
+            <path fill="currentColor" d="M245.8075 717.62406c-29.79588-1.1837-54.1734-9.3368-73.23459-24.4796-3.63775-2.8928-12.30611-11.5663-15.21427-15.2245-7.72958-9.7193-12.98467-19.1785-16.48977-29.6734-10.7857-32.3061-5.23469-74.6989 15.87753-121.2243 18.0765-39.8316 45.96932-79.3366 94.63252-134.0508 7.16836-8.0511 28.51526-31.5969 28.65302-31.5969.051 0-1.11225 2.0153-2.57652 4.4694-12.65304 21.1938-23.47957 46.158-29.37751 67.7703-9.47448 34.6785-8.33163 64.4387 3.34693 87.5151 8.05611 15.898 21.86731 29.6684 37.3979 37.2806 27.18874 13.3214 66.9948 14.4235 115.60699 3.2245 3.34694-.7755 169.19363-44.801 368.55048-97.8366 199.35686-53.0408 362.49439-96.4029 362.51989-96.3672.056.046-463.16259 198.2599-703.62654 301.0914-38.08158 16.2806-48.26521 20.3928-66.16827 26.6785-45.76525 16.0714-86.76008 23.7398-119.89779 22.4235z"/>
+          </svg>
+        </span>
+        <span class="brand-name">Nike</span>
+      </a>
+      <a href="spreadsheet.html" class="brand-card" aria-label="View Mertra products">
+        <span class="brand-mark brand-mark-mertra" aria-hidden="true">
+          <svg viewBox="0 0 1024 1024" role="img">
+            <path fill="currentColor" d="M511.662 516.02C587.539 380.634 736.413 317.934 886.203 310.612c21.802-1.065 43.896-1.574 65.721-1.732-2.867 1.72-6.676 4.259-9.6 5.496-59.295 25.079-118.078 71.391-128.075 138.868-2.115 14.275-1.844 27.16-1.187 42.072-21.396 11.663-47.365 22.67-69.661 33.629 14.885 8.034 53.941 25.803 64.111 33.342 7.076 46.531 18.875 98.419 53.153 133.88 10.736 11.107 24.874 9.762 29.209 14.824-7.504 5.276-76.367 2.585-90.738.799-82.144-10.21-140.316-32.692-193.343-98.376 51.777 26.031 116.316 39.237 174.19 39.671-7.292-54.162-27.422-100.648-86.207-111.167-4.068-.659-10.988.305-13.212-3.361 2.162-2.358 18.717-9.303 23.741-12.131 47.98-27.014 48.216-74.293 60.501-123.382-21.065 3.966-41.831 9.385-62.147 16.218-68.146 23.543-136.504 63.623-180.02 122.444-4.129 5.582-7.793 11.109-10.835 17.354-1.405-3.225-3.112-6.311-5.1-9.214-53.349-79.549-156.271-128.949-248.183-147.221 7.237 24.321 9.973 51.626 19.287 76.419 12.992 34.584 39.993 47.539 71.346 61.798-72.457 2.11-95.013 46.624-105.507 112.073 59.294.809 119.22-14.934 173.379-38.365-74.355 92.127-176.253 103.72-286.347 98.048 6.476-3.472 18.22-7.041 23.651-10.437 29.494-18.443 46.042-66.726 54.207-98.285 3.717-14.366 5.443-29.217 9.289-43.71 20-11.128 42.244-19.847 62.804-31.331-.42-.153-.837-.313-1.253-.477-1.831-.72-3.595-1.574-5.373-2.415-7.367-3.482-60.778-27.374-62.296-29.965-1.947-3.326-.274-15.577-.328-19.749-.602-45.867-20.1-83.124-53.53-113.947-19.732-18.194-41.616-31.464-65.956-42.7-5.208-2.405-13.809-4.973-16.137-10.329 11.255-1.27 30.231.348 42.04.692 56.525 1.647 110.074 9.456 164.162 26.362 91.872 28.716 184.796 92.419 229.703 175.715z"/>
+          </svg>
+        </span>
+        <span class="brand-name">Mertra</span>
+      </a>
+      <a href="spreadsheet.html" class="brand-card" aria-label="View Ralph Lauren products">
+        <span class="brand-mark">
+          <img class="brand-logo-image" src="https://upload.wikimedia.org/wikipedia/commons/7/72/Ralph_Lauren_logo.svg" alt="" width="320" height="110" loading="lazy">
+        </span>
+        <span class="brand-name">Ralph Lauren</span>
+      </a>
+    </div>
   </div>
 
   <hr class="divider">
@@ -818,7 +846,6 @@ function toolCard(t) {
 function render() {
   document.getElementById("podium-grid").innerHTML = bestSellers.map((p, i) => podiumCard(p, medals[i], i * 0.1)).join("");
   document.getElementById("our-picks-grid").innerHTML = ourPicks.map(productCard).join("");
-  document.getElementById("sellers-grid").innerHTML = sellers.map(sellerCard).join("");
   document.getElementById("tools-grid").innerHTML = tools.map(toolCard).join("");
   renderSeason("summer");
 }
