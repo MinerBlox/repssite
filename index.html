@@ -274,10 +274,9 @@
     .brand-mark svg, .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
     .brand-mark-nike { width: min(37.5%, 120px); height: 40px; }
     .brand-mark-mertra { width: 72px; }
-    .brand-mark-ralph { width: 58px; height: 108px; }
+    .brand-mark-ralph { width: 29px; height: 54px; }
     .brand-name { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: var(--muted); }
-    .brand-card-ralph { background: #050506; color: #fff; border-color: #29292d; }
-    .brand-card-ralph:hover { background: #101012; border-color: rgba(255,255,255,0.35); }
+    body.light .brand-card-ralph img { filter: invert(1); }
     .brand-card-coming { position: relative; isolation: isolate; overflow: hidden; cursor: default; }
     .brand-card-coming::before {
       content: ""; position: absolute; z-index: -2; inset: -14px;
@@ -588,7 +587,6 @@
         <h2 class="section-title">Best Sellers</h2>
         <p class="section-sub">The top 3 community-voted rep finds right now</p>
       </div>
-      <a href="#" class="section-link">View all →</a>
     </div>
     <div class="podium-grid" id="podium-grid"></div>
   </div>
@@ -602,7 +600,6 @@
         <h2 class="section-title">Our Picks</h2>
         <p class="section-sub">Hand-picked products by our team — the best quality and style in one place</p>
       </div>
-      <a href="spreadsheet.html" class="section-link">View all →</a>
     </div>
     <div class="product-grid" id="our-picks-grid"></div>
   </div>
@@ -616,7 +613,6 @@
         <h2 class="section-title">Season Finds</h2>
         <p class="section-sub">Curated picks for every season</p>
       </div>
-      <a href="spreadsheet.html" class="section-link">View all →</a>
     </div>
     <div class="season-tabs">
       <button class="season-tab active" data-season="summer" onclick="setSeason('summer')">☀️ Summer Finds</button>
@@ -655,8 +651,9 @@
       </a>
       <a href="spreadsheet.html" class="brand-card brand-card-ralph" aria-label="View Ralph Lauren products">
         <span class="brand-mark brand-mark-ralph">
-          <img src="systemimages/RalphLaurenLogo.png" alt="" width="58" height="108" loading="lazy">
+          <img src="systemimages/RalphLaurenLogo.png" alt="" width="29" height="54" loading="lazy">
         </span>
+        <span class="brand-name">Ralph Lauren</span>
       </a>
       <div class="brand-card brand-card-coming" aria-label="More brands coming soon">
         <span class="brand-coming-label">Coming soon...</span>
