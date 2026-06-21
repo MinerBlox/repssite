@@ -240,7 +240,9 @@
     .brand-mark svg, .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
     .brand-mark-mertra { width: 72px; }
     .brand-name { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: var(--muted); }
-    body.dark .brand-logo-image { filter: invert(1) brightness(1.1); }
+    .brand-card-ralph { background: #0b0b0c; color: #fff; border-color: #29292d; }
+    .brand-card-ralph:hover { background: #151518; border-color: rgba(255,255,255,0.35); }
+    .brand-card-ralph .brand-logo-image { filter: brightness(0) invert(1); }
 
     /* ── HIPOBUY CTA ── */
     #hipobuy-cta { padding: 64px 40px; max-width: 1300px; margin: 0 auto; }
@@ -580,11 +582,10 @@
         </span>
         <span class="brand-name">Mertra</span>
       </a>
-      <a href="spreadsheet.html" class="brand-card" aria-label="View Ralph Lauren products">
+      <a href="spreadsheet.html" class="brand-card brand-card-ralph" aria-label="View Ralph Lauren products">
         <span class="brand-mark">
-          <img class="brand-logo-image" src="https://upload.wikimedia.org/wikipedia/commons/7/72/Ralph_Lauren_logo.svg" alt="" width="320" height="110" loading="lazy">
+          <img class="brand-logo-image" src="https://upload.wikimedia.org/wikipedia/commons/7/72/Ralph_Lauren_logo.svg?download=1" alt="" width="320" height="110" loading="lazy">
         </span>
-        <span class="brand-name">Ralph Lauren</span>
       </a>
     </div>
   </div>
