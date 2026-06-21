@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Reps Central</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -79,6 +79,24 @@
       transition: opacity 0.15s;
     }
     .nav-theme:hover { opacity: 0.75; }
+    .mobile-nav { display: none; position: relative; }
+    .mobile-nav summary {
+      list-style: none; width: 36px; height: 36px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text); background: var(--surface2); border: 1px solid var(--border); cursor: pointer;
+    }
+    .mobile-nav summary::-webkit-details-marker { display: none; }
+    .mobile-nav-menu {
+      position: absolute; top: calc(100% + 10px); right: 0; z-index: 80;
+      width: min(250px, calc(100vw - 28px)); padding: 8px;
+      display: grid; border-radius: 12px; background: var(--surface);
+      border: 1px solid var(--border); box-shadow: 0 16px 36px rgba(0,0,0,0.28);
+    }
+    .mobile-nav-menu a {
+      min-height: 44px; padding: 11px 12px; border-radius: 8px;
+      display: flex; align-items: center; color: var(--text); font-size: 14px; font-weight: 600;
+    }
+    .mobile-nav-menu a:hover { background: var(--surface2); }
 
     .nav-dropdown { position: relative; }
     .nav-dropdown summary { list-style: none; cursor: pointer; }
@@ -239,10 +257,11 @@
     .brand-mark { width: min(75%, 240px); height: 66px; display: flex; align-items: center; justify-content: center; }
     .brand-mark svg, .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
     .brand-mark-mertra { width: 72px; }
+    .brand-mark-ralph { width: 88px; height: 88px; }
     .brand-name { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: var(--muted); }
-    .brand-card-ralph { background: #0b0b0c; color: #fff; border-color: #29292d; }
-    .brand-card-ralph:hover { background: #151518; border-color: rgba(255,255,255,0.35); }
-    .brand-card-ralph .brand-logo-image { filter: brightness(0) invert(1); }
+    .brand-card-ralph { background: #050506; color: #fff; border-color: #29292d; }
+    .brand-card-ralph:hover { background: #101012; border-color: rgba(255,255,255,0.35); }
+    .brand-card-ralph .brand-logo-image { filter: grayscale(1) invert(1); }
 
     /* ── HIPOBUY CTA ── */
     #hipobuy-cta { padding: 64px 40px; max-width: 1300px; margin: 0 auto; }
@@ -321,7 +340,27 @@
     }
 
     @media (max-width: 720px) {
-      .converter-shell { padding-left: 16px; padding-right: 16px; padding-bottom: 48px; }
+      html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+      #root { width: 100%; overflow-x: clip; }
+      #banner { padding: 9px 14px; font-size: 12px; line-height: 1.35; }
+      nav { width: 100%; height: 56px; padding: 0 14px; gap: 8px; }
+      .nav-logo { flex: 1; min-width: 0; margin-right: 0; font-size: 16px; }
+      .nav-links, .nav-search { display: none; }
+      .mobile-nav { display: block; flex: 0 0 auto; }
+      .nav-theme { width: 36px; height: 36px; padding: 0; margin-left: 0; justify-content: center; flex: 0 0 auto; }
+      #theme-label { display: none; }
+      #hero { padding: 72px 20px; }
+      .hero-title { font-size: clamp(42px, 12vw, 54px); letter-spacing: 0; overflow-wrap: anywhere; }
+      .hero-sub { font-size: 15px; }
+      .section { width: 100%; padding: 48px 20px; }
+      .section-title { font-size: 25px; }
+      .brands-grid { grid-template-columns: 1fr; }
+      .brand-card { min-height: 145px; }
+      #hipobuy-cta { width: 100%; padding: 48px 20px; }
+      .cta-box { padding: 32px 20px; }
+      .cta-title { font-size: 28px; }
+      footer { width: 100%; padding: 32px 20px; }
+      .converter-shell { width: 100%; padding-left: 16px; padding-right: 16px; padding-bottom: 48px; }
       .converter-box { padding: 18px; }
       .converter-actions { flex-direction: column; }
       .converter-btn { width: 100%; }
@@ -467,6 +506,18 @@
         </div>
       </details>
     </div>
+    <details class="mobile-nav">
+      <summary aria-label="Open navigation">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+      </summary>
+      <div class="mobile-nav-menu">
+        <a href="spreadsheet.html">Spreadsheet</a>
+        <a href="#">Quality Checks</a>
+        <a href="#">Outfits</a>
+        <a href="#">Sellers</a>
+        <a href="link-converter.html">Link Converter</a>
+      </div>
+    </details>
     <button class="nav-search">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       Search...
@@ -583,8 +634,8 @@
         <span class="brand-name">Mertra</span>
       </a>
       <a href="spreadsheet.html" class="brand-card brand-card-ralph" aria-label="View Ralph Lauren products">
-        <span class="brand-mark">
-          <img class="brand-logo-image" src="https://upload.wikimedia.org/wikipedia/commons/7/72/Ralph_Lauren_logo.svg?download=1" alt="" width="320" height="110" loading="lazy">
+        <span class="brand-mark brand-mark-ralph">
+          <img class="brand-logo-image" src="https://www.google.com/s2/favicons?domain=ralphlauren.com&amp;sz=256" alt="" width="88" height="88" loading="lazy">
         </span>
       </a>
     </div>
