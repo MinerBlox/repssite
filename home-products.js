@@ -132,14 +132,18 @@ function seasonalItems(items, season) {
     winter: ["jacket", "puffer", "coat", "scarf", "beanie", "hood"]
   };
   const picked = items.filter(item => categoryMatches(item, groups[season] || []));
-  return (picked.length ? picked : items).slice(0, season === "summer" ? 8 : 6);
+  return picked.length ? picked : items;
 }
 
 function renderSeasonProducts(items, seasonName) {
   window.activeSeason = seasonName;
   document.querySelectorAll(".season-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.season === seasonName));
+  const seasonal = seasonalItems(items, seasonName);
+  const visibleLimit = seasonName === "summer" ? 8 : 6;
   const target = document.getElementById("season-grid");
-  if (target) target.innerHTML = seasonalItems(items, seasonName).map(productCard).join("");
+  const moreButton = document.getElementById("season-more-count");
+  if (target) target.innerHTML = seasonal.slice(0, visibleLimit).map(productCard).join("");
+  if (moreButton) moreButton.textContent = `+ ${Math.max(0, seasonal.length - visibleLimit)} more`;
 }
 
 function renderHomeProducts(items) {
@@ -153,7 +157,10 @@ function renderHomeProducts(items) {
     podium.innerHTML = podiumItems.map((item, index) => podiumCard(item, medals[index], index * 0.1)).join("");
   }
 
-  if (picks) picks.innerHTML = items.slice(0, 6).map(productCard).join("");
+  const visiblePicks = items.slice(0, 6);
+  const picksMoreButton = document.getElementById("our-picks-more-count");
+  if (picks) picks.innerHTML = visiblePicks.map(productCard).join("");
+  if (picksMoreButton) picksMoreButton.textContent = `+ ${Math.max(0, items.length - visiblePicks.length)} more`;
   renderSeasonProducts(items, window.activeSeason || "summer");
   renderTicker(items);
 
