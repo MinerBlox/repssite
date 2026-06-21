@@ -199,6 +199,22 @@
       font-size: 12px; font-weight: 600; background: var(--surface2); border: 1px solid var(--border); color: var(--text); transition: opacity 0.15s;
     }
     .product-btn:hover { opacity: 0.75; }
+    .product-more-card {
+      position: relative; isolation: isolate; min-height: 280px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text); text-align: center;
+    }
+    .product-more-card:hover { transform: translateY(-4px); color: var(--text); }
+    .product-more-bg {
+      position: absolute; z-index: -3; inset: -14px; width: calc(100% + 28px); height: calc(100% + 28px);
+      object-fit: cover; filter: blur(12px); opacity: 0.32;
+    }
+    .product-more-overlay { position: absolute; z-index: -2; inset: 0; background: rgba(10,10,11,0.72); }
+    body.light .product-more-overlay { background: rgba(245,248,255,0.72); }
+    .product-more-content {
+      padding: 20px; font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800;
+      color: var(--text);
+    }
 
     /* ── PODIUM CARDS ── */
     .podium-grid {
@@ -245,7 +261,7 @@
     .season-tab:hover { color: var(--text); }
 
     /* ── BRANDS ── */
-    .brands-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .brands-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
     .brand-card {
       min-height: 170px; padding: 28px 20px; border-radius: 14px;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
@@ -256,12 +272,23 @@
     .brand-card:focus-visible { outline: 3px solid rgba(77,166,255,0.45); outline-offset: 3px; }
     .brand-mark { width: min(75%, 240px); height: 66px; display: flex; align-items: center; justify-content: center; }
     .brand-mark svg, .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
+    .brand-mark-nike { width: min(37.5%, 120px); height: 40px; }
     .brand-mark-mertra { width: 72px; }
-    .brand-mark-ralph { width: 88px; height: 88px; }
+    .brand-mark-ralph { width: 58px; height: 108px; }
     .brand-name { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: var(--muted); }
     .brand-card-ralph { background: #050506; color: #fff; border-color: #29292d; }
     .brand-card-ralph:hover { background: #101012; border-color: rgba(255,255,255,0.35); }
-    .brand-card-ralph .brand-logo-image { filter: grayscale(1) invert(1); }
+    .brand-card-coming { position: relative; isolation: isolate; overflow: hidden; cursor: default; }
+    .brand-card-coming::before {
+      content: ""; position: absolute; z-index: -2; inset: -14px;
+      background: var(--surface2); filter: blur(12px); opacity: 0.9;
+    }
+    .brand-card-coming::after {
+      content: ""; position: absolute; z-index: -1; inset: 0;
+      background: rgba(10,10,11,0.32); backdrop-filter: blur(6px);
+    }
+    body.light .brand-card-coming::after { background: rgba(255,255,255,0.36); }
+    .brand-coming-label { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; color: var(--muted); }
 
     /* ── HIPOBUY CTA ── */
     #hipobuy-cta { padding: 64px 40px; max-width: 1300px; margin: 0 auto; }
@@ -354,8 +381,8 @@
       .hero-sub { font-size: 15px; }
       .section { width: 100%; padding: 48px 20px; }
       .section-title { font-size: 25px; }
-      .brands-grid { grid-template-columns: 1fr; }
-      .brand-card { min-height: 145px; }
+      .brands-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      .brand-card { min-height: 135px; padding: 20px 12px; }
       #hipobuy-cta { width: 100%; padding: 48px 20px; }
       .cta-box { padding: 32px 20px; }
       .cta-title { font-size: 28px; }
@@ -575,12 +602,9 @@
         <h2 class="section-title">Our Picks</h2>
         <p class="section-sub">Hand-picked products by our team — the best quality and style in one place</p>
       </div>
-      <a href="#" class="section-link">View all →</a>
+      <a href="spreadsheet.html" class="section-link">View all →</a>
     </div>
     <div class="product-grid" id="our-picks-grid"></div>
-    <div class="view-more">
-      <a href="#" class="btn-secondary" id="our-picks-more-count">+ 0 more</a>
-    </div>
   </div>
 
   <hr class="divider">
@@ -592,7 +616,7 @@
         <h2 class="section-title">Season Finds</h2>
         <p class="section-sub">Curated picks for every season</p>
       </div>
-      <a href="#" class="section-link">View all →</a>
+      <a href="spreadsheet.html" class="section-link">View all →</a>
     </div>
     <div class="season-tabs">
       <button class="season-tab active" data-season="summer" onclick="setSeason('summer')">☀️ Summer Finds</button>
@@ -600,9 +624,6 @@
       <button class="season-tab" data-season="winter" onclick="setSeason('winter')">❄️ Winter Finds</button>
     </div>
     <div class="product-grid" id="season-grid"></div>
-    <div class="view-more">
-      <a href="#" class="btn-secondary" id="season-more-count">+ 0 more</a>
-    </div>
   </div>
 
   <hr class="divider">
@@ -614,11 +635,10 @@
         <h2 class="section-title">View Brands</h2>
         <p class="section-sub">Browse finds from the brands you know</p>
       </div>
-      <a href="spreadsheet.html" class="section-link">View all →</a>
     </div>
     <div class="brands-grid">
       <a href="spreadsheet.html" class="brand-card" aria-label="View Nike products">
-        <span class="brand-mark" aria-hidden="true">
+        <span class="brand-mark brand-mark-nike" aria-hidden="true">
           <svg viewBox="135.5 361.38 1000 356.39" role="img">
             <path fill="currentColor" d="M245.8075 717.62406c-29.79588-1.1837-54.1734-9.3368-73.23459-24.4796-3.63775-2.8928-12.30611-11.5663-15.21427-15.2245-7.72958-9.7193-12.98467-19.1785-16.48977-29.6734-10.7857-32.3061-5.23469-74.6989 15.87753-121.2243 18.0765-39.8316 45.96932-79.3366 94.63252-134.0508 7.16836-8.0511 28.51526-31.5969 28.65302-31.5969.051 0-1.11225 2.0153-2.57652 4.4694-12.65304 21.1938-23.47957 46.158-29.37751 67.7703-9.47448 34.6785-8.33163 64.4387 3.34693 87.5151 8.05611 15.898 21.86731 29.6684 37.3979 37.2806 27.18874 13.3214 66.9948 14.4235 115.60699 3.2245 3.34694-.7755 169.19363-44.801 368.55048-97.8366 199.35686-53.0408 362.49439-96.4029 362.51989-96.3672.056.046-463.16259 198.2599-703.62654 301.0914-38.08158 16.2806-48.26521 20.3928-66.16827 26.6785-45.76525 16.0714-86.76008 23.7398-119.89779 22.4235z"/>
           </svg>
@@ -635,9 +655,12 @@
       </a>
       <a href="spreadsheet.html" class="brand-card brand-card-ralph" aria-label="View Ralph Lauren products">
         <span class="brand-mark brand-mark-ralph">
-          <img class="brand-logo-image" src="https://www.google.com/s2/favicons?domain=ralphlauren.com&amp;sz=256" alt="" width="88" height="88" loading="lazy">
+          <img src="systemimages/RalphLaurenLogo.png" alt="" width="58" height="108" loading="lazy">
         </span>
       </a>
+      <div class="brand-card brand-card-coming" aria-label="More brands coming soon">
+        <span class="brand-coming-label">Coming soon...</span>
+      </div>
     </div>
   </div>
 
@@ -841,6 +864,29 @@ function productCard(p) {
   `;
 }
 
+function staticVisibleProductCount(target) {
+  if (window.matchMedia("(max-width: 720px)").matches) return 1;
+  const gap = 16;
+  const capacity = Math.max(1, Math.floor((target.clientWidth + gap) / 216));
+  return Math.max(1, capacity - 1);
+}
+
+function staticMoreProductCard(remaining) {
+  return `
+    <a href="spreadsheet.html" class="product-card product-more-card" aria-label="View ${remaining} more products">
+      <span class="product-more-overlay"></span>
+      <span class="product-more-content">+ ${remaining} more</span>
+    </a>
+  `;
+}
+
+function renderStaticProductRow(targetId, items) {
+  const target = document.getElementById(targetId);
+  if (!target) return;
+  const count = Math.min(items.length, staticVisibleProductCount(target));
+  target.innerHTML = items.slice(0, count).map(productCard).join("") + staticMoreProductCard(Math.max(0, items.length - count));
+}
+
 /* ── PODIUM ── */
 function podiumCard(product, medal, delay) {
   return `
@@ -897,7 +943,7 @@ function toolCard(t) {
 /* ── RENDER ── */
 function render() {
   document.getElementById("podium-grid").innerHTML = bestSellers.map((p, i) => podiumCard(p, medals[i], i * 0.1)).join("");
-  document.getElementById("our-picks-grid").innerHTML = ourPicks.map(productCard).join("");
+  renderStaticProductRow("our-picks-grid", ourPicks);
   document.getElementById("tools-grid").innerHTML = tools.map(toolCard).join("");
   renderSeason("summer");
 }
@@ -909,7 +955,7 @@ function setSeason(s) {
   renderSeason(s);
 }
 function renderSeason(s) {
-  document.getElementById("season-grid").innerHTML = seasonFinds[s].map(productCard).join("");
+  renderStaticProductRow("season-grid", seasonFinds[s]);
 }
 
 
@@ -1274,6 +1320,6 @@ document.getElementById("modal-overlay").addEventListener("click", function(e) {
   if (e.target === this) closeModal();
 });
 </script>
-<script type="module" src="home-products.js?v=2026-06-21-1"></script>
+<script type="module" src="home-products.js?v=2026-06-21-2"></script>
 </body>
 </html>
