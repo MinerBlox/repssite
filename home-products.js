@@ -78,6 +78,19 @@ function productCard(item) {
   `;
 }
 
+function moreProductCard(remaining, backgroundItem) {
+  const background = backgroundItem?.imageUrl
+    ? `<img class="product-more-bg" src="${escapeHtml(backgroundItem.imageUrl)}" alt="" loading="lazy">`
+    : "";
+  return `
+    <a href="spreadsheet.html" class="product-card product-more-card" aria-label="View ${remaining} more products">
+      ${background}
+      <span class="product-more-overlay"></span>
+      <span class="product-more-content">+ ${remaining} more</span>
+    </a>
+  `;
+}
+
 function podiumImage(item) {
   if (item.imageUrl) {
     return `<img class="podium-img-real" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name || "Product image")}" loading="lazy">`;
@@ -135,21 +148,39 @@ function seasonalItems(items, season) {
   return picked.length ? picked : items;
 }
 
+let currentHomeItems = [];
+
+function visibleProductCount(target) {
+  if (window.matchMedia("(max-width: 720px)").matches) return 1;
+  const gap = 16;
+  const minimumCardWidth = 200;
+  const capacity = Math.max(1, Math.floor((target.clientWidth + gap) / (minimumCardWidth + gap)));
+  return Math.max(1, capacity - 1);
+}
+
+function renderProductRow(target, items) {
+  if (!target) return;
+  const count = Math.min(items.length, visibleProductCount(target));
+  const remaining = Math.max(0, items.length - count);
+  const backgroundItem = items[count] || items[items.length - 1];
+  target.innerHTML = items.slice(0, count).map(productCard).join("") + moreProductCard(remaining, backgroundItem);
+}
+
 function renderSeasonProducts(items, seasonName) {
   window.activeSeason = seasonName;
   document.querySelectorAll(".season-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.season === seasonName));
-  const seasonal = seasonalItems(items, seasonName);
-  const visibleLimit = seasonName === "summer" ? 8 : 6;
-  const target = document.getElementById("season-grid");
-  const moreButton = document.getElementById("season-more-count");
-  if (target) target.innerHTML = seasonal.slice(0, visibleLimit).map(productCard).join("");
-  if (moreButton) moreButton.textContent = `+ ${Math.max(0, seasonal.length - visibleLimit)} more`;
+  renderProductRow(document.getElementById("season-grid"), seasonalItems(items, seasonName));
+}
+
+function renderProductRows(items) {
+  renderProductRow(document.getElementById("our-picks-grid"), items);
+  renderSeasonProducts(items, window.activeSeason || "summer");
 }
 
 function renderHomeProducts(items) {
   const podium = document.getElementById("podium-grid");
-  const picks = document.getElementById("our-picks-grid");
   if (!items.length) return;
+  currentHomeItems = items;
 
   const best = items.filter(item => item.badge === "best");
   const podiumItems = (best.length >= 3 ? best : items).slice(0, 3);
@@ -157,16 +188,20 @@ function renderHomeProducts(items) {
     podium.innerHTML = podiumItems.map((item, index) => podiumCard(item, medals[index], index * 0.1)).join("");
   }
 
-  const visiblePicks = items.slice(0, 6);
-  const picksMoreButton = document.getElementById("our-picks-more-count");
-  if (picks) picks.innerHTML = visiblePicks.map(productCard).join("");
-  if (picksMoreButton) picksMoreButton.textContent = `+ ${Math.max(0, items.length - visiblePicks.length)} more`;
-  renderSeasonProducts(items, window.activeSeason || "summer");
+  renderProductRows(items);
   renderTicker(items);
 
-  window.setSeason = seasonName => renderSeasonProducts(items, seasonName);
-  window.renderSeason = seasonName => renderSeasonProducts(items, seasonName);
+  window.setSeason = seasonName => renderSeasonProducts(currentHomeItems, seasonName);
+  window.renderSeason = seasonName => renderSeasonProducts(currentHomeItems, seasonName);
 }
+
+let resizeTimer;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (currentHomeItems.length) renderProductRows(currentHomeItems);
+  }, 120);
+});
 
 async function loadHomeProducts() {
   try {
