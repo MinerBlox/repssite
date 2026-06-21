@@ -318,6 +318,22 @@
       .converter-box { padding: 18px; }
       .converter-actions { flex-direction: column; }
       .converter-btn { width: 100%; }
+
+      #our-picks-grid,
+      #season-grid {
+        grid-template-columns: none;
+        grid-auto-flow: column;
+        grid-auto-columns: 100%;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+      }
+      #our-picks-grid::-webkit-scrollbar,
+      #season-grid::-webkit-scrollbar { display: none; }
+      #our-picks-grid > .product-card,
+      #season-grid > .product-card { scroll-snap-align: start; }
     }
 
     /* ── MODAL ── */
