@@ -297,6 +297,16 @@ function setupProductSearch() {
 
   input.addEventListener("input", () => renderProductSearch(input.value));
   input.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (searchActiveIndex >= 0 && searchMatches[searchActiveIndex]) {
+        window.location.href = itemHref(searchMatches[searchActiveIndex]);
+      } else {
+        const query = input.value.trim();
+        if (query) window.location.href = `spreadsheet.html?search=${encodeURIComponent(query)}`;
+      }
+      return;
+    }
     if (!searchMatches.length || document.getElementById("product-search-results").hidden) {
       if (event.key === "Escape") closeProductSearch();
       return;
