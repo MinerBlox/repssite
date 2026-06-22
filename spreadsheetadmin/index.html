@@ -225,6 +225,7 @@
         description: raw.description || "",
         tags: Array.isArray(raw.tags) ? raw.tags : String(raw.tags || "").split(",").map(tag => tag.trim()).filter(Boolean),
         isActive: raw.isActive !== false,
+        isOurPick: raw.isOurPick === true,
         sortOrder: Number(raw.sortOrder || 0)
       };
     }
@@ -241,6 +242,7 @@
         description: card.querySelector('[data-field="description"]').value,
         tags: card.querySelector('[data-field="tags"]').value,
         isActive: card.querySelector('[data-field="isActive"]').checked,
+        isOurPick: card.querySelector('[data-field="isOurPick"]').checked,
         sortOrder: card.querySelector('[data-field="sortOrder"]').value
       });
     }
@@ -283,7 +285,8 @@
               <div class="field span-6"><label>Product URL</label><input data-field="productUrl" value="${escapeHtml(item.productUrl)}"></div>
               <div class="field span-2"><label>Sort Order</label><input data-field="sortOrder" type="number" step="1" value="${Number(item.sortOrder || 0)}"></div>
               <label class="toggle-line span-4"><input data-field="isActive" type="checkbox" ${item.isActive !== false ? "checked" : ""}> Active on site</label>
-              <div class="field span-8"><label>Tags, comma separated</label><input data-field="tags" value="${escapeHtml((item.tags || []).join(", "))}"></div>
+              <label class="toggle-line span-4"><input data-field="isOurPick" type="checkbox" ${item.isOurPick === true ? "checked" : ""}> Show in Our Picks</label>
+              <div class="field span-4"><label>Tags, comma separated</label><input data-field="tags" value="${escapeHtml((item.tags || []).join(", "))}"></div>
               <div class="field span-12"><label>Description</label><textarea data-field="description">${escapeHtml(item.description)}</textarea></div>
               <div class="span-12"><button class="btn danger" type="button" data-delete>Delete item</button></div>
             </div>
