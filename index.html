@@ -47,8 +47,8 @@
     @keyframes rc-fade-in-step { from { opacity: 0; transform: scale(0.96) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
     @keyframes rc-product-particle {
       0%, 12% { opacity: 0; transform: translate(-50%, -50%) scale(0.28); }
-      28% { opacity: 0.3; }
-      68% { opacity: 0.16; }
+      28% { opacity: 0.16; }
+      68% { opacity: 0.08; }
       100% {
         opacity: 0;
         transform: translate(calc(-50% + var(--particle-dx)), calc(-50% + var(--particle-dy))) scale(1.12);
@@ -177,9 +177,9 @@
     .hero-particles { position: absolute; z-index: 1; inset: -86px -108px; pointer-events: none; overflow: visible; }
     .hero-product-particle {
       position: absolute; left: var(--particle-x); top: var(--particle-y);
-      width: clamp(28px, 3.6vw, 48px); aspect-ratio: 1; object-fit: cover;
-      border-radius: 8px; opacity: 0; border: 1px solid rgba(255,255,255,0.16);
-      box-shadow: 0 8px 22px rgba(0,0,0,0.18);
+      width: var(--particle-size, 32px); max-height: 54px; object-fit: contain;
+      opacity: 0; border: 0; background: transparent;
+      filter: drop-shadow(0 8px 12px rgba(0,0,0,0.22));
       animation: rc-product-particle var(--particle-duration) ease-out var(--particle-delay) infinite;
       will-change: transform, opacity;
     }
@@ -240,6 +240,8 @@
       color: var(--text);
     }
 
+    .mobile-product-link { display: none; }
+
     /* ── PODIUM CARDS ── */
     .podium-grid {
       display: grid;
@@ -263,8 +265,8 @@
       border-radius: 99px; font-size: 11px; font-weight: 900;
     }
     .podium-img { width: 100%; flex: 1; min-height: 170px; position: relative; display: flex; align-items: center; justify-content: center; background: var(--surface2); overflow: hidden; }
-    .podium-img-real { width: 100%; height: 100%; object-fit: contain; display: block; padding: 14px; background: var(--surface2); }
-    .podium-watermark { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+    .podium-img-real { position: relative; z-index: 2; width: 100%; height: 100%; object-fit: contain; display: block; padding: 14px; background: var(--surface2); }
+    .podium-watermark { position: absolute; z-index: 1; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
     .podium-watermark span { font-size: 72px; font-weight: 900; opacity: 0.08; font-family: 'Syne', sans-serif; }
     .podium-body { padding: 16px; background: var(--surface); }
     .podium-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; margin-bottom: 4px; color: var(--text); }
@@ -288,7 +290,7 @@
     .brands-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
     .brand-card {
       min-height: 170px; padding: 28px 20px; border-radius: 14px;
-      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+      display: grid; grid-template-rows: 76px 18px; align-content: center; justify-items: center; gap: 10px;
       color: var(--text); background: var(--surface); border: 1px solid var(--border);
       transition: transform 0.2s, border-color 0.2s, background 0.2s;
     }
@@ -299,9 +301,9 @@
     .brand-mark-nike { width: min(37.5%, 120px); height: 40px; }
     .brand-mark-mertra { width: 72px; }
     .brand-mark-ralph { width: 29px; height: 54px; }
-    .brand-name { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; color: var(--muted); }
+    .brand-name { grid-row: 2; align-self: end; min-height: 18px; font-family: 'Syne', sans-serif; font-size: 12px; line-height: 18px; font-weight: 700; color: var(--muted); }
     body.light .brand-card-ralph img { filter: invert(1); }
-    .brand-card-coming { position: relative; isolation: isolate; overflow: hidden; cursor: default; }
+    .brand-card-coming { position: relative; isolation: isolate; overflow: hidden; display: flex; cursor: default; }
     .brand-card-coming::before {
       content: ""; position: absolute; z-index: -2; inset: -14px;
       background: var(--surface2); filter: blur(12px); opacity: 0.9;
@@ -402,7 +404,7 @@
       #hero { padding: 72px 20px; }
       .hero-title { font-size: clamp(42px, 12vw, 54px); letter-spacing: 0; overflow-wrap: anywhere; }
       .hero-particles { inset: -62px -32px; }
-      .hero-product-particle { width: 30px; border-radius: 6px; }
+      .hero-product-particle { max-width: 32px; }
       .hero-sub { font-size: 15px; }
       .section { width: 100%; padding: 48px 20px; }
       .section-title { font-size: 25px; }
@@ -432,6 +434,10 @@
       #season-grid::-webkit-scrollbar { display: none; }
       #our-picks-grid > .product-card,
       #season-grid > .product-card { scroll-snap-align: start; }
+      .mobile-product-link {
+        display: inline-flex; margin-top: 14px; min-height: 44px; align-items: center;
+        color: #fff; font-size: 13px; font-weight: 700;
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -618,7 +624,7 @@
       <div>
         <div class="community-badge">🏆 Community Ranked</div>
         <h2 class="section-title">Best Sellers</h2>
-        <p class="section-sub">The top 3 community-voted rep finds right now</p>
+        <p class="section-sub">The top 3 most popular rep finds right now</p>
       </div>
     </div>
     <div class="podium-grid" id="podium-grid"></div>
@@ -635,6 +641,7 @@
       </div>
     </div>
     <div class="product-grid" id="our-picks-grid"></div>
+    <a href="spreadsheet.html" class="mobile-product-link">View all our picks --&gt;</a>
   </div>
 
   <hr class="divider">
@@ -653,6 +660,7 @@
       <button class="season-tab" data-season="winter" onclick="setSeason('winter')">❄️ Winter Finds</button>
     </div>
     <div class="product-grid" id="season-grid"></div>
+    <a href="spreadsheet.html" class="mobile-product-link">View all season finds --&gt;</a>
   </div>
 
   <hr class="divider">
@@ -736,7 +744,7 @@
         <a href="https://hipobuy.com/register?inviteCode=QTYP3P8P5" target="_blank" rel="noopener noreferrer">HipoBuy</a>
       </div>
     </div>
-    <div class="footer-copy">© 2026 repscentral. All rights reserved. Built by RepsCentral with a little bit of AI.</div>
+    <div class="footer-copy">© 2026 repscentral. All rights reserved.</div>
   </footer>
 
 </div><!-- /#root -->
@@ -821,7 +829,6 @@ const sellers = [
 const tools = [
   { id: "t1", icon: "🛒", name: "HipoBuy Agent", desc: "Register on HipoBuy and get up to 40% off your shipping fee.", featured: true, badge: "Recommended", cta: "Register Now", ctaPrimary: true, href: HIPOBUY_LINK },
   { id: "t2", icon: "🏆", name: "Agent Ranking", desc: "Compare all shopping agents and find the best one for you.", featured: false, cta: "View", ctaPrimary: false, href: "#" },
-  { id: "t3", icon: "📦", name: "Tracking", desc: "Track your parcel status with ease.", featured: false, cta: "Check", ctaPrimary: false, href: "#" },
   { id: "t4", icon: "🔗", name: "Link Converter", desc: "Convert links from multiple platforms instantly.", featured: false, cta: "Open", ctaPrimary: false, href: "link-converter.html" },
   { id: "t5", icon: "🚢", name: "Shipping Calculator", desc: "Calculate shipping costs before ordering.", featured: false, cta: "Calculate", ctaPrimary: false, href: "#" },
   { id: "t6", icon: "🔗", name: "Link Converter", desc: "Convert marketplace and agent links into HipoBuy-ready links.", featured: false, cta: "Convert", ctaPrimary: false, href: "#link-converter" },
@@ -1350,6 +1357,6 @@ document.getElementById("modal-overlay").addEventListener("click", function(e) {
   if (e.target === this) closeModal();
 });
 </script>
-<script type="module" src="home-products.js?v=2026-06-21-3"></script>
+<script type="module" src="home-products.js?v=2026-06-22-1"></script>
 </body>
 </html>
