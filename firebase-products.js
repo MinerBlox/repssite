@@ -154,6 +154,11 @@ async function loadProducts() {
 
   renderCategoryChips();
   renderItems();
+
+  const loading = document.getElementById("spreadsheet-loading");
+  const grid = document.getElementById("product-grid");
+  if (loading) loading.style.display = "none";
+  if (grid) grid.style.display = "grid";
 }
 
 window.setCategory = setCategory;
