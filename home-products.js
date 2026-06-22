@@ -108,7 +108,7 @@ function podiumCard(item, medal, delay) {
       </div>
       <div class="podium-body">
         <div class="podium-name">${escapeHtml(item.name || "Unnamed item")}</div>
-        <p class="podium-desc">${escapeHtml(item.description || "Popular spreadsheet find from Firebase.")}</p>
+        <p class="podium-desc">${escapeHtml(item.description || `#${medal.rank} most popular product this week`)}</p>
         <div class="podium-footer">
           <span class="podium-price" style="color:${medal.textColor}">${formatPrice(item)}</span>
           <span class="podium-cat">${escapeHtml(item.category || "Unsorted")}</span>
@@ -191,10 +191,10 @@ function visibleProductCount(target) {
   return Math.max(1, capacity - 1);
 }
 
-function renderProductRow(target, items) {
+function renderProductRow(target, items, moreCount) {
   if (!target) return;
   const count = Math.min(items.length, visibleProductCount(target));
-  const remaining = Math.max(0, items.length - count);
+  const remaining = moreCount ?? Math.max(0, items.length - count);
   const backgroundItem = items[count] || items[items.length - 1];
   target.innerHTML = items.slice(0, count).map(productCard).join("") + moreProductCard(remaining, backgroundItem);
 }
@@ -207,7 +207,7 @@ function renderSeasonProducts(items, seasonName) {
 
 function renderProductRows(items) {
   const selectedPicks = items.filter(item => item.isOurPick === true);
-  renderProductRow(document.getElementById("our-picks-grid"), selectedPicks.length ? selectedPicks : items);
+  renderProductRow(document.getElementById("our-picks-grid"), selectedPicks.length ? selectedPicks : items, items.length);
   renderSeasonProducts(items, window.activeSeason || "summer");
 }
 
@@ -225,9 +225,115 @@ function renderHomeProducts(items) {
   renderProductRows(items);
   renderTicker(items);
   renderHeroParticles(items);
+  setupProductSearch();
 
   window.setSeason = seasonName => renderSeasonProducts(currentHomeItems, seasonName);
   window.renderSeason = seasonName => renderSeasonProducts(currentHomeItems, seasonName);
+}
+
+
+let searchActiveIndex = -1;
+let searchMatches = [];
+
+function closeProductSearch() {
+  const results = document.getElementById("product-search-results");
+  const input = document.getElementById("product-search-input");
+  if (!results || !input) return;
+  results.hidden = true;
+  input.setAttribute("aria-expanded", "false");
+  searchActiveIndex = -1;
+}
+
+function updateSearchActiveResult() {
+  document.querySelectorAll(".nav-search-result").forEach((result, index) => {
+    const active = index === searchActiveIndex;
+    result.classList.toggle("active", active);
+    result.setAttribute("aria-selected", String(active));
+  });
+}
+
+function renderProductSearch(query) {
+  const results = document.getElementById("product-search-results");
+  const input = document.getElementById("product-search-input");
+  if (!results || !input) return;
+
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) {
+    closeProductSearch();
+    results.innerHTML = "";
+    return;
+  }
+
+  searchMatches = currentHomeItems.filter(item => {
+    const searchable = `${item.name || ""} ${item.category || ""} ${(item.tags || []).join(" ")}`.toLowerCase();
+    return searchable.includes(normalized);
+  }).slice(0, 6);
+  searchActiveIndex = -1;
+
+  if (!searchMatches.length) {
+    results.innerHTML = '<div class="nav-search-empty">No matching spreadsheet products.</div>';
+  } else {
+    results.innerHTML = searchMatches.map((item, index) => {
+      const image = item.imageUrl
+        ? `<img src="${escapeHtml(item.imageUrl)}" alt="" loading="lazy">`
+        : '<span class="nav-search-thumb-empty" aria-hidden="true">-</span>';
+      return `<a class="nav-search-result" role="option" aria-selected="false" data-search-index="${index}" href="${escapeHtml(itemHref(item))}">
+        ${image}
+        <span><span class="nav-search-result-name">${escapeHtml(item.name || "Unnamed item")}</span><span class="nav-search-result-category">${escapeHtml(item.category || "Unsorted")}</span></span>
+        <span class="nav-search-result-price">${formatPrice(item)}</span>
+      </a>`;
+    }).join("");
+  }
+
+  results.hidden = false;
+  input.setAttribute("aria-expanded", "true");
+}
+
+function setupProductSearch() {
+  const form = document.getElementById("product-search-form");
+  const input = document.getElementById("product-search-input");
+  if (!form || !input || form.dataset.ready === "true") return;
+  form.dataset.ready = "true";
+
+  input.addEventListener("input", () => renderProductSearch(input.value));
+  input.addEventListener("keydown", event => {
+    if (!searchMatches.length || document.getElementById("product-search-results").hidden) {
+      if (event.key === "Escape") closeProductSearch();
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      searchActiveIndex = (searchActiveIndex + 1) % searchMatches.length;
+      updateSearchActiveResult();
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      searchActiveIndex = (searchActiveIndex - 1 + searchMatches.length) % searchMatches.length;
+      updateSearchActiveResult();
+    } else if (event.key === "Escape") {
+      closeProductSearch();
+    }
+  });
+
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+    if (searchActiveIndex >= 0 && searchMatches[searchActiveIndex]) {
+      window.location.href = itemHref(searchMatches[searchActiveIndex]);
+      return;
+    }
+    const query = input.value.trim();
+    if (query) window.location.href = `spreadsheet.html?search=${encodeURIComponent(query)}`;
+  });
+
+  document.addEventListener("keydown", event => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      input.focus();
+      renderProductSearch(input.value);
+    }
+  });
+  document.addEventListener("click", event => {
+    if (!form.contains(event.target)) closeProductSearch();
+  });
 }
 
 let resizeTimer;
