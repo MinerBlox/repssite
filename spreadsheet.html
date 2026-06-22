@@ -561,6 +561,14 @@
       .product-price, .podium-price, .counter-number, .progress-label, .intro-step-num, .podium-watermark span, .ticker-item span:nth-child(3) { font-family: Arial, Helvetica, sans-serif !important; font-variant-numeric: tabular-nums; letter-spacing: 0 !important; }     .product-top { overflow: hidden; }
     .product-image { width: 100%; height: 100%; object-fit: contain; display: block; padding: 10px; background: var(--surface2); }
     .item-badge:empty { display: none; }
+    .spreadsheet-loading {
+      min-height: 260px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body class="dark">
@@ -581,6 +589,7 @@
         <summary class="nav-link">Links ▾</summary>
         <div class="dropdown-menu">
           <a href="link-converter.html" class="dropdown-link">Link Converter</a>
+          <a href="agents.html" class="dropdown-link">Agent Ranking</a>
         </div>
       </details>
     </div>
@@ -624,7 +633,8 @@
           </div>
         </div>
 
-        <div id="product-grid" class="product-grid"></div>
+        <div id="spreadsheet-loading" class="spreadsheet-loading">Loading spreadsheet...</div>
+        <div id="product-grid" class="product-grid" style="display:none;"></div>
         <div id="empty-state" class="empty-state" style="display:none;">
           <h3>No items found</h3>
           <p>Try changing the search term or selecting a different category.</p>
@@ -640,28 +650,7 @@
   </div>
 
   <script>
-    const mockItems = [
-      { id: '1', name: 'Lanvin Curb Light Gray Blue', price: '$85.59', category: 'Shoes', badge: 'best' },
-      { id: '2', name: 'Lanvin Curb White Black', price: '$84.54', category: 'Shoes', badge: 'popular' },
-      { id: '3', name: 'Broken Planet Performance Hoodie', price: '$42.59', category: 'Hoodies', badge: 'best' },
-      { id: '4', name: 'Peace in War Sweden Hoodie', price: '$35.42', category: 'Hoodies', badge: 'new' },
-      { id: '5', name: 'Nike NOCTA Tech Fleece Pants', price: '$20.10', category: 'Pants', badge: 'budget' },
-      { id: '6', name: 'Gallery Dept Souvenir Tee', price: '$10.22', category: 'T-Shirts', badge: 'budget' },
-      { id: '7', name: 'Chrome Hearts Trucker Cap', price: '$12.02', category: 'Hats', badge: 'popular' },
-      { id: '8', name: 'Stone Island Shadow Hoodie', price: '$62.45', category: 'Hoodies', badge: 'best' },
-      { id: '9', name: 'Bottega Veneta Intrecciato Socks', price: '$8.90', category: 'Socks', badge: 'new' },
-      { id: '10', name: 'Adidas Samba Wales Bonner', price: '$42.07', category: 'Shoes', badge: 'popular' },
-      { id: '11', name: 'Moncler Maya Down Jacket', price: '$120.00', category: 'Jackets', badge: 'best' },
-      { id: '12', name: 'Ralph Lauren Slim Fit Tee', price: '$9.85', category: 'T-Shirts', badge: 'budget' },
-      { id: '13', name: 'Carhartt Detroit Jacket', price: '$48.30', category: 'Jackets', badge: 'popular' },
-      { id: '14', name: 'Needles Track Pants', price: '$38.90', category: 'Pants', badge: 'best' },
-      { id: '15', name: 'Acne Studios Face Scarf', price: '$18.50', category: 'Accessories', badge: 'new' },
-      { id: '16', name: 'Nike Everyday Crew Socks', price: '$6.50', category: 'Socks', badge: 'budget' }
-    ];
-
     let theme = localStorage.getItem('rc-theme') || 'dark';
-    let selectedCategory = 'All';
-    let searchTerm = '';
 
     function applyTheme() {
       document.body.className = theme;
@@ -669,11 +658,9 @@
       const icon = document.getElementById('theme-icon');
       if (label) label.textContent = theme === 'dark' ? 'Light' : 'Dark';
       if (icon) {
-        if (theme === 'dark') {
-          icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
-        } else {
-          icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
-        }
+        icon.innerHTML = theme === 'dark'
+          ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+          : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
       }
     }
 
@@ -683,106 +670,8 @@
       applyTheme();
     }
 
-    function getCategories(items) {
-      return ['All', ...new Set(items.map(item => item.category))];
-    }
-
-    function badgeLabel(type) {
-      if (type === 'best') return 'Best Batch';
-      if (type === 'budget') return 'Budget';
-      if (type === 'new') return 'New';
-      return 'Popular';
-    }
-
-    function itemCard(item) {
-      return `
-        <article class="product-card">
-          <div class="product-top">
-            <span class="item-badge ${item.badge}">${badgeLabel(item.badge)}</span>
-            <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l4-4 4 4 4-4 4 4"/><path d="M3 15l4-4 4 4 4-4 4 4"/></svg>
-          </div>
-          <div class="product-body">
-            <div class="product-name">${item.name}</div>
-            <div class="product-meta">
-              <span class="product-price">${item.price}</span>
-              <span class="product-category">${item.category}</span>
-            </div>
-            <div class="product-actions">
-              <a href="#" class="product-btn primary">View Item</a>
-              <a href="#" class="product-btn">Copy Link</a>
-            </div>
-          </div>
-        </article>
-      `;
-    }
-
-    function renderCategoryChips() {
-      const wrap = document.getElementById('category-chips');
-      const categories = getCategories(mockItems);
-      wrap.innerHTML = categories.map(category => `
-        <button class="category-chip ${selectedCategory === category ? 'active' : ''}" onclick="setCategory('${category.replace(/'/g, "\\'")}')">${category}</button>
-      `).join('');
-    }
-
-    function getFilteredItems() {
-      return mockItems.filter(item => {
-        const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
-        const value = `${item.name} ${item.category}`.toLowerCase();
-        const matchesSearch = value.includes(searchTerm.trim().toLowerCase());
-        return matchesCategory && matchesSearch;
-      });
-    }
-
-    function renderItems() {
-      const items = getFilteredItems();
-      const grid = document.getElementById('product-grid');
-      const empty = document.getElementById('empty-state');
-      const count = document.getElementById('results-count');
-      const copy = document.getElementById('results-copy');
-      const filterPill = document.getElementById('active-filter-pill');
-
-      count.textContent = `${items.length} item${items.length === 1 ? '' : 's'}`;
-      filterPill.textContent = `Category: ${selectedCategory}`;
-
-      if (searchTerm.trim()) {
-        copy.textContent = `Showing results for “${searchTerm.trim()}” in ${selectedCategory === 'All' ? 'all categories' : selectedCategory}.`;
-      } else if (selectedCategory !== 'All') {
-        copy.textContent = `Showing all items in ${selectedCategory}.`;
-      } else {
-        copy.textContent = 'Showing every item in the spreadsheet.';
-      }
-
-      if (!items.length) {
-        grid.innerHTML = '';
-        empty.style.display = 'block';
-        return;
-      }
-
-      empty.style.display = 'none';
-      grid.innerHTML = items.map(itemCard).join('');
-    }
-
-    function setCategory(category) {
-      selectedCategory = category;
-      renderCategoryChips();
-      renderItems();
-    }
-
-    function clearCategory() {
-      selectedCategory = 'All';
-      renderCategoryChips();
-      renderItems();
-    }
-
-    document.getElementById('search-input').addEventListener('input', (event) => {
-      searchTerm = event.target.value;
-      renderItems();
-    });
-
     applyTheme();
-    renderCategoryChips();
-    renderItems();
   </script>
-  <script type="module" src="firebase-products.js"></script>
+  <script type="module" src="firebase-products.js?v=2026-06-22-2"></script>
 </body>
 </html>
