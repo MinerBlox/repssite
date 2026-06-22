@@ -137,9 +137,12 @@ function renderHeroParticles(items) {
   const target = document.getElementById("hero-particles");
   if (!target) return;
 
-  const images = items
-    .filter(item => item.imageUrl)
-    .filter((item, index) => index % 2 === 0);
+  const sourceImages = items.filter(item => item.imageUrl);
+  const particleCount = Math.min(30, sourceImages.length);
+  const images = Array.from({ length: particleCount }, (_, index) => {
+    const sourceIndex = Math.floor((index * sourceImages.length) / Math.max(particleCount, 1));
+    return sourceImages[sourceIndex];
+  });
 
   target.innerHTML = images.map((item, index) => {
     const angle = (Math.PI * 2 * index) / Math.max(images.length, 1);
@@ -203,7 +206,8 @@ function renderSeasonProducts(items, seasonName) {
 }
 
 function renderProductRows(items) {
-  renderProductRow(document.getElementById("our-picks-grid"), items);
+  const selectedPicks = items.filter(item => item.isOurPick === true);
+  renderProductRow(document.getElementById("our-picks-grid"), selectedPicks.length ? selectedPicks : items);
   renderSeasonProducts(items, window.activeSeason || "summer");
 }
 
