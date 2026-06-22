@@ -303,7 +303,7 @@
     .brand-mark-ralph { width: 29px; height: 54px; }
     .brand-name { grid-row: 2; align-self: end; min-height: 18px; font-family: 'Syne', sans-serif; font-size: 12px; line-height: 18px; font-weight: 700; color: var(--muted); }
     body.light .brand-card-ralph img { filter: invert(1); }
-    .brand-card-coming { position: relative; isolation: isolate; overflow: hidden; display: flex; cursor: default; }
+    .brand-card-coming { position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: center; justify-content: center; text-align: center; cursor: default; }
     .brand-card-coming::before {
       content: ""; position: absolute; z-index: -2; inset: -14px;
       background: var(--surface2); filter: blur(12px); opacity: 0.9;
@@ -565,6 +565,7 @@
         <summary class="nav-link">Links ▾</summary>
         <div class="dropdown-menu">
           <a href="link-converter.html" class="dropdown-link">Link Converter</a>
+          <a href="agents.html" class="dropdown-link">Agent Ranking</a>
         </div>
       </details>
     </div>
@@ -578,6 +579,7 @@
         <a href="#">Outfits</a>
         <a href="#">Sellers</a>
         <a href="link-converter.html">Link Converter</a>
+        <a href="agents.html">Agent Ranking</a>
       </div>
     </details>
     <button class="nav-search">
@@ -828,7 +830,7 @@ const sellers = [
 
 const tools = [
   { id: "t1", icon: "🛒", name: "HipoBuy Agent", desc: "Register on HipoBuy and get up to 40% off your shipping fee.", featured: true, badge: "Recommended", cta: "Register Now", ctaPrimary: true, href: HIPOBUY_LINK },
-  { id: "t2", icon: "🏆", name: "Agent Ranking", desc: "Compare all shopping agents and find the best one for you.", featured: false, cta: "View", ctaPrimary: false, href: "#" },
+  { id: "t2", icon: "◎", name: "Quality Check", desc: "Find real pictures before you buy your favourite items!", featured: false, cta: "Browse", ctaPrimary: false, href: "spreadsheet.html" },
   { id: "t4", icon: "🔗", name: "Link Converter", desc: "Convert links from multiple platforms instantly.", featured: false, cta: "Open", ctaPrimary: false, href: "link-converter.html" },
   { id: "t5", icon: "🚢", name: "Shipping Calculator", desc: "Calculate shipping costs before ordering.", featured: false, cta: "Calculate", ctaPrimary: false, href: "#" },
   { id: "t6", icon: "🔗", name: "Link Converter", desc: "Convert marketplace and agent links into HipoBuy-ready links.", featured: false, cta: "Convert", ctaPrimary: false, href: "#link-converter" },
@@ -1357,6 +1359,6 @@ document.getElementById("modal-overlay").addEventListener("click", function(e) {
   if (e.target === this) closeModal();
 });
 </script>
-<script type="module" src="home-products.js?v=2026-06-22-1"></script>
+<script type="module" src="home-products.js?v=2026-06-22-2"></script>
 </body>
 </html>
