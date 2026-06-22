@@ -137,26 +137,28 @@ function renderHeroParticles(items) {
   const target = document.getElementById("hero-particles");
   if (!target) return;
 
-  const positions = [
-    { x: 8, y: 52, dx: -64, dy: -12, delay: -2, duration: 16 },
-    { x: 22, y: 24, dx: -42, dy: -54, delay: -7, duration: 18 },
-    { x: 40, y: 16, dx: -14, dy: -62, delay: -11, duration: 15 },
-    { x: 60, y: 16, dx: 14, dy: -62, delay: -4, duration: 17 },
-    { x: 78, y: 24, dx: 42, dy: -54, delay: -13, duration: 19 },
-    { x: 92, y: 52, dx: 64, dy: -12, delay: -9, duration: 16 },
-    { x: 72, y: 82, dx: 34, dy: 54, delay: -5, duration: 18 },
-    { x: 28, y: 82, dx: -34, dy: 54, delay: -15, duration: 20 }
-  ];
+  const images = items
+    .filter(item => item.imageUrl)
+    .filter((item, index) => index % 2 === 0);
 
-  const images = items.filter(item => item.imageUrl).slice(0, positions.length);
   target.innerHTML = images.map((item, index) => {
-    const position = positions[index];
+    const angle = (Math.PI * 2 * index) / Math.max(images.length, 1);
+    const radiusX = index % 2 === 0 ? 44 : 38;
+    const radiusY = index % 3 === 0 ? 46 : 40;
+    const x = 50 + Math.cos(angle) * radiusX;
+    const y = 50 + Math.sin(angle) * radiusY;
+    const dx = Math.round(Math.cos(angle) * (72 + (index % 4) * 8));
+    const dy = Math.round(Math.sin(angle) * (54 + (index % 3) * 8));
+    const delay = -((index * 1.7) % 24);
+    const duration = 18 + (index % 7);
+    const size = 26 + (index % 5) * 4;
+
     return `<img
       class="hero-product-particle"
       src="${escapeHtml(item.imageUrl)}"
       alt=""
       decoding="async"
-      style="--particle-x:${position.x}%;--particle-y:${position.y}%;--particle-dx:${position.dx}px;--particle-dy:${position.dy}px;--particle-delay:${position.delay}s;--particle-duration:${position.duration}s"
+      style="--particle-x:${x.toFixed(2)}%;--particle-y:${y.toFixed(2)}%;--particle-dx:${dx}px;--particle-dy:${dy}px;--particle-delay:${delay.toFixed(1)}s;--particle-duration:${duration}s;--particle-size:${size}px"
     >`;
   }).join("");
 }
