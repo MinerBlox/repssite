@@ -599,7 +599,11 @@
         grid-template-columns: 1fr;
       }
     }
-      .product-price, .podium-price, .counter-number, .progress-label, .intro-step-num, .podium-watermark span, .ticker-item span:nth-child(3) { font-family: Arial, Helvetica, sans-serif !important; font-variant-numeric: tabular-nums; letter-spacing: 0 !important; } </style>
+      .product-price, .podium-price, .counter-number, .progress-label, .intro-step-num, .podium-watermark span, .ticker-item span:nth-child(3) { font-family: Arial, Helvetica, sans-serif !important; font-variant-numeric: tabular-nums; letter-spacing: 0 !important; }     @media (max-width: 520px) {
+      .topbar > div { min-width: 0; max-width: 100%; }
+      .page-title { font-size: 34px; line-height: 1; overflow-wrap: anywhere; }
+    }
+  </style>
 </head>
 <body class="dark">
   <div id="root">
