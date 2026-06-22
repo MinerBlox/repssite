@@ -16,7 +16,7 @@ const db = getFirestore(app);
 
 let firebaseItems = [];
 let selectedCategory = "All";
-let searchTerm = "";
+let searchTerm = new URLSearchParams(window.location.search).get("search") || "";
 
 function categories(items) {
   return ["All", ...new Set(items.map(item => item.category).filter(Boolean))];
@@ -165,7 +165,9 @@ window.setCategory = setCategory;
 window.clearCategory = clearCategory;
 window.copyProductLink = copyProductLink;
 
-document.getElementById("search-input").addEventListener("input", event => {
+const spreadsheetSearchInput = document.getElementById("search-input");
+spreadsheetSearchInput.value = searchTerm;
+spreadsheetSearchInput.addEventListener("input", event => {
   searchTerm = event.target.value;
   renderItems();
 });
