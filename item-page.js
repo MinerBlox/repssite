@@ -181,18 +181,28 @@ function extractQcPhotos(payload) {
   const topLevelKeys = payload && typeof payload === "object" ? Object.keys(payload).slice(0, 20) : [];
   const dataCount = Array.isArray(payload?.data) ? payload.data.length : null;
   qcLog("Extracting QC photos from payload", { type: typeof payload, topLevelKeys, dataCount });
-  window.__rcQcDebug.payload = payload;
 
   const raw = JSON.stringify(payload || {}).replace(/\\\//g, "/");
   const rawMatches = raw.match(/https?:\/\/[^"'\s<>\\]+?\.(?:jpg|jpeg|png|webp)(?:\?[^"'\s<>\\]*)?/gi) || [];
   const recursiveMatches = collectImageUrls(payload);
-  const photos = [...new Set([...recursiveMatches, ...rawMatches])]
+  return [...new Set([...recursiveMatches, ...rawMatches])]
     .map(url => url.replace(/,+$/, ""))
     .filter(url => /\.(jpg|jpeg|png|webp)(\?|$)/i.test(url));
+}
 
-  qcLog("Extracted QC photo URLs", { count: photos.length, photos });
-  window.__rcQcDebug.photos = photos;
-  return photos;
+function extractQcEntries(sources) {
+  const seen = new Set();
+  const entries = [];
+  sources.forEach(source => {
+    extractQcPhotos(source.payload).forEach(url => {
+      if (seen.has(url)) return;
+      seen.add(url);
+      entries.push({ url, provider: source.provider });
+    });
+  });
+  qcLog("Extracted attributed QC photos", { count: entries.length, providers: [...new Set(entries.map(entry => entry.provider))] });
+  window.__rcQcDebug.entries = entries;
+  return entries;
 }
 
 async function fetchJsonWithDebug(url, label) {
@@ -221,12 +231,15 @@ async function fetchJsonWithDebug(url, label) {
 }
 
 async function fetchQcPayload(urls) {
-  const payloads = [];
+  const sources = [];
 
   try {
     const proxyPayload = await fetchJsonWithDebug(urls.proxyUrl, "QC proxy API");
     window.__rcQcDebug.proxyPayload = proxyPayload;
-    payloads.push(proxyPayload.data || proxyPayload);
+    const proxyData = proxyPayload.data || proxyPayload;
+    if (proxyData.acbuy) sources.push({ provider: "ACBuy", payload: proxyData.acbuy });
+    if (proxyData.oopbuy) sources.push({ provider: "OopBuy", payload: proxyData.oopbuy });
+    if (!proxyData.acbuy && !proxyData.oopbuy) sources.push({ provider: "ACBuy", payload: proxyData });
   } catch (proxyError) {
     qcWarn("QC proxy failed, trying direct provider fallbacks", { message: proxyError.message });
     window.__rcQcDebug.proxyError = proxyError.message;
@@ -234,7 +247,7 @@ async function fetchQcPayload(urls) {
     try {
       const directPayload = await fetchJsonWithDebug(urls.directUrl, "direct ACBuy API");
       window.__rcQcDebug.directPayload = directPayload;
-      payloads.push(directPayload);
+      sources.push({ provider: "ACBuy", payload: directPayload });
     } catch (acbuyError) {
       qcWarn("Direct ACBuy fallback failed", { message: acbuyError.message });
     }
@@ -243,14 +256,14 @@ async function fetchQcPayload(urls) {
   try {
     const oopbuyPayload = await fetchJsonWithDebug(urls.oopbuyDirectUrl, "direct OopBuy API");
     window.__rcQcDebug.oopbuyPayload = oopbuyPayload;
-    payloads.push(oopbuyPayload);
+    sources.push({ provider: "OopBuy", payload: oopbuyPayload });
   } catch (oopbuyError) {
-    qcWarn("Direct OopBuy fallback failed", { message: oopbuyError.message });
+    qcWarn("Direct OopBuy fallback failed; the server proxy is required on static hosting", { message: oopbuyError.message });
     window.__rcQcDebug.oopbuyError = oopbuyError.message;
   }
 
-  if (!payloads.length) throw new Error("No QC provider returned data");
-  return payloads;
+  if (!sources.length) throw new Error("No QC provider returned data");
+  return sources;
 }
 
 function renderNotFound(message = "This product could not be found in Firebase.") {
@@ -275,6 +288,92 @@ function renderQcState(message) {
   }
 }
 
+
+let activeQcEntries = [];
+let activeQcIndex = 0;
+let qcReturnFocus = null;
+
+function ensureQcLightbox() {
+  let lightbox = document.getElementById("qc-lightbox");
+  if (lightbox) return lightbox;
+  document.body.insertAdjacentHTML("beforeend", `
+    <div class="qc-lightbox" id="qc-lightbox" role="dialog" aria-modal="true" aria-label="QC image viewer" hidden>
+      <div class="qc-lightbox-top">
+        <p>QC provided by <strong id="qc-lightbox-provider">ACBuy</strong></p>
+        <button class="qc-lightbox-icon" id="qc-lightbox-close" type="button" aria-label="Close QC image viewer">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <button class="qc-lightbox-arrow prev" id="qc-lightbox-prev" type="button" aria-label="Previous QC image">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <img class="qc-lightbox-image" id="qc-lightbox-image" alt="">
+      <button class="qc-lightbox-arrow next" id="qc-lightbox-next" type="button" aria-label="Next QC image">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <div class="qc-lightbox-counter" id="qc-lightbox-counter">QC: 1/1</div>
+    </div>
+  `);
+  lightbox = document.getElementById("qc-lightbox");
+  document.getElementById("qc-lightbox-close").addEventListener("click", closeQcLightbox);
+  document.getElementById("qc-lightbox-prev").addEventListener("click", () => moveQcLightbox(-1));
+  document.getElementById("qc-lightbox-next").addEventListener("click", () => moveQcLightbox(1));
+  lightbox.addEventListener("click", event => { if (event.target === lightbox) closeQcLightbox(); });
+  return lightbox;
+}
+
+function updateQcLightbox() {
+  const entry = activeQcEntries[activeQcIndex];
+  if (!entry) return;
+  document.getElementById("qc-lightbox-image").src = entry.url;
+  document.getElementById("qc-lightbox-image").alt = `QC picture ${activeQcIndex + 1} provided by ${entry.provider}`;
+  document.getElementById("qc-lightbox-provider").textContent = entry.provider;
+  document.getElementById("qc-lightbox-counter").textContent = `QC: ${activeQcIndex + 1}/${activeQcEntries.length}`;
+}
+
+function openQcLightbox(index, trigger) {
+  if (!activeQcEntries.length) return;
+  activeQcIndex = index;
+  qcReturnFocus = trigger || null;
+  const lightbox = ensureQcLightbox();
+  updateQcLightbox();
+  lightbox.hidden = false;
+  document.body.style.overflow = "hidden";
+  document.getElementById("qc-lightbox-close").focus();
+}
+
+function closeQcLightbox() {
+  const lightbox = document.getElementById("qc-lightbox");
+  if (!lightbox || lightbox.hidden) return;
+  lightbox.hidden = true;
+  document.body.style.overflow = "";
+  if (qcReturnFocus) qcReturnFocus.focus();
+}
+
+function moveQcLightbox(direction) {
+  if (!activeQcEntries.length) return;
+  activeQcIndex = (activeQcIndex + direction + activeQcEntries.length) % activeQcEntries.length;
+  updateQcLightbox();
+}
+
+function bindQcLightbox(grid, entries) {
+  activeQcEntries = entries;
+  ensureQcLightbox();
+  grid.onclick = event => {
+    const trigger = event.target.closest("[data-qc-index]");
+    if (!trigger) return;
+    openQcLightbox(Number(trigger.dataset.qcIndex), trigger);
+  };
+}
+
+document.addEventListener("keydown", event => {
+  const lightbox = document.getElementById("qc-lightbox");
+  if (!lightbox || lightbox.hidden) return;
+  if (event.key === "ArrowLeft") moveQcLightbox(-1);
+  if (event.key === "ArrowRight") moveQcLightbox(1);
+  if (event.key === "Escape") closeQcLightbox();
+});
+
 async function loadQcPictures(item) {
   qcLog("Starting QC picture load", { id: item.id, name: item.name });
   const qcGrid = document.getElementById("qc-grid");
@@ -289,21 +388,22 @@ async function loadQcPictures(item) {
   if (qcCopy) qcCopy.textContent = "Loading QC pictures...";
 
   try {
-    const payload = await fetchQcPayload(urls);
-    const photos = extractQcPhotos(payload);
+    const sources = await fetchQcPayload(urls);
+    const entries = extractQcEntries(sources);
 
-    if (!photos.length) {
+    if (!entries.length) {
       renderQcState("The QC providers replied, but there were no image links for this item.");
       return;
     }
 
-    if (qcCopy) qcCopy.textContent = `${photos.length} QC picture${photos.length === 1 ? "" : "s"} loaded.`;
-    qcGrid.innerHTML = photos.map((photo, index) => `
-      <a class="qc-link" href="${escapeHtml(photo)}" target="_blank" rel="noopener noreferrer">
-        <img class="qc-image" src="${escapeHtml(photo)}" alt="QC picture ${index + 1}" loading="lazy">
-      </a>
+    if (qcCopy) qcCopy.textContent = `${entries.length} QC picture${entries.length === 1 ? "" : "s"} loaded.`;
+    qcGrid.innerHTML = entries.map((entry, index) => `
+      <button class="qc-link" type="button" data-qc-index="${index}" aria-label="Open QC picture ${index + 1}, provided by ${escapeHtml(entry.provider)}">
+        <img class="qc-image" src="${escapeHtml(entry.url)}" alt="QC picture ${index + 1}" loading="lazy">
+      </button>
     `).join("");
-    qcLog("QC pictures rendered", { count: photos.length });
+    bindQcLightbox(qcGrid, entries);
+    qcLog("QC pictures rendered", { count: entries.length });
   } catch (error) {
     qcWarn("Could not load QC pictures", { message: error.message, name: error.name, stack: error.stack });
     renderQcState("Could not load QC pictures yet. Open the console and search [RC QC].");
@@ -359,7 +459,7 @@ function renderProduct(item) {
 }
 
 try {
-  qcLog("Item page script loaded", { path: window.location.pathname, search: window.location.search, basePath: basePath(), version: "qc-2026-06-23-oopbuy" });
+  qcLog("Item page script loaded", { path: window.location.pathname, search: window.location.search, basePath: basePath(), version: "qc-2026-06-23-lightbox" });
   const parts = window.location.pathname.split("/").filter(Boolean);
   if (!parts.includes("items")) {
     renderNotFound("This page could not be found.");
