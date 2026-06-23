@@ -147,7 +147,9 @@ function qcApiUrls(item) {
 
   const proxyUrl = `/api/qc?platform=${encodeURIComponent(details.platform)}&goodsId=${encodeURIComponent(details.itemId)}`;
   const directUrl = `https://www.acbuy.com/prefix-api/store-product/product/api/item/Photos?goodsId=${encodeURIComponent(details.goodsId)}`;
-  const urls = { ...details, proxyUrl, directUrl };
+  const oopbuyChannel = details.platform === "TB" ? "TAOBAO" : details.platform === "AL" ? "1688" : "weidian";
+  const oopbuyDirectUrl = `https://webapi.oopbuy.com/orderProduct/getSpuPurchaseInfo?spuNo=${encodeURIComponent(details.itemId)}&channel=${encodeURIComponent(oopbuyChannel)}`;
+  const urls = { ...details, proxyUrl, directUrl, oopbuyDirectUrl, oopbuyChannel };
   qcLog("Built QC API URLs", urls);
   window.__rcQcDebug.apiUrl = proxyUrl;
   window.__rcQcDebug.proxyUrl = proxyUrl;
@@ -219,18 +221,36 @@ async function fetchJsonWithDebug(url, label) {
 }
 
 async function fetchQcPayload(urls) {
+  const payloads = [];
+
   try {
     const proxyPayload = await fetchJsonWithDebug(urls.proxyUrl, "QC proxy API");
     window.__rcQcDebug.proxyPayload = proxyPayload;
-    return proxyPayload.data || proxyPayload;
+    payloads.push(proxyPayload.data || proxyPayload);
   } catch (proxyError) {
-    qcWarn("QC proxy failed, trying direct ACBuy fallback", { message: proxyError.message });
+    qcWarn("QC proxy failed, trying direct provider fallbacks", { message: proxyError.message });
     window.__rcQcDebug.proxyError = proxyError.message;
+
+    try {
+      const directPayload = await fetchJsonWithDebug(urls.directUrl, "direct ACBuy API");
+      window.__rcQcDebug.directPayload = directPayload;
+      payloads.push(directPayload);
+    } catch (acbuyError) {
+      qcWarn("Direct ACBuy fallback failed", { message: acbuyError.message });
+    }
   }
 
-  const directPayload = await fetchJsonWithDebug(urls.directUrl, "direct ACBuy API");
-  window.__rcQcDebug.directPayload = directPayload;
-  return directPayload;
+  try {
+    const oopbuyPayload = await fetchJsonWithDebug(urls.oopbuyDirectUrl, "direct OopBuy API");
+    window.__rcQcDebug.oopbuyPayload = oopbuyPayload;
+    payloads.push(oopbuyPayload);
+  } catch (oopbuyError) {
+    qcWarn("Direct OopBuy fallback failed", { message: oopbuyError.message });
+    window.__rcQcDebug.oopbuyError = oopbuyError.message;
+  }
+
+  if (!payloads.length) throw new Error("No QC provider returned data");
+  return payloads;
 }
 
 function renderNotFound(message = "This product could not be found in Firebase.") {
@@ -273,7 +293,7 @@ async function loadQcPictures(item) {
     const photos = extractQcPhotos(payload);
 
     if (!photos.length) {
-      renderQcState("ACBuy replied, but there were no QC image links in the response for this item.");
+      renderQcState("The QC providers replied, but there were no image links for this item.");
       return;
     }
 
@@ -339,7 +359,7 @@ function renderProduct(item) {
 }
 
 try {
-  qcLog("Item page script loaded", { path: window.location.pathname, search: window.location.search, basePath: basePath(), version: "qc-2026-06-18-2" });
+  qcLog("Item page script loaded", { path: window.location.pathname, search: window.location.search, basePath: basePath(), version: "qc-2026-06-23-oopbuy" });
   const parts = window.location.pathname.split("/").filter(Boolean);
   if (!parts.includes("items")) {
     renderNotFound("This page could not be found.");
