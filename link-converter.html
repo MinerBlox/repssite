@@ -713,23 +713,22 @@
       text-align: center;
     }
     .converter-platform-grid {
-      flex: 1;
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      align-items: stretch;
+      align-items: start;
       gap: 8px;
     }
     .converter-platform {
       min-width: 0;
-      min-height: 132px;
-      height: 100%;
+      min-height: 0;
+      aspect-ratio: 1 / 1.08;
       overflow: hidden;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 13px;
-      padding: 12px 6px;
+      gap: 10px;
+      padding: 10px 6px;
       border: 1px solid #29292e;
       border-radius: 14px;
       background: #18181c;
@@ -747,7 +746,7 @@
       display: block;
       width: 78px;
       max-width: 84%;
-      height: 30px;
+      height: 26px;
       object-fit: contain;
       object-position: center;
     }
@@ -768,6 +767,15 @@
       font-weight: 800;
     }
     .converter-platform-status svg { flex: 0 0 auto; }
+    .converter-platform-note {
+      margin-top: auto;
+      padding-top: 18px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.55;
+      text-align: center;
+    }
+    .converter-platform-note p + p { margin-top: 5px; }
     .converter-description {
       color: var(--muted);
       font-size: 15px;
@@ -958,6 +966,10 @@
                 <img class="converter-platform-logo converter-platform-logo-1688" src="systemimages/1688logo.png" alt="1688">
                 <div class="converter-platform-status">Supported <svg width="11" height="9" viewBox="0 0 11 9" fill="none" aria-hidden="true"><path d="M1 4.5 4 7.5 10 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
               </div>
+            </div>
+            <div class="converter-platform-note">
+              <p>If links do not work, they may have been removed by the seller.</p>
+              <p>Alternatively, it may be worth trying a different agent.</p>
             </div>
           </div>
         </div>
