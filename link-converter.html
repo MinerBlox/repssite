@@ -548,33 +548,34 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow-y: auto;
       padding: 20px;
-      background: rgba(0,0,0,0.85);
-      backdrop-filter: blur(8px);
+      background: rgba(0,0,0,0.88);
+      backdrop-filter: blur(10px);
       animation: rc-fadein 0.2s ease;
     }
-    body.light .converter-overlay { background: rgba(10,20,50,0.60); }
+    body.light .converter-overlay { background: rgba(10,20,50,0.66); }
     .converter-overlay[hidden] { display: none; }
     .converter-dialog {
       position: relative;
       width: min(860px, 100%);
-      max-height: calc(100dvh - 40px);
-      overflow: auto;
+      overflow: hidden;
       border: 1px solid var(--border);
       border-radius: 16px;
       background: var(--bg);
       color: var(--text);
-      box-shadow: 0 24px 60px rgba(0,0,0,0.42);
+      box-shadow: 0 28px 80px rgba(0,0,0,0.52);
       animation: rc-slideup 0.3s cubic-bezier(0.22,1,0.36,1);
     }
     .converter-dialog-bar {
       height: 3px;
-      background: linear-gradient(90deg, #4da6ff 0%, #7dd3fc 50%, #4da6ff 100%);
+      background: var(--blue);
+      box-shadow: 0 0 22px rgba(77,166,255,0.65);
     }
     .converter-dialog-close {
       position: absolute;
-      top: 16px;
-      right: 16px;
+      top: 15px;
+      right: 15px;
       z-index: 2;
       display: inline-flex;
       align-items: center;
@@ -589,40 +590,98 @@
     .converter-dialog-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      min-height: 480px;
     }
     .converter-panel {
       display: flex;
       flex-direction: column;
-      padding: 56px 44px 40px;
+      min-width: 0;
+      padding: 42px 38px 34px;
     }
+    .converter-panel-primary { background: var(--surface); }
     .converter-panel + .converter-panel { border-left: 1px solid var(--border); }
+    .converter-panel-badge {
+      align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      margin-bottom: 18px;
+      padding: 0 11px;
+      border: 1px solid rgba(77,166,255,0.28);
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
     .converter-panel h2 {
       font-family: 'Syne', sans-serif;
-      font-size: clamp(25px, 3vw, 34px);
+      font-size: clamp(28px, 3vw, 38px);
       line-height: 1;
       font-weight: 800;
-      margin-bottom: 28px;
+      letter-spacing: 0;
+      margin-bottom: 12px;
     }
-    .converter-copy {
-      width: 100%;
-      min-height: 48px;
-      margin-top: 30px;
-      padding: 0 20px;
-      border-radius: 8px;
+    .converter-panel-lead {
+      min-height: 42px;
+      margin-bottom: 22px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .converter-benefits {
+      display: grid;
+      gap: 8px;
+    }
+    .converter-benefit {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-height: 44px;
+      padding: 0 13px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .converter-benefit-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      flex: 0 0 22px;
+      border-radius: 50%;
       background: var(--blue);
       color: #fff;
+    }
+    .converter-copy {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      width: 100%;
+      min-height: 52px;
+      margin-top: 22px;
+      padding: 0 20px;
+      border-radius: 14px;
       font-size: 13px;
       font-weight: 800;
-      transition: opacity 0.15s;
+      transition: opacity 0.15s, transform 0.15s, background 0.15s;
     }
-    .converter-copy:hover { opacity: 0.88; }
-    .converter-lines {
-      display: grid;
-      gap: 10px;
+    .converter-copy:hover { opacity: 0.9; transform: translateY(-1px); }
+    .converter-copy-primary {
+      background: var(--blue);
+      color: #fff;
+      box-shadow: 0 8px 26px rgba(77,166,255,0.28);
+    }
+    .converter-copy-secondary {
+      background: var(--surface2);
+      border: 1px solid var(--border);
       color: var(--text);
-      font-size: 16px;
-      line-height: 1.45;
     }
     .converter-description {
       color: var(--muted);
@@ -630,36 +689,50 @@
       line-height: 1.65;
     }
     .converter-warning {
-      margin-top: 18px;
+      display: flex;
+      gap: 12px;
+      margin-top: 22px;
+      padding: 15px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface2);
       color: var(--text);
-      font-size: 14px;
-      line-height: 1.6;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .converter-warning svg {
+      flex: 0 0 18px;
+      margin-top: 1px;
+      color: var(--blue);
     }
     .converter-signup {
-      margin-top: auto;
-      padding-top: 38px;
+      margin-top: 24px;
+      padding-top: 22px;
       border-top: 1px solid var(--border);
     }
     .converter-signup h3 {
       font-family: 'Syne', sans-serif;
-      font-size: 17px;
+      font-size: 16px;
       line-height: 1.25;
-      margin-bottom: 14px;
+      letter-spacing: 0;
+      margin-bottom: 12px;
     }
     .converter-signup-button {
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 48px;
-      border-radius: 8px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text);
+      min-height: 46px;
+      border-radius: 10px;
+      background: transparent;
+      border: 1px solid rgba(77,166,255,0.4);
+      color: var(--blue);
       font-size: 13px;
       font-weight: 800;
+      transition: background 0.15s, color 0.15s;
     }
+    .converter-signup-button:hover { background: var(--blue-soft); }
     .converter-signup-note {
-      margin-top: 10px;
+      margin-top: 9px;
       color: var(--muted);
       font-size: 12px;
       line-height: 1.5;
@@ -673,13 +746,18 @@
       clip: rect(0,0,0,0);
     }
     @media (max-width: 700px) {
-      .converter-overlay { padding: 12px; align-items: flex-end; }
-      .converter-dialog { max-height: calc(100dvh - 24px); }
-      .converter-dialog-grid { grid-template-columns: 1fr; min-height: 0; }
-      .converter-panel { padding: 42px 24px 28px; }
-      .converter-panel + .converter-panel { border-left: 0; border-top: 1px solid var(--border); }
-      .converter-signup { margin-top: 32px; }
-      .converter-panel h2 { margin-bottom: 20px; }
+      .converter-overlay {
+        align-items: flex-start;
+        padding: 12px;
+      }
+      .converter-dialog { margin: auto 0; }
+      .converter-dialog-grid { grid-template-columns: 1fr; }
+      .converter-panel { padding: 38px 22px 28px; }
+      .converter-panel + .converter-panel {
+        border-left: 0;
+        border-top: 1px solid var(--border);
+      }
+      .converter-panel-lead { min-height: 0; }
     }
 
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
@@ -751,14 +829,16 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
       <div class="converter-dialog-grid">
-        <div class="converter-panel">
+        <div class="converter-panel converter-panel-primary">
+          <div class="converter-panel-badge">✦ RepsCentral x HipoBuy</div>
           <h2 id="hipobuy-link-title">HIPOBUY LINK</h2>
-          <div class="converter-lines">
-            <p>Best agent.</p>
-            <p>25% off shipping.</p>
-            <p>No bait-and-switch.</p>
+          <p class="converter-panel-lead">The recommended way to buy your item.</p>
+          <div class="converter-benefits">
+            <div class="converter-benefit"><span class="converter-benefit-icon"><svg width="12" height="10" viewBox="0 0 12 10" fill="none" aria-hidden="true"><path d="M1 5L4.2 8.2L11 1.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Best agent.</span></div>
+            <div class="converter-benefit"><span class="converter-benefit-icon"><svg width="12" height="10" viewBox="0 0 12 10" fill="none" aria-hidden="true"><path d="M1 5L4.2 8.2L11 1.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>25% off shipping.</span></div>
+            <div class="converter-benefit"><span class="converter-benefit-icon"><svg width="12" height="10" viewBox="0 0 12 10" fill="none" aria-hidden="true"><path d="M1 5L4.2 8.2L11 1.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>No bait-and-switch.</span></div>
           </div>
-          <button class="converter-copy" id="copy-hipobuy-button" type="button" onclick="copyPopupLink('hipobuy')">COPY HIPOBUY LINK</button>
+          <button class="converter-copy converter-copy-primary" id="copy-hipobuy-button" type="button" onclick="copyPopupLink('hipobuy')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>COPY HIPOBUY LINK</span></button>
           <div class="converter-signup">
             <h3>Haven't already signed up?</h3>
             <a class="converter-signup-button" href="https://hipobuy.com/register?inviteCode=QTYP3P8P5" target="_blank" rel="noopener noreferrer">SIGN UP</a>
@@ -766,10 +846,14 @@
           </div>
         </div>
         <div class="converter-panel">
+          <div class="converter-panel-badge">Original marketplace</div>
           <h2>RAW LINK</h2>
-          <p class="converter-description">Paste anywhere to view the item on your preferred agent.</p>
-          <p class="converter-warning">Please note some agents may switch your item for a lower-quality batch.</p>
-          <button class="converter-copy" id="copy-raw-button" type="button" onclick="copyPopupLink('raw')">COPY RAW LINK</button>
+          <p class="converter-panel-lead converter-description">Paste anywhere to view the item on your preferred agent.</p>
+          <div class="converter-warning">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span>Please note some agents may switch your item for a lower-quality batch.</span>
+          </div>
+          <button class="converter-copy converter-copy-secondary" id="copy-raw-button" type="button" onclick="copyPopupLink('raw')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>COPY RAW LINK</span></button>
         </div>
       </div>
       <div class="converter-modal-status" id="converter-modal-status" aria-live="polite"></div>
