@@ -697,8 +697,11 @@
     }
     .converter-copy-link:hover { color: var(--text); }
     .converter-platforms {
-      margin-top: auto;
-      padding-top: 24px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      margin-top: 22px;
+      padding-top: 0;
     }
     .converter-platforms-title {
       margin-bottom: 11px;
@@ -710,13 +713,16 @@
       text-align: center;
     }
     .converter-platform-grid {
+      flex: 1;
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
+      align-items: stretch;
       gap: 8px;
     }
     .converter-platform {
       min-width: 0;
-      min-height: 104px;
+      min-height: 132px;
+      height: 100%;
       overflow: hidden;
       display: flex;
       flex-direction: column;
@@ -728,6 +734,14 @@
       border-radius: 14px;
       background: #18181c;
       text-align: center;
+    }
+    .converter-platform-name {
+      color: #fff;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      line-height: 1;
+      text-transform: uppercase;
     }
     .converter-platform-logo {
       display: block;
@@ -930,14 +944,17 @@
             <div class="converter-platforms-title">Supported marketplaces</div>
             <div class="converter-platform-grid">
               <div class="converter-platform">
+                <div class="converter-platform-name">Weidian</div>
                 <img class="converter-platform-logo converter-platform-logo-weidian" src="systemimages/weidianlogo.png" alt="Weidian">
                 <div class="converter-platform-status">Supported <svg width="11" height="9" viewBox="0 0 11 9" fill="none" aria-hidden="true"><path d="M1 4.5 4 7.5 10 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
               </div>
               <div class="converter-platform">
+                <div class="converter-platform-name">Taobao</div>
                 <img class="converter-platform-logo converter-platform-logo-taobao" src="systemimages/taobaologo.png" alt="Taobao">
                 <div class="converter-platform-status">Supported <svg width="11" height="9" viewBox="0 0 11 9" fill="none" aria-hidden="true"><path d="M1 4.5 4 7.5 10 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
               </div>
               <div class="converter-platform">
+                <div class="converter-platform-name">1688</div>
                 <img class="converter-platform-logo converter-platform-logo-1688" src="systemimages/1688logo.png" alt="1688">
                 <div class="converter-platform-status">Supported <svg width="11" height="9" viewBox="0 0 11 9" fill="none" aria-hidden="true"><path d="M1 4.5 4 7.5 10 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
               </div>
