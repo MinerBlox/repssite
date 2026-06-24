@@ -44,7 +44,9 @@
     @keyframes rc-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 
     #root {
-      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
       background: var(--bg);
       color: var(--text);
       transition: background 0.2s, color 0.2s;
@@ -164,9 +166,14 @@
     }
 
     .page-shell {
+      width: 100%;
       max-width: 1380px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
       margin: 0 auto;
-      padding: 26px 40px 64px;
+      padding: 32px 40px;
       animation: rc-fadein 0.45s ease both;
     }
 
