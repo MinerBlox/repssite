@@ -350,7 +350,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      margin-bottom: 18px;
+      margin-bottom: 14px;
       flex-wrap: wrap;
     }
 
@@ -564,7 +564,7 @@
       border-radius: 16px;
       background: var(--bg);
       color: var(--text);
-      box-shadow: 0 28px 80px rgba(0,0,0,0.52);
+      box-shadow: 0 0 38px rgba(77,166,255,0.14), 0 28px 80px rgba(0,0,0,0.52);
       animation: rc-slideup 0.3s cubic-bezier(0.22,1,0.36,1);
     }
     .converter-dialog-bar {
@@ -595,7 +595,7 @@
       display: flex;
       flex-direction: column;
       min-width: 0;
-      padding: 42px 38px 34px;
+      padding: 36px 38px 30px;
     }
     .converter-panel-primary { background: var(--surface); }
     .converter-panel + .converter-panel { border-left: 1px solid var(--border); }
@@ -625,7 +625,7 @@
     }
     .converter-panel-lead {
       min-height: 42px;
-      margin-bottom: 22px;
+      margin-bottom: 18px;
       color: var(--muted);
       font-size: 14px;
       line-height: 1.55;
@@ -638,7 +638,7 @@
       display: flex;
       align-items: center;
       gap: 11px;
-      min-height: 44px;
+      min-height: 40px;
       padding: 0 13px;
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -683,6 +683,69 @@
       border: 1px solid var(--border);
       color: var(--text);
     }
+    .converter-copy-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      min-height: 40px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      transition: color 0.15s;
+    }
+    .converter-copy-link:hover { color: var(--text); }
+    .converter-platforms {
+      margin-top: auto;
+      padding-top: 24px;
+    }
+    .converter-platforms-title {
+      margin-bottom: 11px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-align: center;
+    }
+    .converter-platform-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .converter-platform {
+      min-width: 0;
+      min-height: 96px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 13px;
+      padding: 12px 6px;
+      border: 1px solid #29292e;
+      border-radius: 14px;
+      background: #18181c;
+      text-align: center;
+    }
+    .converter-platform-logo {
+      max-width: 100%;
+      color: #fff;
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(12px, 1.3vw, 16px);
+      font-weight: 800;
+      letter-spacing: 0;
+      line-height: 1;
+    }
+    .converter-platform-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--blue);
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .converter-platform-status svg { flex: 0 0 auto; }
     .converter-description {
       color: var(--muted);
       font-size: 15px;
@@ -706,8 +769,8 @@
       color: var(--blue);
     }
     .converter-signup {
-      margin-top: 24px;
-      padding-top: 22px;
+      margin-top: 18px;
+      padding-top: 18px;
       border-top: 1px solid var(--border);
     }
     .converter-signup h3 {
@@ -838,14 +901,15 @@
             <div class="converter-benefit"><span class="converter-benefit-icon"><svg width="12" height="10" viewBox="0 0 12 10" fill="none" aria-hidden="true"><path d="M1 5L4.2 8.2L11 1.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>25% off shipping.</span></div>
             <div class="converter-benefit"><span class="converter-benefit-icon"><svg width="12" height="10" viewBox="0 0 12 10" fill="none" aria-hidden="true"><path d="M1 5L4.2 8.2L11 1.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>No bait-and-switch.</span></div>
           </div>
-          <button class="converter-copy converter-copy-primary" id="copy-hipobuy-button" type="button" onclick="copyPopupLink('hipobuy')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>COPY HIPOBUY LINK</span></button>
+          <button class="converter-copy converter-copy-primary" id="go-hipobuy-button" type="button" onclick="openConvertedLink()"><span>GO TO LINK</span><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
+          <button class="converter-copy-link" id="copy-hipobuy-button" type="button" onclick="copyPopupLink('hipobuy')"><span data-copy-label>Copy HipoBuy link</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg></button>
           <div class="converter-signup">
             <h3>Haven't already signed up?</h3>
             <a class="converter-signup-button" href="https://hipobuy.com/register?inviteCode=QTYP3P8P5" target="_blank" rel="noopener noreferrer">SIGN UP</a>
             <p class="converter-signup-note">Includes 25% off shipping coupons.</p>
           </div>
         </div>
-        <div class="converter-panel">
+        <div class="converter-panel converter-panel-raw">
           <div class="converter-panel-badge">Original marketplace</div>
           <h2>RAW LINK</h2>
           <p class="converter-panel-lead converter-description">Paste anywhere to view the item on your preferred agent.</p>
@@ -853,7 +917,24 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             <span>Please note some agents may switch your item for a lower-quality batch.</span>
           </div>
-          <button class="converter-copy converter-copy-secondary" id="copy-raw-button" type="button" onclick="copyPopupLink('raw')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>COPY RAW LINK</span></button>
+          <button class="converter-copy converter-copy-secondary" id="copy-raw-button" type="button" onclick="copyPopupLink('raw')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span data-copy-label>COPY RAW LINK</span></button>
+          <div class="converter-platforms">
+            <div class="converter-platforms-title">Supported marketplaces</div>
+            <div class="converter-platform-grid">
+              <div class="converter-platform">
+                <div class="converter-platform-logo">WEIDIAN</div>
+                <div class="converter-platform-status">Supported <svg width="11" height="9" viewBox="0 0 11 9" fill="none" aria-hidden="true"><path d="M1 4.5 4 7.5 10 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              </div>
+              <div class="converter-platform">
+                <div class="converter-platform-logo">TAOBAO</div>
+                <div class="converter-platform-status">Supported <svg width="11" height="9" viewBox="0 0 11 9" fill="none" aria-hidden="true"><path d="M1 4.5 4 7.5 10 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              </div>
+              <div class="converter-platform">
+                <div class="converter-platform-logo">1688</div>
+                <div class="converter-platform-status">Supported <svg width="11" height="9" viewBox="0 0 11 9" fill="none" aria-hidden="true"><path d="M1 4.5 4 7.5 10 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="converter-modal-status" id="converter-modal-status" aria-live="polite"></div>
@@ -1123,14 +1204,15 @@ function convertToHipoBuy() {
 async function copyPopupLink(type) {
   const value = type === "hipobuy" ? convertedHipoBuyLink : convertedRawLink;
   const button = document.getElementById(type === "hipobuy" ? "copy-hipobuy-button" : "copy-raw-button");
-  const defaultLabel = type === "hipobuy" ? "COPY HIPOBUY LINK" : "COPY RAW LINK";
+  const defaultLabel = type === "hipobuy" ? "Copy HipoBuy link" : "COPY RAW LINK";
   const liveStatus = document.getElementById("converter-modal-status");
+  const label = button.querySelector("[data-copy-label]") || button;
 
   try {
     await navigator.clipboard.writeText(value);
-    button.textContent = "COPIED";
+    label.textContent = "COPIED";
     liveStatus.textContent = `${defaultLabel.toLowerCase()} copied.`;
-    setTimeout(() => { button.textContent = defaultLabel; }, 1400);
+    setTimeout(() => { label.textContent = defaultLabel; }, 1400);
   } catch (error) {
     liveStatus.textContent = "Copy failed. Please try again.";
   }
