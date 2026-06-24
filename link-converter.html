@@ -42,6 +42,7 @@
 
     @keyframes rc-fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes rc-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+    @keyframes rc-slideup { from { opacity: 0; transform: translateY(24px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
     #root {
       min-height: 100dvh;
@@ -538,6 +539,149 @@
     .minimal-result[hidden] { display: none; }
     .minimal-output { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font-size: 14px; }
     .minimal-copy { min-height: 40px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); color: var(--text); font-size: 13px; font-weight: 700; cursor: pointer; }
+
+    body.converter-modal-open { overflow: hidden; }
+    .converter-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(8px);
+      animation: rc-fadein 0.2s ease;
+    }
+    body.light .converter-overlay { background: rgba(10,20,50,0.60); }
+    .converter-overlay[hidden] { display: none; }
+    .converter-dialog {
+      position: relative;
+      width: min(860px, 100%);
+      max-height: calc(100dvh - 40px);
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--bg);
+      color: var(--text);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.42);
+      animation: rc-slideup 0.3s cubic-bezier(0.22,1,0.36,1);
+    }
+    .converter-dialog-bar {
+      height: 3px;
+      background: linear-gradient(90deg, #4da6ff 0%, #7dd3fc 50%, #4da6ff 100%);
+    }
+    .converter-dialog-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      color: var(--muted);
+      transition: color 0.15s, background 0.15s;
+    }
+    .converter-dialog-close:hover { color: var(--text); background: var(--surface2); }
+    .converter-dialog-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 480px;
+    }
+    .converter-panel {
+      display: flex;
+      flex-direction: column;
+      padding: 56px 44px 40px;
+    }
+    .converter-panel + .converter-panel { border-left: 1px solid var(--border); }
+    .converter-panel h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(25px, 3vw, 34px);
+      line-height: 1;
+      font-weight: 800;
+      margin-bottom: 28px;
+    }
+    .converter-copy {
+      width: 100%;
+      min-height: 48px;
+      margin-top: 30px;
+      padding: 0 20px;
+      border-radius: 8px;
+      background: var(--blue);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      transition: opacity 0.15s;
+    }
+    .converter-copy:hover { opacity: 0.88; }
+    .converter-lines {
+      display: grid;
+      gap: 10px;
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.45;
+    }
+    .converter-description {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.65;
+    }
+    .converter-warning {
+      margin-top: 18px;
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .converter-signup {
+      margin-top: auto;
+      padding-top: 38px;
+      border-top: 1px solid var(--border);
+    }
+    .converter-signup h3 {
+      font-family: 'Syne', sans-serif;
+      font-size: 17px;
+      line-height: 1.25;
+      margin-bottom: 14px;
+    }
+    .converter-signup-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      border-radius: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .converter-signup-note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      text-align: center;
+    }
+    .converter-modal-status {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+    }
+    @media (max-width: 700px) {
+      .converter-overlay { padding: 12px; align-items: flex-end; }
+      .converter-dialog { max-height: calc(100dvh - 24px); }
+      .converter-dialog-grid { grid-template-columns: 1fr; min-height: 0; }
+      .converter-panel { padding: 42px 24px 28px; }
+      .converter-panel + .converter-panel { border-left: 0; border-top: 1px solid var(--border); }
+      .converter-signup { margin-top: 32px; }
+      .converter-panel h2 { margin-bottom: 20px; }
+    }
+
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
     @media (max-width: 520px) {
       .minimal-input { min-height: 64px; font-size: 18px; }
@@ -600,6 +744,38 @@
   </style>
 </head>
 <body class="dark">
+  <div class="converter-overlay" id="converter-overlay" hidden>
+    <section class="converter-dialog" role="dialog" aria-modal="true" aria-labelledby="hipobuy-link-title">
+      <div class="converter-dialog-bar"></div>
+      <button class="converter-dialog-close" type="button" onclick="closeConverterPopup()" aria-label="Close converted links">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div class="converter-dialog-grid">
+        <div class="converter-panel">
+          <h2 id="hipobuy-link-title">HIPOBUY LINK</h2>
+          <div class="converter-lines">
+            <p>Best agent.</p>
+            <p>25% off shipping.</p>
+            <p>No bait-and-switch.</p>
+          </div>
+          <button class="converter-copy" id="copy-hipobuy-button" type="button" onclick="copyPopupLink('hipobuy')">COPY HIPOBUY LINK</button>
+          <div class="converter-signup">
+            <h3>Haven't already signed up?</h3>
+            <a class="converter-signup-button" href="https://hipobuy.com/register?inviteCode=QTYP3P8P5" target="_blank" rel="noopener noreferrer">SIGN UP</a>
+            <p class="converter-signup-note">Includes 25% off shipping coupons.</p>
+          </div>
+        </div>
+        <div class="converter-panel">
+          <h2>RAW LINK</h2>
+          <p class="converter-description">Paste anywhere to view the item on your preferred agent.</p>
+          <p class="converter-warning">Please note some agents may switch your item for a lower-quality batch.</p>
+          <button class="converter-copy" id="copy-raw-button" type="button" onclick="copyPopupLink('raw')">COPY RAW LINK</button>
+        </div>
+      </div>
+      <div class="converter-modal-status" id="converter-modal-status" aria-live="polite"></div>
+    </section>
+  </div>
+
   <div id="root">
     <div id="banner">
       HipoBuy - The cheapest, best and most reliable Chinese agent.&nbsp;
@@ -812,13 +988,39 @@ function convertLinkValue(rawInput) {
   return { ok: false, reason: "I could not read a supported item ID from that link. Try the original Weidian, Taobao or 1688 product URL instead of a shortened or heavily wrapped agent link." };
 }
 
+let convertedHipoBuyLink = "";
+let convertedRawLink = "";
+
+function buildRawMarketplaceLink(hipobuyLink) {
+  const match = hipobuyLink.match(/\/product\/(weidian|taobao|1688)\/(\d+)/i);
+  if (!match) return "";
+  const platform = match[1].toLowerCase();
+  const id = match[2];
+  if (platform === "weidian") return `https://weidian.com/item.html?itemID=${id}`;
+  if (platform === "taobao") return `https://item.taobao.com/item.htm?id=${id}`;
+  return `https://detail.1688.com/offer/${id}.html`;
+}
+
+function openConverterPopup() {
+  const overlay = document.getElementById("converter-overlay");
+  overlay.hidden = false;
+  document.body.classList.add("converter-modal-open");
+  requestAnimationFrame(() => overlay.querySelector(".converter-dialog-close").focus());
+}
+
+function closeConverterPopup() {
+  document.getElementById("converter-overlay").hidden = true;
+  document.body.classList.remove("converter-modal-open");
+  document.getElementById("converter-input").focus();
+}
+
 function convertToHipoBuy() {
   const input = document.getElementById("converter-input").value;
   const output = document.getElementById("converter-output");
   const status = document.getElementById("converter-status");
   const result = convertLinkValue(input);
-
   const resultWrap = document.getElementById("converter-result");
+
   if (!result.ok) {
     output.value = "";
     resultWrap.hidden = true;
@@ -826,10 +1028,39 @@ function convertToHipoBuy() {
     return;
   }
 
+  convertedHipoBuyLink = result.link;
+  convertedRawLink = buildRawMarketplaceLink(result.link) || unwrapAgentLink(input);
   output.value = result.link;
-  resultWrap.hidden = false;
+  resultWrap.hidden = true;
   status.textContent = "";
+  openConverterPopup();
 }
+
+async function copyPopupLink(type) {
+  const value = type === "hipobuy" ? convertedHipoBuyLink : convertedRawLink;
+  const button = document.getElementById(type === "hipobuy" ? "copy-hipobuy-button" : "copy-raw-button");
+  const defaultLabel = type === "hipobuy" ? "COPY HIPOBUY LINK" : "COPY RAW LINK";
+  const liveStatus = document.getElementById("converter-modal-status");
+
+  try {
+    await navigator.clipboard.writeText(value);
+    button.textContent = "COPIED";
+    liveStatus.textContent = `${defaultLabel.toLowerCase()} copied.`;
+    setTimeout(() => { button.textContent = defaultLabel; }, 1400);
+  } catch (error) {
+    liveStatus.textContent = "Copy failed. Please try again.";
+  }
+}
+
+document.getElementById("converter-overlay").addEventListener("click", (event) => {
+  if (event.target === event.currentTarget) closeConverterPopup();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !document.getElementById("converter-overlay").hidden) {
+    closeConverterPopup();
+  }
+});
 
 async function copyConvertedLink() {
   const output = document.getElementById("converter-output").value.trim();
