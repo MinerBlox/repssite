@@ -14,6 +14,47 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+function injectHomepageModalPolish() {
+  if (document.getElementById("homepage-modal-polish")) return;
+  const style = document.createElement("style");
+  style.id = "homepage-modal-polish";
+  style.textContent = `
+    .modal-box {
+      box-shadow: 0 0 34px rgba(77,166,255,0.24), 0 0 0 1px rgba(77,166,255,0.08), 0 24px 70px rgba(0,0,0,0.52) !important;
+    }
+    body.light .modal-box {
+      box-shadow: 0 0 34px rgba(77,166,255,0.22), 0 0 0 1px rgba(77,166,255,0.1), 0 24px 70px rgba(15,23,42,0.18) !important;
+    }
+    .modal-close {
+      top: 18px !important;
+      right: 18px !important;
+      width: 36px !important;
+      height: 36px !important;
+      padding: 0 !important;
+      display: grid !important;
+      place-items: center !important;
+      border-radius: 999px !important;
+      background: rgba(24,24,28,0.92) !important;
+      border: 1px solid rgba(255,255,255,0.08) !important;
+      backdrop-filter: blur(10px) !important;
+      z-index: 20 !important;
+    }
+    body.light .modal-close {
+      background: rgba(255,255,255,0.92) !important;
+      border-color: rgba(15,23,42,0.1) !important;
+    }
+    .modal-close:hover {
+      color: var(--text) !important;
+      background: var(--surface2) !important;
+      opacity: 0.85 !important;
+    }
+    .modal-body { padding-top: 32px !important; }
+  `;
+  document.head.appendChild(style);
+}
+
+injectHomepageModalPolish();
+
 const medals = [
   { rank: 1, label: "1st", borderColor: "#FFD700", glowColor: "rgba(255,215,0,0.18)", badgeColor: "#FFD700", badgeText: "#000", textColor: "#FFD700", emoji: "🥇" },
   { rank: 2, label: "2nd", borderColor: "#C0C0C0", glowColor: "rgba(192,192,192,0.14)", badgeColor: "#C0C0C0", badgeText: "#000", textColor: "#C0C0C0", emoji: "🥈" },
