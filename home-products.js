@@ -25,218 +25,35 @@ function injectHomepageModalPolish() {
     body.light .modal-box {
       box-shadow: 0 0 34px rgba(77,166,255,0.22), 0 0 0 1px rgba(77,166,255,0.1), 0 24px 70px rgba(15,23,42,0.18) !important;
     }
-    .modal-close { display: none !important; }
-    .modal-box.wide { max-width: 760px !important; }
-    .modal-body { padding: 30px 30px 28px !important; }
-    .tutorial-shot {
-      width: 100%;
-      max-height: 360px;
-      object-fit: contain;
-      display: block;
-      margin: 18px auto 20px;
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      background: var(--surface2);
-      box-shadow: 0 18px 38px rgba(0,0,0,0.24);
+    .modal-close {
+      top: 18px !important;
+      right: 18px !important;
+      width: 36px !important;
+      height: 36px !important;
+      padding: 0 !important;
+      display: grid !important;
+      place-items: center !important;
+      border-radius: 999px !important;
+      background: rgba(24,24,28,0.92) !important;
+      border: 1px solid rgba(255,255,255,0.08) !important;
+      backdrop-filter: blur(10px) !important;
+      z-index: 20 !important;
     }
-    .tutorial-step-copy { text-align: center; max-width: 560px; margin: 0 auto; }
-    .tutorial-step-copy h2 {
-      font-family: 'Syne', sans-serif;
-      font-size: clamp(25px, 5vw, 38px);
-      line-height: 1;
-      margin-bottom: 10px;
-      color: var(--text);
+    body.light .modal-close {
+      background: rgba(255,255,255,0.92) !important;
+      border-color: rgba(15,23,42,0.1) !important;
     }
-    .tutorial-step-copy p { color: var(--muted); font-size: 14px; line-height: 1.55; }
-    .tutorial-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
-    .tutorial-actions.single { grid-template-columns: 1fr; }
-    .tutorial-nav-btn {
-      min-height: 48px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: var(--surface2);
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 800;
-      cursor: pointer;
+    .modal-close:hover {
+      color: var(--text) !important;
+      background: var(--surface2) !important;
+      opacity: 0.85 !important;
     }
-    .tutorial-nav-btn.primary { background: #4da6ff; border-color: transparent; color: #fff; box-shadow: 0 8px 24px rgba(77,166,255,0.26); }
-    .tutorial-nav-btn:disabled { opacity: 0.42; cursor: default; }
-    .tutorial-close-text {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      min-height: 40px;
-      margin: 12px auto 0;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 800;
-      cursor: pointer;
-    }
-    .tutorial-close-text:hover { color: var(--text); }
-    .tutorial-progress { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
-    .tutorial-progress-track { flex: 1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
-    .tutorial-progress-segment { height: 5px; border-radius: 99px; background: var(--surface2); border: 1px solid var(--border); }
-    .tutorial-progress-segment.done { background: #4da6ff; border-color: #4da6ff; }
-    .tutorial-progress-label { font-family: Arial, Helvetica, sans-serif; font-size: 12px; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
-    .tutorial-signup-card {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      margin: 20px 0;
-      padding: 16px;
-      border-radius: 14px;
-      background: var(--surface2);
-      border: 1px solid rgba(77,166,255,0.28);
-      color: var(--text);
-      text-align: left;
-    }
-    .tutorial-signup-card strong { display: block; color: #4da6ff; font-size: 13px; margin-bottom: 4px; }
-    .tutorial-signup-card span { color: var(--muted); font-size: 12px; }
-    @media (max-width: 640px) {
-      .modal-body { padding: 24px 18px 22px !important; }
-      .tutorial-actions { grid-template-columns: 1fr; }
-      .tutorial-shot { max-height: 300px; }
-      .tutorial-signup-card { align-items: flex-start; flex-direction: column; }
-    }
+    .modal-body { padding-top: 32px !important; }
   `;
   document.head.appendChild(style);
 }
 
 injectHomepageModalPolish();
-
-const tutorialSteps = [
-  {
-    title: "First, sign up to HipoBuy.",
-    sub: "Create your account and unlock the shipping coupons.",
-    image: "",
-    action: true
-  },
-  {
-    title: "Browse our spreadsheet.",
-    sub: "Find any item you want and copy the link.",
-    image: "https://github.com/MinerBlox/repssite/blob/main/systemimages/tutorial/step2.png?raw=true"
-  },
-  {
-    title: "Select item size and style.",
-    sub: "Scroll down on most items for size tables.",
-    image: "https://github.com/MinerBlox/repssite/blob/main/systemimages/tutorial/step3.png?raw=true"
-  },
-  {
-    title: "Purchase item.",
-    sub: "Add it to cart or press buy now and checkout.",
-    image: "https://github.com/MinerBlox/repssite/blob/main/systemimages/tutorial/step4.png?raw=true"
-  },
-  {
-    title: "Check QCs.",
-    sub: "Sorry I had to use another product due to lack of time.",
-    image: "https://github.com/MinerBlox/repssite/blob/main/systemimages/tutorial/step5.png?raw=true"
-  }
-];
-
-let tutorialStepIndex = -1;
-
-function tutorialCloseButton() {
-  return `<button class="tutorial-close-text" type="button" onclick="closeModal()">Close tutorial X</button>`;
-}
-
-function renderTutorialIntro() {
-  const content = document.getElementById("modal-content");
-  const box = document.getElementById("modal-box");
-  if (!content || !box) return;
-  box.classList.remove("wide");
-  content.innerHTML = `
-    <div style="text-align:center;margin-bottom:20px">
-      <div class="modal-intro-badge">REPSCENTRAL x HIPOBUY</div>
-      <h2 class="modal-title">BRINGING YOU <span>35% OFF</span> SHIPPING</h2>
-      <p class="modal-sub">in 5 simple steps...</p>
-    </div>
-    <div class="intro-steps">
-      ${[["1","SIGN UP"],["2","BROWSE"],["3","SELECT"],["4","BUY"],["5","QC"]].slice(0,3).map(([num,label],i)=>`
-        <div class="intro-step" style="animation-delay:${i*0.08}s">
-          <div class="intro-step-emoji">${num}</div>
-          <div class="intro-step-label">${label}</div>
-          <div class="intro-step-num">${i+1}</div>
-        </div>
-      `).join("")}
-    </div>
-    <p style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:16px">Still confused? Follow the quick tutorial.</p>
-    <button class="modal-cta" onclick="rcTutorialGo(0)">
-      <div class="modal-cta-left">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <div class="modal-cta-info">
-          <div class="title">START TUTORIAL</div>
-          <div class="sub">Learn everything in 2 minutes - completely free.</div>
-        </div>
-      </div>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-    </button>
-    <button class="modal-dismiss" onclick="window.location.href='spreadsheet.html'">Skip to spreadsheet
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-    </button>
-    ${tutorialCloseButton()}
-  `;
-}
-
-function renderTutorialStep() {
-  const content = document.getElementById("modal-content");
-  const box = document.getElementById("modal-box");
-  if (!content || !box) return;
-  const step = tutorialSteps[tutorialStepIndex];
-  const isFirst = tutorialStepIndex === 0;
-  const isLast = tutorialStepIndex === tutorialSteps.length - 1;
-  box.classList.add("wide");
-  content.innerHTML = `
-    <div style="animation:rc-fadein 0.28s ease">
-      <div class="tutorial-progress">
-        <div class="tutorial-progress-track">
-          ${tutorialSteps.map((_, index) => `<span class="tutorial-progress-segment ${index <= tutorialStepIndex ? "done" : ""}"></span>`).join("")}
-        </div>
-        <span class="tutorial-progress-label">${tutorialStepIndex + 1} / ${tutorialSteps.length}</span>
-      </div>
-      <div class="step-badge">STEP ${tutorialStepIndex + 1}</div>
-      <div class="tutorial-step-copy">
-        <h2>${step.title}</h2>
-        <p>${step.sub}</p>
-      </div>
-      ${step.action ? `
-        <a href="https://hipobuy.com/register?inviteCode=QTYP3P8P5" target="_blank" rel="noopener noreferrer" class="tutorial-signup-card">
-          <div><strong>SIGN UP TO HIPOBUY</strong><span>Includes shipping coupons.</span></div>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </a>
-      ` : `<img class="tutorial-shot" src="${step.image}" alt="${step.title}" loading="eager">`}
-      <div class="tutorial-actions ${isFirst ? "single" : ""}">
-        ${isFirst ? "" : `<button class="tutorial-nav-btn" type="button" onclick="rcTutorialGo(${tutorialStepIndex - 1})">Previous Step</button>`}
-        <button class="tutorial-nav-btn primary" type="button" onclick="${isLast ? "closeModal()" : `rcTutorialGo(${tutorialStepIndex + 1})`}">${isLast ? "Finish Tutorial" : "Next Step"}</button>
-      </div>
-      ${tutorialCloseButton()}
-    </div>
-  `;
-}
-
-window.rcTutorialGo = function rcTutorialGo(index) {
-  tutorialStepIndex = Math.max(0, Math.min(tutorialSteps.length - 1, Number(index) || 0));
-  renderTutorialStep();
-};
-
-window.renderModal = renderTutorialIntro;
-window.goToStep = function goToStep(next) {
-  if (next === "intro") {
-    tutorialStepIndex = -1;
-    renderTutorialIntro();
-    return;
-  }
-  if (next === "done") {
-    closeModal();
-    return;
-  }
-  const match = String(next || "").match(/step(\d+)/);
-  window.rcTutorialGo(match ? Number(match[1]) - 1 : 0);
-};
-
-renderTutorialIntro();
 
 const medals = [
   { rank: 1, label: "1st", borderColor: "#FFD700", glowColor: "rgba(255,215,0,0.18)", badgeColor: "#FFD700", badgeText: "#000", textColor: "#FFD700", emoji: "🥇" },
