@@ -3,995 +3,198 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
-  <title>repscentral — Link Converter</title>
+  <title>repscentral - Link Converter</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'DM Sans', sans-serif; min-height: 100vh; background: #0a0a0b; }
-    a { text-decoration: none; }
-    button, input { font-family: inherit; }
-    button { border: none; cursor: pointer; background: none; }
+    :root { color-scheme: dark; }
+    body { min-height: 100vh; font-family: 'DM Sans', sans-serif; background: #08080a; }
+    a { color: inherit; text-decoration: none; }
+    button, input { font: inherit; }
+    button { border: 0; cursor: pointer; }
 
     body.dark {
-      --bg: #0a0a0b;
-      --surface: #111114;
-      --surface2: #18181c;
-      --surface3: #141418;
-      --border: #252529;
-      --text: #f0f0f0;
-      --muted: #888888;
-      --nav-bg: rgba(10,10,11,0.88);
+      --bg: #08080a;
+      --surface: #101014;
+      --surface2: #17171c;
+      --surface3: #1e1e24;
+      --border: #282832;
+      --text: #f5f6fb;
+      --muted: #9b9ca6;
+      --nav-bg: rgba(8,8,10,0.88);
       --blue: #4da6ff;
-      --blue-soft: rgba(77,166,255,0.12);
+      --blue-soft: rgba(77,166,255,0.13);
     }
 
     body.light {
       --bg: #f5f8ff;
       --surface: #ffffff;
-      --surface2: #e8eef8;
-      --surface3: #f0f4fb;
-      --border: #dde4f0;
-      --text: #1e293b;
-      --muted: #64748b;
+      --surface2: #eef3fb;
+      --surface3: #e4ebf6;
+      --border: #d9e2ef;
+      --text: #172033;
+      --muted: #667085;
       --nav-bg: rgba(245,248,255,0.92);
-      --blue: #4da6ff;
-      --blue-soft: rgba(77,166,255,0.12);
+      --blue: #248df2;
+      --blue-soft: rgba(36,141,242,0.12);
     }
 
-    @keyframes rc-fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes rc-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-    @keyframes rc-slideup { from { opacity: 0; transform: translateY(24px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes fadein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideup { from { opacity: 0; transform: translateY(18px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-    #root {
-      min-height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      background: var(--bg);
-      color: var(--text);
-      transition: background 0.2s, color 0.2s;
-    }
+    #root { min-height: 100dvh; display: flex; flex-direction: column; background: var(--bg); color: var(--text); }
+    #banner { background: var(--blue); color: #fff; text-align: center; padding: 10px 20px; font-size: 13px; font-weight: 600; }
+    #banner a { font-weight: 800; text-decoration: underline; }
 
-    #banner {
-      background: var(--blue);
-      color: #fff;
-      text-align: center;
-      padding: 10px 20px;
-      font-size: 13px;
-      font-weight: 500;
-    }
-
-    #banner a {
-      color: #fff;
-      font-weight: 700;
-      text-decoration: underline;
-    }
-
-    nav {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 0 28px;
-      height: 60px;
-      border-bottom: 1px solid var(--border);
-      background: var(--nav-bg);
-      backdrop-filter: blur(14px);
-    }
-
-    .nav-logo {
-      font-family: 'Syne', sans-serif;
-      font-weight: 800;
-      font-size: 17px;
-      letter-spacing: -0.5px;
-      margin-right: 12px;
-      color: var(--text);
-    }
-
-    .nav-links {
-      display: flex;
-      gap: 2px;
-      flex: 1;
-      overflow-x: auto;
-      scrollbar-width: none;
-    }
-
+    nav { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 8px; height: 60px; padding: 0 28px; border-bottom: 1px solid var(--border); background: var(--nav-bg); backdrop-filter: blur(14px); }
+    .nav-logo { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 800; color: var(--text); margin-right: 12px; }
+    .nav-links { display: flex; gap: 2px; flex: 1; overflow-x: auto; scrollbar-width: none; }
     .nav-links::-webkit-scrollbar { display: none; }
+    .nav-link { padding: 6px 12px; border-radius: 8px; color: var(--muted); font-size: 13px; font-weight: 600; white-space: nowrap; }
+    .nav-link:hover, .nav-link.active { color: var(--text); background: var(--surface2); }
+    .nav-theme { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-size: 13px; font-weight: 600; white-space: nowrap; }
 
-    .nav-link {
-      padding: 6px 12px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--muted);
-      transition: color 0.15s, background 0.15s;
-      white-space: nowrap;
-    }
+    .page-shell { width: min(980px, 100%); margin: 0 auto; padding: 74px 28px 90px; animation: fadein 0.35s ease both; }
+    .hero { text-align: center; margin-bottom: 30px; }
+    .eyebrow { display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px; color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+    .page-title { font-family: 'Syne', sans-serif; font-size: clamp(42px, 7vw, 72px); line-height: 0.95; font-weight: 800; letter-spacing: 0; margin-bottom: 14px; }
+    .page-sub { max-width: 620px; margin: 0 auto; color: var(--muted); font-size: 16px; line-height: 1.65; }
 
-    .nav-link:hover,
-    .nav-link.active {
-      color: var(--text);
-      background: var(--surface2);
-    }
-
-    
-    .nav-dropdown { position: relative; }
-    .nav-dropdown summary { list-style: none; cursor: pointer; }
-    .nav-dropdown summary::-webkit-details-marker { display: none; }
-    .nav-dropdown[open] summary,
-    .nav-dropdown:hover summary { color: var(--text); background: var(--surface2); }
-    .dropdown-menu {
-      position: absolute;
-      top: calc(100% + 10px);
-      left: 0;
-      min-width: 180px;
-      padding: 8px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      box-shadow: 0 12px 28px rgba(0,0,0,0.18);
-      display: none;
-      z-index: 60;
-    }
-    .nav-dropdown[open] .dropdown-menu,
-    .nav-dropdown:hover .dropdown-menu,
-    .nav-dropdown:focus-within .dropdown-menu { display: block; }
-    .dropdown-link {
-      display: block;
-      padding: 10px 12px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-      white-space: nowrap;
-    }
-    .dropdown-link:hover { background: var(--surface2); }
-
-    .nav-theme {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border-radius: 9px;
-      padding: 6px 12px;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--muted);
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      cursor: pointer;
-      margin-left: 4px;
-      white-space: nowrap;
-    }
-
-    .page-shell {
-      width: 100%;
-      max-width: 1380px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      margin: 0 auto;
-      padding: 32px 40px;
-      animation: rc-fadein 0.45s ease both;
-    }
-
-    .topbar {
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
-      gap: 18px;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-    }
-
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      border-radius: 999px;
-      padding: 6px 12px;
-      font-size: 11px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      margin-bottom: 14px;
-      border: 1px solid rgba(77,166,255,0.22);
-      background: var(--blue-soft);
-      color: var(--blue);
-    }
-
-    .page-title {
-      font-family: 'Syne', sans-serif;
-      font-family: 'Syne', sans-serif;
-      font-weight: 800;
-      font-size: clamp(34px, 6vw, 58px);
-      line-height: 0.95;
-      letter-spacing: -1.2px;
-      margin-bottom: 10px;
-    }
-
-    .page-sub {
-      max-width: 720px;
-      font-size: 14px;
-      line-height: 1.7;
-      color: var(--muted);
-    }
-
-    .header-stats {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .stat-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 9px 13px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .live-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--blue);
-      animation: rc-pulse 1.5s ease-in-out infinite;
-    }
-
-    .controls-shell {
-      background: linear-gradient(180deg, var(--surface) 0%, var(--surface3) 100%);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      padding: 18px;
-      margin-bottom: 22px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-    }
-
-    .search-row {
-      display: grid;
-      grid-template-columns: 1.5fr auto;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-
-    .search-wrap {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 14px 16px;
-    }
-
-    .search-wrap svg {
-      color: var(--muted);
-      flex-shrink: 0;
-    }
-
-    .search-input {
-      width: 100%;
-      border: none;
-      outline: none;
-      background: transparent;
-      color: var(--text);
-      font-size: 14px;
-    }
-
-    .search-input::placeholder { color: var(--muted); }
-
-    .ghost-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0 16px;
-      border-radius: 16px;
-      border: 1px solid var(--border);
-      background: var(--surface2);
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 700;
-      min-height: 50px;
-    }
-
-    .category-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      flex-wrap: wrap;
-    }
-
-    .category-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .category-chip {
-      padding: 8px 14px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 600;
-      transition: all 0.15s ease;
-    }
-
-    .category-chip:hover {
-      color: var(--text);
-      transform: translateY(-1px);
-      background: var(--surface2);
-    }
-
-    .category-chip.active {
-      background: var(--blue-soft);
-      border-color: rgba(77,166,255,0.32);
-      color: var(--blue);
-    }
-
-    .mini-label {
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .results-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 14px;
-      flex-wrap: wrap;
-    }
-
-    .results-copy h2 {
-      font-family: 'Syne', sans-serif;
-      font-size: 22px;
-      letter-spacing: -0.5px;
-      margin-bottom: 4px;
-    }
-
-    .results-copy p {
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    .product-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 16px;
-    }
-
-    .product-card {
-      border-radius: 16px;
-      overflow: hidden;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
-    }
-
-    .product-card:hover {
-      transform: translateY(-4px);
-      border-color: rgba(77,166,255,0.28);
-      box-shadow: 0 10px 28px rgba(0,0,0,0.16);
-    }
-
-    .product-top {
-      position: relative;
-      aspect-ratio: 1 / 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--surface2);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .product-top svg {
-      opacity: 0.2;
-      color: var(--muted);
-    }
-
-    .item-badge {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      padding: 4px 9px;
-      border-radius: 8px;
-      font-size: 10px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #fff;
-    }
-
-    .item-badge.best { background: var(--blue); }
-    .item-badge.budget { background: #7dd3fc; color: #062033; }
-    .item-badge.popular { background: #111827; }
-    .item-badge.new { background: #22c55e; }
-
-    .product-body { padding: 14px; }
-
-    .product-name {
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text);
-      margin-bottom: 6px;
-      line-height: 1.45;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      min-height: 40px;
-    }
-
-    .product-meta {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .product-price {
-      font-family: 'Syne', sans-serif;
-      font-size: 16px;
-      font-weight: 800;
-      color: var(--blue);
-    }
-
-    .product-category {
-      font-size: 11px;
-      color: var(--muted);
-      border: 1px solid var(--border);
-      padding: 4px 8px;
-      border-radius: 999px;
-      background: var(--surface2);
-    }
-
-    .product-actions {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    .product-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      font-size: 12px;
-      font-weight: 700;
-      border: 1px solid var(--border);
-      background: var(--surface2);
-      color: var(--text);
-      transition: opacity 0.15s ease, transform 0.15s ease;
-    }
-
-    .product-btn:hover {
-      opacity: 0.85;
-      transform: translateY(-1px);
-    }
-
-    .product-btn.primary {
-      background: var(--blue);
-      border-color: transparent;
-      color: #fff;
-    }
-
-    .empty-state {
-      padding: 44px 24px;
-      text-align: center;
-      border-radius: 18px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-    }
-
-    .empty-state h3 {
-      font-family: 'Syne', sans-serif;
-      font-size: 24px;
-      margin-bottom: 10px;
-      letter-spacing: -0.4px;
-    }
-
-    .empty-state p {
-      font-size: 14px;
-      line-height: 1.6;
-      color: var(--muted);
-      max-width: 480px;
-      margin: 0 auto;
-    }
-
-    footer {
-      max-width: 1380px;
-      margin: 0 auto;
-      padding: 0 40px 36px;
-    }
-
-    /* MINIMAL LINK CONVERTER */
-    .minimal-converter { max-width: 760px; margin-top: 32px; }
-    .minimal-input {
-      width: 100%; min-height: 72px; padding: 8px 0; resize: none; border: 0; outline: 0;
-      background: transparent; color: var(--text); font-size: 20px; line-height: 1.5;
-    }
-    .minimal-input::placeholder { color: var(--muted); opacity: 0.8; }
-    .minimal-input:focus::placeholder { opacity: 0.45; }
-    .minimal-convert {
-      min-height: 46px; padding: 0 22px; border: 0; border-radius: 8px;
-      background: var(--blue); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer;
-    }
-    .minimal-convert:hover { opacity: 0.9; }
-    .minimal-status { min-height: 22px; margin-top: 14px; color: var(--muted); font-size: 13px; }
-    .minimal-status:empty { display: none; }
-    .minimal-status strong { color: var(--blue); }
-    .minimal-result { display: flex; align-items: center; gap: 10px; max-width: 760px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
-    .minimal-result[hidden] { display: none; }
-    .minimal-output { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font-size: 14px; }
-    .minimal-copy { min-height: 40px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); color: var(--text); font-size: 13px; font-weight: 700; cursor: pointer; }
+    .converter-label { width: min(850px, 100%); margin: 0 auto 8px; color: var(--text); font-size: 14px; font-weight: 800; }
+    .converter-box { width: min(850px, 100%); margin: 0 auto; padding: 8px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); box-shadow: 0 18px 50px rgba(0,0,0,0.18); }
+    .converter-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+    .converter-input { width: 100%; height: 62px; border: 0; outline: 0; border-radius: 14px; padding: 0 18px; background: var(--surface2); color: var(--text); font-size: 18px; }
+    .converter-input::placeholder { color: var(--muted); }
+    .converter-input:-webkit-autofill, .converter-input:-webkit-autofill:hover, .converter-input:-webkit-autofill:focus { -webkit-text-fill-color: var(--text); box-shadow: 0 0 0 1000px var(--surface2) inset, inset 0 0 0 1px rgba(77,166,255,0.4); caret-color: var(--text); transition: background-color 9999s ease-in-out 0s; }
+    .convert-button { height: 62px; min-width: 160px; border-radius: 14px; background: var(--blue); color: #fff; font-size: 18px; font-weight: 800; padding: 0 26px; }
+    .convert-button:hover { opacity: 0.92; }
+    .status { min-height: 20px; margin-top: 12px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .status:empty { display: none; }
+    .status strong { color: var(--blue); }
+    .result { display: none; }
 
     body.converter-modal-open { overflow: hidden; }
-    .converter-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 200;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow-y: auto;
-      padding: 20px;
-      background: rgba(0,0,0,0.88);
-      backdrop-filter: blur(10px);
-      animation: rc-fadein 0.2s ease;
-    }
-    body.light .converter-overlay { background: rgba(10,20,50,0.66); }
+    .converter-overlay { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 20px; overflow-y: auto; background: rgba(0,0,0,0.86); backdrop-filter: blur(12px); }
     .converter-overlay[hidden] { display: none; }
-    .converter-dialog {
-      position: relative;
-      width: min(860px, 100%);
-      overflow: hidden;
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      background: var(--bg);
-      color: var(--text);
-      box-shadow: 0 0 38px rgba(77,166,255,0.14), 0 28px 80px rgba(0,0,0,0.52);
-      animation: rc-slideup 0.3s cubic-bezier(0.22,1,0.36,1);
-    }
-    .converter-dialog-bar {
-      height: 3px;
-      background: var(--blue);
-      box-shadow: 0 0 22px rgba(77,166,255,0.65);
-    }
-    .converter-dialog-close {
-      position: absolute;
-      top: 15px;
-      right: 15px;
-      z-index: 2;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 40px;
-      height: 40px;
-      border-radius: 8px;
-      color: var(--muted);
-      transition: color 0.15s, background 0.15s;
-    }
-    .converter-dialog-close:hover { color: var(--text); background: var(--surface2); }
-    .converter-dialog-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-    }
-    .converter-panel {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-      padding: 36px 38px 30px;
-    }
-    .converter-panel-primary { background: var(--surface); }
-    .converter-panel + .converter-panel { border-left: 1px solid var(--border); }
-    .converter-panel-badge {
-      align-self: flex-start;
-      display: inline-flex;
-      align-items: center;
-      min-height: 26px;
-      margin-bottom: 18px;
-      padding: 0 11px;
-      border: 1px solid rgba(77,166,255,0.28);
-      border-radius: 999px;
-      background: var(--blue-soft);
-      color: var(--blue);
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-    }
-    .converter-panel h2 {
-      font-family: 'Syne', sans-serif;
-      font-size: clamp(28px, 3vw, 38px);
-      line-height: 1;
-      font-weight: 800;
-      letter-spacing: 0;
-      margin-bottom: 12px;
-    }
-    .converter-panel-lead {
-      min-height: 42px;
-      margin-bottom: 18px;
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.55;
-    }
-    .converter-benefits {
-      display: grid;
-      gap: 8px;
-    }
-    .converter-benefit {
-      display: flex;
-      align-items: center;
-      gap: 11px;
-      min-height: 40px;
-      padding: 0 13px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: var(--surface2);
-      color: var(--text);
-      font-size: 14px;
-      font-weight: 600;
-    }
-    .converter-benefit-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 22px;
-      height: 22px;
-      flex: 0 0 22px;
-      border-radius: 50%;
-      background: var(--blue);
-      color: #fff;
-    }
-    .converter-copy {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 9px;
-      width: 100%;
-      min-height: 52px;
-      margin-top: 22px;
-      padding: 0 20px;
-      border-radius: 14px;
-      font-size: 13px;
-      font-weight: 800;
-      transition: opacity 0.15s, transform 0.15s, background 0.15s;
-    }
-    .converter-copy:hover { opacity: 0.9; transform: translateY(-1px); }
-    .converter-copy-primary {
-      background: var(--blue);
-      color: #fff;
-      box-shadow: 0 8px 26px rgba(77,166,255,0.28);
-    }
-    .converter-copy-secondary {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text);
-    }
-    .converter-copy-link {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      width: 100%;
-      min-height: 40px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 600;
-      transition: color 0.15s;
-    }
-    .converter-copy-link:hover { color: var(--text); }
-    .converter-platforms {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      margin-top: 22px;
-      padding-top: 0;
-    }
-    .converter-platforms-title {
-      margin-bottom: 11px;
-      color: var(--muted);
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      text-align: center;
-    }
-    .converter-platform-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      align-items: start;
-      gap: 8px;
-    }
-    .converter-platform {
-      min-width: 0;
-      min-height: 0;
-      aspect-ratio: 1 / 1.08;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 10px 6px;
-      border: 1px solid #29292e;
-      border-radius: 14px;
-      background: #18181c;
-      text-align: center;
-    }
-    .converter-platform-name {
-      color: #fff;
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      line-height: 1;
-      text-transform: uppercase;
-    }
-    .converter-platform-logo {
-      display: block;
-      width: 78px;
-      max-width: 84%;
-      height: 26px;
-      object-fit: contain;
-      object-position: center;
-    }
-    .converter-platform-logo-weidian { width: 82px; }
-    .converter-platform-logo-taobao { width: 76px; }
-    .converter-platform-logo-1688 { width: 68px; }
-    body.dark .converter-platform-logo {
-      filter: brightness(0) invert(1);
-      opacity: 0.96;
-    }
-    body.light .converter-platform-logo { filter: none; }
-    .converter-platform-status {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      color: var(--blue);
-      font-size: 10px;
-      font-weight: 800;
-    }
-    .converter-platform-status svg { flex: 0 0 auto; }
-    .converter-platform-note {
-      margin-top: auto;
-      padding-top: 18px;
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 1.55;
-      text-align: center;
-    }
-    .converter-platform-note p + p { margin-top: 5px; }
-    .converter-description {
-      color: var(--muted);
-      font-size: 15px;
-      line-height: 1.65;
-    }
-    .converter-warning {
-      display: flex;
-      gap: 12px;
-      margin-top: 22px;
-      padding: 15px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: var(--surface2);
-      color: var(--text);
-      font-size: 13px;
-      line-height: 1.55;
-    }
-    .converter-warning svg {
-      flex: 0 0 18px;
-      margin-top: 1px;
-      color: var(--blue);
-    }
-    .converter-signup {
-      margin-top: 18px;
-      padding-top: 18px;
-      border-top: 1px solid var(--border);
-    }
-    .converter-signup h3 {
-      font-family: 'Syne', sans-serif;
-      font-size: 16px;
-      line-height: 1.25;
-      letter-spacing: 0;
-      margin-bottom: 12px;
-    }
-    .converter-signup-button {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 46px;
-      border-radius: 10px;
-      background: transparent;
-      border: 1px solid rgba(77,166,255,0.4);
-      color: var(--blue);
-      font-size: 13px;
-      font-weight: 800;
-      transition: background 0.15s, color 0.15s;
-    }
-    .converter-signup-button:hover { background: var(--blue-soft); }
-    .converter-signup-note {
-      margin-top: 9px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
-      text-align: center;
-    }
-    .converter-modal-status {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip: rect(0,0,0,0);
-    }
-    @media (max-width: 700px) {
-      .converter-overlay {
-        align-items: flex-start;
-        padding: 12px;
-      }
-      .converter-dialog { margin: auto 0; }
-      .converter-dialog-grid { grid-template-columns: 1fr; }
-      .converter-panel { padding: 38px 22px 28px; }
-      .converter-panel + .converter-panel {
-        border-left: 0;
-        border-top: 1px solid var(--border);
-      }
-      .converter-panel-lead { min-height: 0; }
-    }
+    .dialog { position: relative; width: min(880px, 100%); overflow: hidden; border: 1px solid var(--border); border-radius: 18px; background: var(--bg); box-shadow: 0 0 42px rgba(77,166,255,0.16), 0 32px 90px rgba(0,0,0,0.55); animation: slideup 0.24s ease both; }
+    .dialog::before { content: ''; display: block; height: 3px; background: var(--blue); box-shadow: 0 0 22px rgba(77,166,255,0.75); }
+    .dialog-close { position: absolute; top: 14px; right: 14px; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: transparent; color: var(--muted); }
+    .dialog-close:hover { color: var(--text); background: var(--surface2); }
+    .dialog-grid { display: grid; grid-template-columns: 1fr 1fr; }
+    .panel { min-width: 0; padding: 42px 38px 34px; }
+    .panel + .panel { border-left: 1px solid var(--border); }
+    .panel.primary { background: var(--surface); }
+    .pill { display: inline-flex; align-items: center; min-height: 26px; margin-bottom: 18px; padding: 0 11px; border-radius: 999px; border: 1px solid rgba(77,166,255,0.28); background: var(--blue-soft); color: var(--blue); font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+    .panel h2 { font-family: 'Syne', sans-serif; font-size: clamp(32px, 4vw, 46px); line-height: 0.95; font-weight: 800; letter-spacing: 0; margin-bottom: 14px; }
+    .lead { min-height: 44px; color: var(--muted); font-size: 15px; line-height: 1.55; margin-bottom: 18px; }
+    .benefits { display: grid; gap: 9px; }
+    .benefit { display: flex; align-items: center; gap: 10px; min-height: 42px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface2); font-size: 14px; font-weight: 700; }
+    .check { display: grid; place-items: center; width: 22px; height: 22px; flex: 0 0 22px; border-radius: 50%; background: var(--blue); color: #fff; }
+    .main-action { display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%; min-height: 54px; margin-top: 22px; border-radius: 14px; background: var(--blue); color: #fff; font-size: 13px; font-weight: 800; box-shadow: 0 8px 26px rgba(77,166,255,0.28); }
+    .secondary-action { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 42px; color: var(--muted); font-size: 13px; font-weight: 700; background: transparent; }
+    .secondary-action:hover { color: var(--text); }
+    .signup { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border); }
+    .signup h3 { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 800; margin-bottom: 12px; }
+    .signup-button { display: flex; align-items: center; justify-content: center; min-height: 46px; border-radius: 12px; border: 1px solid rgba(77,166,255,0.4); color: var(--blue); font-size: 13px; font-weight: 800; }
+    .signup-note { margin-top: 9px; color: var(--muted); font-size: 12px; text-align: center; }
+    .warning { display: flex; gap: 12px; margin: 20px 0; padding: 15px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface2); font-size: 13px; font-weight: 700; line-height: 1.55; }
+    .warning svg { flex: 0 0 auto; color: var(--blue); }
+    .raw-copy { display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%; min-height: 54px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface2); color: var(--text); font-size: 13px; font-weight: 800; }
+    .platforms { margin-top: 22px; }
+    .platform-title { margin-bottom: 11px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-align: center; text-transform: uppercase; }
+    .platform-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .platform { aspect-ratio: 1 / 1.08; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; padding: 10px 6px; border: 1px solid #29292e; border-radius: 14px; background: #18181c; text-align: center; }
+    .platform-name { color: #fff; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+    .platform img { display: block; height: 25px; max-width: 84%; object-fit: contain; filter: brightness(0) invert(1); opacity: 0.96; }
+    body.light .platform img { filter: none; }
+    .supported { display: inline-flex; align-items: center; gap: 4px; color: var(--blue); font-size: 10px; font-weight: 800; }
+    .platform-note { margin-top: 18px; color: var(--muted); font-size: 11px; line-height: 1.55; text-align: center; }
+    .platform-note p + p { margin-top: 5px; }
+    .modal-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
 
-    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-    @media (max-width: 520px) {
-      .minimal-input { min-height: 64px; font-size: 18px; }
-      .minimal-convert { width: 100%; }
-      .minimal-result { align-items: stretch; flex-direction: column; }
-      .minimal-output { min-height: 44px; font-size: 16px; }
-    }
-
-    .footer-box {
-      border-top: 1px solid var(--border);
-      padding-top: 24px;
-      font-size: 12px;
-      color: var(--muted);
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    @media (max-width: 920px) {
-      .search-row {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 720px) {
-      nav {
-        padding: 0 16px;
-      }
-
-      .page-shell,
-      footer {
-        padding-left: 16px;
-        padding-right: 16px;
-      }
-
-      .page-shell {
-        padding-top: 18px;
-      }
-
-      .controls-shell {
-        padding: 14px;
-      }
-
-      .product-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
+    @media (max-width: 760px) {
+      nav { padding: 0 16px; }
+      .page-shell { padding: 44px 16px 70px; }
+      .hero { text-align: left; }
+      .page-sub { margin: 0; }
+      .converter-row { grid-template-columns: 1fr; }
+      .convert-button { width: 100%; }
+      .dialog-grid { grid-template-columns: 1fr; }
+      .panel { padding: 38px 22px 28px; }
+      .panel + .panel { border-left: 0; border-top: 1px solid var(--border); }
     }
 
     @media (max-width: 520px) {
-      .product-grid,
-      .product-actions {
-        grid-template-columns: 1fr;
-      }
-    }
-      .product-price, .podium-price, .counter-number, .progress-label, .intro-step-num, .podium-watermark span, .ticker-item span:nth-child(3) { font-family: Arial, Helvetica, sans-serif !important; font-variant-numeric: tabular-nums; letter-spacing: 0 !important; }     @media (max-width: 520px) {
-      .topbar > div { min-width: 0; max-width: 100%; }
-      .page-title { font-size: 34px; line-height: 1; overflow-wrap: anywhere; }
+      .page-title { font-size: 38px; }
+      .converter-input { height: 58px; font-size: 16px; }
+      .convert-button { height: 58px; font-size: 16px; }
+      .platform-grid { gap: 6px; }
+      .platform { border-radius: 12px; }
+      .platform img { height: 20px; }
     }
   </style>
 </head>
 <body class="dark">
   <div class="converter-overlay" id="converter-overlay" hidden>
-    <section class="converter-dialog" role="dialog" aria-modal="true" aria-labelledby="hipobuy-link-title">
-      <div class="converter-dialog-bar"></div>
-      <button class="converter-dialog-close" type="button" onclick="closeConverterPopup()" aria-label="Close converted links">
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="hipobuy-link-title">
+      <button class="dialog-close" type="button" onclick="closeConverterPopup()" aria-label="Close converted links">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
-      <div class="converter-dialog-grid">
-        <div class="converter-panel converter-panel-primary">
-          <div class="converter-panel-badge">✦ RepsCentral x HipoBuy</div>
+      <div class="dialog-grid">
+        <div class="panel primary">
+          <div class="pill">RepsCentral x HipoBuy</div>
           <h2 id="hipobuy-link-title">HIPOBUY LINK</h2>
-          <p class="converter-panel-lead">The recommended way to buy your item.</p>
-          <div class="converter-benefits">
-            <div class="converter-benefit"><span class="converter-benefit-icon"><svg width="12" height="10" viewBox="0 0 12 10" fill="none" aria-hidden="true"><path d="M1 5L4.2 8.2L11 1.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Best agent.</span></div>
-            <div class="converter-benefit"><span class="converter-benefit-icon"><svg width="12" height="10" viewBox="0 0 12 10" fill="none" aria-hidden="true"><path d="M1 5L4.2 8.2L11 1.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>25% off shipping.</span></div>
-            <div class="converter-benefit"><span class="converter-benefit-icon"><svg width="12" height="10" viewBox="0 0 12 10" fill="none" aria-hidden="true"><path d="M1 5L4.2 8.2L11 1.2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>No bait-and-switch.</span></div>
+          <p class="lead">The recommended way to buy your item.</p>
+          <div class="benefits">
+            <div class="benefit"><span class="check">✓</span><span>Best agent.</span></div>
+            <div class="benefit"><span class="check">✓</span><span>25% off shipping.</span></div>
+            <div class="benefit"><span class="check">✓</span><span>No bait-and-switch.</span></div>
           </div>
-          <button class="converter-copy converter-copy-primary" id="go-hipobuy-button" type="button" onclick="openConvertedLink()"><span>GO TO LINK</span><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
-          <button class="converter-copy-link" id="copy-hipobuy-button" type="button" onclick="copyPopupLink('hipobuy')"><span data-copy-label>Copy HipoBuy link</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg></button>
-          <div class="converter-signup">
+          <button class="main-action" id="go-hipobuy-button" type="button" onclick="openConvertedLink()">GO TO LINK <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
+          <button class="secondary-action" id="copy-hipobuy-button" type="button" onclick="copyPopupLink('hipobuy')"><span data-copy-label>Copy HipoBuy link</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg></button>
+          <div class="signup">
             <h3>Haven't already signed up?</h3>
-            <a class="converter-signup-button" href="https://hipobuy.com/register?inviteCode=QTYP3P8P5" target="_blank" rel="noopener noreferrer">SIGN UP</a>
-            <p class="converter-signup-note">Includes 25% off shipping coupons.</p>
+            <a class="signup-button" href="https://hipobuy.com/register?inviteCode=QTYP3P8P5" target="_blank" rel="noopener noreferrer">SIGN UP</a>
+            <p class="signup-note">Includes 25% off shipping coupons.</p>
           </div>
         </div>
-        <div class="converter-panel converter-panel-raw">
-          <div class="converter-panel-badge">Original marketplace</div>
+        <div class="panel">
+          <div class="pill">Original marketplace</div>
           <h2>RAW LINK</h2>
-          <p class="converter-panel-lead converter-description">Paste anywhere to view the item on your preferred agent.</p>
-          <div class="converter-warning">
+          <p class="lead">Paste anywhere to view the item on your preferred agent.</p>
+          <div class="warning">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             <span>Please note some agents may switch your item for a lower-quality batch.</span>
           </div>
-          <button class="converter-copy converter-copy-secondary" id="copy-raw-button" type="button" onclick="copyPopupLink('raw')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span data-copy-label>COPY RAW LINK</span></button>
-          <div class="converter-platforms">
-            <div class="converter-platforms-title">Supported marketplaces</div>
-            <div class="converter-platform-grid">
-              <div class="converter-platform">
-                <div class="converter-platform-name">Weidian</div>
-                <img class="converter-platform-logo converter-platform-logo-weidian" src="systemimages/weidianlogo.png" alt="Weidian">
-                <div class="converter-platform-status">Supported <svg width="11" height="9" viewBox="0 0 11 9" fill="none" aria-hidden="true"><path d="M1 4.5 4 7.5 10 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-              </div>
-              <div class="converter-platform">
-                <div class="converter-platform-name">Taobao</div>
-                <img class="converter-platform-logo converter-platform-logo-taobao" src="systemimages/taobaologo.png" alt="Taobao">
-                <div class="converter-platform-status">Supported <svg width="11" height="9" viewBox="0 0 11 9" fill="none" aria-hidden="true"><path d="M1 4.5 4 7.5 10 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-              </div>
-              <div class="converter-platform">
-                <div class="converter-platform-name">1688</div>
-                <img class="converter-platform-logo converter-platform-logo-1688" src="systemimages/1688logo.png" alt="1688">
-                <div class="converter-platform-status">Supported <svg width="11" height="9" viewBox="0 0 11 9" fill="none" aria-hidden="true"><path d="M1 4.5 4 7.5 10 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-              </div>
+          <button class="raw-copy" id="copy-raw-button" type="button" onclick="copyPopupLink('raw')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span data-copy-label>COPY RAW LINK</span></button>
+          <div class="platforms">
+            <div class="platform-title">Supported marketplaces</div>
+            <div class="platform-grid">
+              <div class="platform"><div class="platform-name">Weidian</div><img src="systemimages/weidianlogo.png" alt="Weidian"><div class="supported">Supported ✓</div></div>
+              <div class="platform"><div class="platform-name">Taobao</div><img src="systemimages/taobaologo.png" alt="Taobao"><div class="supported">Supported ✓</div></div>
+              <div class="platform"><div class="platform-name">1688</div><img src="systemimages/1688logo.png" alt="1688"><div class="supported">Supported ✓</div></div>
             </div>
-            <div class="converter-platform-note">
-              <p>If links do not work, they may have been removed by the seller.</p>
-              <p>Alternatively, it may be worth trying a different agent.</p>
-            </div>
+            <div class="platform-note"><p>If links do not work, they may have been removed by the seller.</p><p>Alternatively, it may be worth trying a different agent.</p></div>
           </div>
         </div>
       </div>
-      <div class="converter-modal-status" id="converter-modal-status" aria-live="polite"></div>
+      <div class="modal-status" id="converter-modal-status" aria-live="polite"></div>
     </section>
   </div>
 
   <div id="root">
-    <div id="banner">
-      HipoBuy - The cheapest, best and most reliable Chinese agent.&nbsp;
-      <a href="https://hipobuy.com/register?inviteCode=QTYP3P8P5" target="_blank" rel="noopener noreferrer">Sign up today and get up to 40% off your shipping fee →</a>
-    </div>
-
+    <div id="banner">HipoBuy - The cheapest, best and most reliable Chinese agent. <a href="https://hipobuy.com/register?inviteCode=QTYP3P8P5" target="_blank" rel="noopener noreferrer">Sign up today and get up to 40% off your shipping fee →</a></div>
     <nav>
       <a href="index.html?noPopup=1" class="nav-logo">repscentral</a>
-    <div class="nav-links">
-      <a href="spreadsheet.html" class="nav-link">Spreadsheet</a>
-      <a href="quality-checks.html" class="nav-link">Quality Checks</a>
-      <a href="link-converter.html" class="nav-link active">Link Converter</a>
-      <a href="index.html" class="nav-link">Tutorial</a>
-    </div>
+      <div class="nav-links">
+        <a href="spreadsheet.html" class="nav-link">Spreadsheet</a>
+        <a href="quality-checks.html" class="nav-link">Quality Checks</a>
+        <a href="link-converter.html" class="nav-link active">Link Converter</a>
+        <a href="index.html" class="nav-link">Tutorial</a>
+      </div>
       <button class="nav-theme" id="theme-btn" onclick="toggleTheme()">
         <svg id="theme-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
         <span id="theme-label">Light</span>
@@ -999,44 +202,35 @@
     </nav>
 
     <main class="page-shell">
-      <section class="topbar">
-        <div>
-          <div class="eyebrow">✦ RepsCentral Utilities</div>
-          <h1 class="page-title">LINK CONVERTER</h1>
-          <p class="page-sub">Paste a marketplace or supported agent link and turn it into a HipoBuy-ready product URL.</p>
-        </div>
+      <section class="hero">
+        <div class="eyebrow">RepsCentral Utilities</div>
+        <h1 class="page-title">LINK CONVERTER</h1>
+        <p class="page-sub">Paste a marketplace or supported agent link and turn it into a HipoBuy-ready product URL.</p>
       </section>
-
-      <form class="minimal-converter" id="link-converter" onsubmit="event.preventDefault(); convertToHipoBuy();">
+      <div class="converter-label">Paste product link</div>
+      <form class="converter-box" id="link-converter" onsubmit="event.preventDefault(); convertToHipoBuy();">
         <label class="sr-only" for="converter-input">Marketplace or agent link</label>
-        <textarea id="converter-input" class="minimal-input" rows="2" placeholder="Paste link here..." required></textarea>
-        <button class="minimal-convert" type="submit">Convert</button>
-        <div class="minimal-status" id="converter-status" aria-live="polite"></div>
-        <div class="minimal-result" id="converter-result" hidden>
-          <input id="converter-output" class="minimal-output" readonly aria-label="Converted HipoBuy link">
-          <button class="minimal-copy" type="button" onclick="copyConvertedLink()">Copy</button>
+        <div class="converter-row">
+          <input id="converter-input" class="converter-input" type="text" placeholder="Paste link here..." autocomplete="off" required>
+          <button class="convert-button" type="submit">Convert</button>
         </div>
+        <div class="status" id="converter-status" aria-live="polite"></div>
+        <div class="result" id="converter-result" hidden><input id="converter-output" readonly></div>
       </form>
     </main>
   </div>
 
   <script>
     let theme = localStorage.getItem('rc-theme') || 'dark';
-    let selectedCategory = 'All';
-    let searchTerm = '';
 
     function applyTheme() {
       document.body.className = theme;
       const label = document.getElementById('theme-label');
       const icon = document.getElementById('theme-icon');
       if (label) label.textContent = theme === 'dark' ? 'Light' : 'Dark';
-      if (icon) {
-        if (theme === 'dark') {
-          icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
-        } else {
-          icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
-        }
-      }
+      if (icon) icon.innerHTML = theme === 'dark'
+        ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+        : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
     }
 
     function toggleTheme() {
@@ -1046,257 +240,189 @@
     }
 
     function safeDecode(value) {
-  let output = value || "";
-  for (let i = 0; i < 4; i++) {
-    try {
-      const decoded = decodeURIComponent(output);
-      if (decoded === output) break;
-      output = decoded;
-    } catch (error) {
-      break;
+      let output = value || '';
+      for (let i = 0; i < 4; i++) {
+        try {
+          const decoded = decodeURIComponent(output);
+          if (decoded === output) break;
+          output = decoded;
+        } catch (error) { break; }
+      }
+      return output;
     }
-  }
-  return output;
-}
 
-function normalizePlatform(value) {
-  if (!value) return null;
-  const v = value.toLowerCase();
-  if (v.includes("weidian") || v === "wd") return "weidian";
-  if (v.includes("taobao") || v === "tb" || v.includes("tmall")) return "taobao";
-  if (v.includes("1688") || v === "alibaba") return "1688";
-  return null;
-}
+    function normalizePlatform(value) {
+      if (!value) return null;
+      const v = value.toLowerCase();
+      if (v.includes('weidian') || v === 'wd') return 'weidian';
+      if (v.includes('taobao') || v === 'tb' || v.includes('tmall')) return 'taobao';
+      if (v.includes('1688') || v === 'alibaba') return '1688';
+      return null;
+    }
 
-function firstUrlFromText(value) {
-  const match = value.match(/https?:\/\/[^\s"'<>]+/i);
-  return match ? match[0] : value.trim();
-}
+    function firstUrlFromText(value) {
+      const match = value.match(/https?:\/\/[^\s"'<>]+/i);
+      return match ? match[0] : value.trim();
+    }
 
-function extract1688Id(urlString) {
-  const offerMatch = urlString.match(/offer\/(\d+)\.html/i);
-  if (offerMatch) return offerMatch[1];
-  try {
-    const url = new URL(urlString);
-    return url.searchParams.get("offerId") || url.searchParams.get("id") || null;
-  } catch (error) {
-    return null;
-  }
-}
+    function extract1688Id(urlString) {
+      const offerMatch = urlString.match(/offer\/(\d+)\.html/i);
+      if (offerMatch) return offerMatch[1];
+      try {
+        const url = new URL(urlString);
+        return url.searchParams.get('offerId') || url.searchParams.get('id') || null;
+      } catch (error) { return null; }
+    }
 
-function unwrapAgentLink(rawInput) {
-  let current = firstUrlFromText(rawInput);
-  const seen = new Set();
-  const paramCandidates = ["url", "target", "targetUrl", "redirect", "redirectUrl", "searchInfo", "originKeywordUrl", "originUrl", "itemUrl", "goodsLink", "productLink", "link", "ru", "u"];
+    function unwrapAgentLink(rawInput) {
+      let current = firstUrlFromText(rawInput);
+      const seen = new Set();
+      const paramCandidates = ['url', 'target', 'targetUrl', 'redirect', 'redirectUrl', 'searchInfo', 'originKeywordUrl', 'originUrl', 'itemUrl', 'goodsLink', 'productLink', 'link', 'ru', 'u'];
+      for (let i = 0; i < 5; i++) {
+        current = safeDecode(current).replace(/&amp;/g, '&').trim();
+        if (!current || seen.has(current)) break;
+        seen.add(current);
+        try {
+          const url = new URL(current);
+          let nested = null;
+          for (const key of paramCandidates) {
+            const value = url.searchParams.get(key);
+            if (value && /^https?:/i.test(safeDecode(value))) {
+              nested = safeDecode(value);
+              break;
+            }
+          }
+          if (nested) { current = nested; continue; }
+        } catch (error) { break; }
+        break;
+      }
+      return current;
+    }
 
-  for (let i = 0; i < 5; i++) {
-    current = safeDecode(current).replace(/&amp;/g, "&").trim();
-    if (!current || seen.has(current)) break;
-    seen.add(current);
+    const HIPOBUY_INVITE_CODE = 'QTYP3P8P5';
+    function buildHipoBuyLink(platform, id) { return `https://hipobuy.com/product/${platform}/${id}?inviteCode=${HIPOBUY_INVITE_CODE}`; }
 
-    try {
-      const url = new URL(current);
-      let nested = null;
-      for (const key of paramCandidates) {
-        const value = url.searchParams.get(key);
-        if (value && /^https?:/i.test(safeDecode(value))) {
-          nested = safeDecode(value);
-          break;
+    function convertLinkValue(rawInput) {
+      const cleanedInput = (rawInput || '').trim();
+      if (!cleanedInput) return { ok: false, reason: 'Paste a link first.' };
+      const candidate = unwrapAgentLink(cleanedInput);
+      let url;
+      try { url = new URL(candidate); } catch (error) { return { ok: false, reason: 'That does not look like a valid URL.' }; }
+      const host = url.hostname.toLowerCase();
+      const path = url.pathname;
+
+      if (host.includes('hipobuy.com')) {
+        if (/\/product\/(weidian|taobao|1688)\/\d+/i.test(path)) {
+          url.searchParams.set('inviteCode', HIPOBUY_INVITE_CODE);
+          return { ok: true, link: url.toString(), platform: path.split('/')[2] };
         }
+        return { ok: false, reason: 'This is already a HipoBuy link, but it is not in a direct product format I can normalize safely.' };
       }
-      if (nested) {
-        current = nested;
-        continue;
+      if (host.includes('weidian.com') || host.includes('youshop10.com')) {
+        const id = url.searchParams.get('itemID') || url.searchParams.get('itemId') || url.searchParams.get('id');
+        if (id) return { ok: true, link: buildHipoBuyLink('weidian', id), platform: 'weidian' };
       }
-    } catch (error) {
-      break;
+      if (host.includes('taobao.com') || host.includes('tmall.com')) {
+        const id = url.searchParams.get('id');
+        if (id) return { ok: true, link: buildHipoBuyLink('taobao', id), platform: 'taobao' };
+      }
+      if (host.includes('1688.com') || host.includes('alibaba.com')) {
+        const id = extract1688Id(url.toString());
+        if (id) return { ok: true, link: buildHipoBuyLink('1688', id), platform: '1688' };
+      }
+      if (host.includes('cnfans.com')) {
+        const id = url.searchParams.get('id') || url.searchParams.get('spuNo');
+        const platform = normalizePlatform(url.searchParams.get('shop_type') || url.searchParams.get('platform'));
+        if (id && platform) return { ok: true, link: buildHipoBuyLink(platform, id), platform };
+      }
+      if (host.includes('mulebuy.com')) {
+        const id = url.searchParams.get('id');
+        const platform = normalizePlatform(url.searchParams.get('platform'));
+        if (id && platform) return { ok: true, link: buildHipoBuyLink(platform, id), platform };
+      }
+      if (host.includes('acbuy.com')) {
+        const id = url.searchParams.get('id');
+        const platform = normalizePlatform(url.searchParams.get('source'));
+        if (id && platform) return { ok: true, link: buildHipoBuyLink(platform, id), platform };
+      }
+      if (host.includes('oopbuy.com')) {
+        const match = path.match(/\/product\/(weidian|taobao|1688)\/(\d+)/i);
+        if (match) return { ok: true, link: buildHipoBuyLink(match[1].toLowerCase(), match[2]), platform: match[1].toLowerCase() };
+      }
+      if (host.includes('pandabuy.com') || host.includes('kakobuy.com') || host.includes('hoobuy.com') || host.includes('lovegobuy.com') || host.includes('orientdig.com') || host.includes('allchinabuy.com') || host.includes('superbuy.com') || host.includes('cssbuy.com')) {
+        const maybeUnwrapped = unwrapAgentLink(url.toString());
+        if (maybeUnwrapped !== url.toString()) return convertLinkValue(maybeUnwrapped);
+      }
+      if (host.includes('cssbuy.com') && url.toString().match(/item-(\d+)\.html/i)) {
+        return { ok: false, reason: 'I found the item ID, but CSSBuy links do not reliably expose the source platform. Paste the original Weidian, Taobao or 1688 link for a precise conversion.' };
+      }
+      return { ok: false, reason: 'I could not read a supported item ID from that link. Try the original Weidian, Taobao or 1688 product URL instead.' };
     }
-    break;
-  }
 
-  return current;
-}
+    let convertedHipoBuyLink = '';
+    let convertedRawLink = '';
 
-const HIPOBUY_INVITE_CODE = "QTYP3P8P5";
-
-function buildHipoBuyLink(platform, id) {
-  return `https://hipobuy.com/product/${platform}/${id}?inviteCode=${HIPOBUY_INVITE_CODE}`;
-}
-
-function convertLinkValue(rawInput) {
-  const cleanedInput = (rawInput || "").trim();
-  if (!cleanedInput) return { ok: false, reason: "Paste a link first." };
-
-  const candidate = unwrapAgentLink(cleanedInput);
-  let url;
-  try {
-    url = new URL(candidate);
-  } catch (error) {
-    return { ok: false, reason: "That does not look like a valid URL." };
-  }
-
-  const host = url.hostname.toLowerCase();
-  const path = url.pathname;
-
-  if (host.includes("hipobuy.com")) {
-    if (/\/product\/(weidian|taobao|1688)\/\d+/i.test(path)) {
-      url.searchParams.set("inviteCode", HIPOBUY_INVITE_CODE);
-      return { ok: true, link: url.toString(), platform: path.split("/")[2] };
+    function buildRawMarketplaceLink(hipobuyLink) {
+      const match = hipobuyLink.match(/\/product\/(weidian|taobao|1688)\/(\d+)/i);
+      if (!match) return '';
+      const platform = match[1].toLowerCase();
+      const id = match[2];
+      if (platform === 'weidian') return `https://weidian.com/item.html?itemID=${id}`;
+      if (platform === 'taobao') return `https://item.taobao.com/item.htm?id=${id}`;
+      return `https://detail.1688.com/offer/${id}.html`;
     }
-    return { ok: false, reason: "This is already a HipoBuy link, but it is not in a direct product format I can normalize safely." };
-  }
 
-  if (host.includes("weidian.com") || host.includes("youshop10.com")) {
-    const id = url.searchParams.get("itemID") || url.searchParams.get("itemId") || url.searchParams.get("id");
-    if (id) return { ok: true, link: buildHipoBuyLink("weidian", id), platform: "weidian" };
-  }
+    function openConverterPopup() {
+      const overlay = document.getElementById('converter-overlay');
+      overlay.hidden = false;
+      document.body.classList.add('converter-modal-open');
+      requestAnimationFrame(() => overlay.querySelector('.dialog-close').focus());
+    }
 
-  if (host.includes("taobao.com") || host.includes("tmall.com")) {
-    const id = url.searchParams.get("id");
-    if (id) return { ok: true, link: buildHipoBuyLink("taobao", id), platform: "taobao" };
-  }
+    function closeConverterPopup() {
+      document.getElementById('converter-overlay').hidden = true;
+      document.body.classList.remove('converter-modal-open');
+      document.getElementById('converter-input').focus();
+    }
 
-  if (host.includes("1688.com") || host.includes("alibaba.com")) {
-    const id = extract1688Id(url.toString());
-    if (id) return { ok: true, link: buildHipoBuyLink("1688", id), platform: "1688" };
-  }
+    function convertToHipoBuy() {
+      const input = document.getElementById('converter-input').value;
+      const output = document.getElementById('converter-output');
+      const status = document.getElementById('converter-status');
+      const result = convertLinkValue(input);
+      if (!result.ok) {
+        output.value = '';
+        status.innerHTML = `<strong>Could not convert:</strong> ${result.reason}`;
+        return;
+      }
+      convertedHipoBuyLink = result.link;
+      convertedRawLink = buildRawMarketplaceLink(result.link) || unwrapAgentLink(input);
+      output.value = result.link;
+      status.textContent = '';
+      openConverterPopup();
+    }
 
-  if (host.includes("cnfans.com")) {
-    const id = url.searchParams.get("id") || url.searchParams.get("spuNo");
-    const platform = normalizePlatform(url.searchParams.get("shop_type") || url.searchParams.get("platform"));
-    if (id && platform) return { ok: true, link: buildHipoBuyLink(platform, id), platform };
-  }
+    async function copyPopupLink(type) {
+      const value = type === 'hipobuy' ? convertedHipoBuyLink : convertedRawLink;
+      const button = document.getElementById(type === 'hipobuy' ? 'copy-hipobuy-button' : 'copy-raw-button');
+      const defaultLabel = type === 'hipobuy' ? 'Copy HipoBuy link' : 'COPY RAW LINK';
+      const label = button.querySelector('[data-copy-label]') || button;
+      const liveStatus = document.getElementById('converter-modal-status');
+      try {
+        await navigator.clipboard.writeText(value);
+        label.textContent = 'COPIED';
+        liveStatus.textContent = `${defaultLabel.toLowerCase()} copied.`;
+        setTimeout(() => { label.textContent = defaultLabel; }, 1400);
+      } catch (error) { liveStatus.textContent = 'Copy failed. Please try again.'; }
+    }
 
-  if (host.includes("mulebuy.com")) {
-    const id = url.searchParams.get("id");
-    const platform = normalizePlatform(url.searchParams.get("platform"));
-    if (id && platform) return { ok: true, link: buildHipoBuyLink(platform, id), platform };
-  }
+    function openConvertedLink() {
+      if (!convertedHipoBuyLink) return;
+      window.open(convertedHipoBuyLink, '_blank', 'noopener,noreferrer');
+    }
 
-  if (host.includes("acbuy.com")) {
-    const id = url.searchParams.get("id");
-    const platform = normalizePlatform(url.searchParams.get("source"));
-    if (id && platform) return { ok: true, link: buildHipoBuyLink(platform, id), platform };
-  }
-
-  if (host.includes("oopbuy.com")) {
-    const match = path.match(/\/product\/(weidian|taobao|1688)\/(\d+)/i);
-    if (match) return { ok: true, link: buildHipoBuyLink(match[1].toLowerCase(), match[2]), platform: match[1].toLowerCase() };
-  }
-
-  if (host.includes("pandabuy.com") || host.includes("kakobuy.com") || host.includes("hoobuy.com") || host.includes("lovegobuy.com") || host.includes("orientdig.com") || host.includes("allchinabuy.com") || host.includes("superbuy.com") || host.includes("cssbuy.com")) {
-    const maybeUnwrapped = unwrapAgentLink(url.toString());
-    if (maybeUnwrapped !== url.toString()) return convertLinkValue(maybeUnwrapped);
-  }
-
-  const cssbuyMatch = url.toString().match(/item-(\d+)\.html/i);
-  if (host.includes("cssbuy.com") && cssbuyMatch) {
-    return { ok: false, reason: "I found the item ID, but CSSBuy links do not reliably expose the source platform. Paste the original Weidian, Taobao or 1688 link for a precise conversion." };
-  }
-
-  return { ok: false, reason: "I could not read a supported item ID from that link. Try the original Weidian, Taobao or 1688 product URL instead of a shortened or heavily wrapped agent link." };
-}
-
-let convertedHipoBuyLink = "";
-let convertedRawLink = "";
-
-function buildRawMarketplaceLink(hipobuyLink) {
-  const match = hipobuyLink.match(/\/product\/(weidian|taobao|1688)\/(\d+)/i);
-  if (!match) return "";
-  const platform = match[1].toLowerCase();
-  const id = match[2];
-  if (platform === "weidian") return `https://weidian.com/item.html?itemID=${id}`;
-  if (platform === "taobao") return `https://item.taobao.com/item.htm?id=${id}`;
-  return `https://detail.1688.com/offer/${id}.html`;
-}
-
-function openConverterPopup() {
-  const overlay = document.getElementById("converter-overlay");
-  overlay.hidden = false;
-  document.body.classList.add("converter-modal-open");
-  requestAnimationFrame(() => overlay.querySelector(".converter-dialog-close").focus());
-}
-
-function closeConverterPopup() {
-  document.getElementById("converter-overlay").hidden = true;
-  document.body.classList.remove("converter-modal-open");
-  document.getElementById("converter-input").focus();
-}
-
-function convertToHipoBuy() {
-  const input = document.getElementById("converter-input").value;
-  const output = document.getElementById("converter-output");
-  const status = document.getElementById("converter-status");
-  const result = convertLinkValue(input);
-  const resultWrap = document.getElementById("converter-result");
-
-  if (!result.ok) {
-    output.value = "";
-    resultWrap.hidden = true;
-    status.innerHTML = `<strong>Could not convert:</strong> ${result.reason}`;
-    return;
-  }
-
-  convertedHipoBuyLink = result.link;
-  convertedRawLink = buildRawMarketplaceLink(result.link) || unwrapAgentLink(input);
-  output.value = result.link;
-  resultWrap.hidden = true;
-  status.textContent = "";
-  openConverterPopup();
-}
-
-async function copyPopupLink(type) {
-  const value = type === "hipobuy" ? convertedHipoBuyLink : convertedRawLink;
-  const button = document.getElementById(type === "hipobuy" ? "copy-hipobuy-button" : "copy-raw-button");
-  const defaultLabel = type === "hipobuy" ? "Copy HipoBuy link" : "COPY RAW LINK";
-  const liveStatus = document.getElementById("converter-modal-status");
-  const label = button.querySelector("[data-copy-label]") || button;
-
-  try {
-    await navigator.clipboard.writeText(value);
-    label.textContent = "COPIED";
-    liveStatus.textContent = `${defaultLabel.toLowerCase()} copied.`;
-    setTimeout(() => { label.textContent = defaultLabel; }, 1400);
-  } catch (error) {
-    liveStatus.textContent = "Copy failed. Please try again.";
-  }
-}
-
-document.getElementById("converter-overlay").addEventListener("click", (event) => {
-  if (event.target === event.currentTarget) closeConverterPopup();
-});
-
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !document.getElementById("converter-overlay").hidden) {
-    closeConverterPopup();
-  }
-});
-
-async function copyConvertedLink() {
-  const output = document.getElementById("converter-output").value.trim();
-  const status = document.getElementById("converter-status");
-  if (!output) {
-    status.innerHTML = `<strong>Nothing to copy:</strong> convert a link first.`;
-    return;
-  }
-  try {
-    await navigator.clipboard.writeText(output);
-    status.innerHTML = `<strong>Copied:</strong> your HipoBuy link is now on the clipboard.`;
-  } catch (error) {
-    status.innerHTML = `<strong>Copy failed:</strong> try copying from the output box manually.`;
-  }
-}
-
-function openConvertedLink() {
-  const output = document.getElementById("converter-output").value.trim();
-  const status = document.getElementById("converter-status");
-  if (!output) {
-    status.innerHTML = `<strong>Nothing to open:</strong> convert a link first.`;
-    return;
-  }
-  window.open(output, "_blank", "noopener,noreferrer");
-}
-
+    document.getElementById('converter-overlay').addEventListener('click', (event) => { if (event.target === event.currentTarget) closeConverterPopup(); });
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !document.getElementById('converter-overlay').hidden) closeConverterPopup(); });
     applyTheme();
   </script>
 </body>
