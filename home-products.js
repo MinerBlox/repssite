@@ -32,15 +32,9 @@ const tutorialSteps = [
   {
     number: 5,
     title: "Check item QCs",
-    subtext: "When the item arrives, check QCs (sorry I had to use another item due to lack of time).",
+    subtext: "When the item arrives, check QCs (sorry I had to use another item due to lack of time)",
     image: "https://github.com/MinerBlox/repssite/blob/main/systemimages/tutorial/step5.png?raw=true",
     alt: "Check item QCs tutorial step"
-  },
-  {
-    number: 6,
-    title: "NEXT STEPS COMING SOON",
-    subtext: "I need to wait for an item to arrive in the warehouse...",
-    comingSoon: true
   }
 ];
 
@@ -121,7 +115,7 @@ function injectHomepageModalPolish() {
     }
     .tutorial-step-sub,
     .tutorial-step2-sub {
-      margin: -14px 0 16px;
+      margin: -6px 0 16px;
       color: var(--muted);
       font-size: 13px;
       line-height: 1.45;
@@ -138,28 +132,6 @@ function injectHomepageModalPolish() {
       border-radius: 12px;
       background: var(--surface2);
     }
-    .tutorial-coming-soon {
-      display: grid;
-      place-items: center;
-      min-height: 280px;
-      padding: 32px;
-      border-radius: 12px;
-      position: relative;
-      overflow: hidden;
-      text-align: center;
-      background: var(--surface2);
-    }
-    .tutorial-coming-soon::before {
-      content: "";
-      position: absolute;
-      inset: -24px;
-      background: radial-gradient(circle at 30% 30%, rgba(77,166,255,0.24), transparent 42%), var(--surface2);
-      filter: blur(14px);
-      opacity: 0.72;
-    }
-    .tutorial-coming-soon-copy { position: relative; z-index: 1; }
-    .tutorial-coming-soon-copy strong { display: block; font-size: clamp(22px, 4vw, 34px); color: var(--text); }
-    .tutorial-coming-soon-copy span { display: block; margin-top: 8px; color: var(--muted); font-size: 14px; }
   `;
   document.head.appendChild(style);
 }
@@ -175,15 +147,7 @@ function injectTutorialCloseLink() {
     button.type = "button";
     button.textContent = "Close tutorial →";
     button.addEventListener("click", () => window.closeModal?.());
-    button.hidden = true;
     box.insertAdjacentElement("afterend", button);
-    const updateVisibility = () => {
-      const step = currentTutorialStepNumber();
-      button.hidden = !(step >= 1 && step <= 6);
-    };
-    updateVisibility();
-    const content = document.getElementById("modal-content");
-    if (content) new MutationObserver(updateVisibility).observe(content, { childList: true, subtree: true, characterData: true });
   };
   add();
   requestAnimationFrame(add);
@@ -193,9 +157,9 @@ function renderTutorialProgress(activeStep) {
   return `
     <div class="progress-bar">
       <div class="progress-bar-inner">
-        ${Array.from({ length: 6 }, (_, index) => `<div class="progress-segment ${index < activeStep ? "done" : ""}"></div>`).join("")}
+        ${Array.from({ length: 5 }, (_, index) => `<div class="progress-segment ${index < activeStep ? "done" : ""}"></div>`).join("")}
       </div>
-      <span class="progress-label">${activeStep} / 6</span>
+      <span class="progress-label">${activeStep} / 5</span>
     </div>
   `;
 }
@@ -223,23 +187,14 @@ function showStepNumber(stepNumber) {
         <div class="step-badge">STEP ${step.number}</div>
         <h2 class="step-title">${step.title}</h2>
         <p class="tutorial-step-sub">${step.subtext}</p>
-        ${step.comingSoon ? `
-          <div class="tutorial-coming-soon">
-            <div class="tutorial-coming-soon-copy">
-              <strong>${step.title}</strong>
-              <span>${step.subtext}</span>
-            </div>
-          </div>
-        ` : `
-          <div class="yt-embed">
-            <img class="tutorial-step-shot" src="${step.image}" alt="${step.alt}">
-          </div>
-        `}
+        <div class="yt-embed">
+          <img class="tutorial-step-shot" src="${step.image}" alt="${step.alt}">
+        </div>
         <div class="checkbox-row" onclick="window.showTutorialStep?.(${step.number + 1})">
           <div class="checkbox-box"></div>
           <span class="checkbox-label">Next Step</span>
         </div>
-        <div class="step-progress-note">You're <span>${step.number}/6</span> of the way to your future hauls!</div>
+        <div class="step-progress-note">You're <span>${step.number}/5</span> of the way to your future hauls!</div>
       </div>
     `;
     content.classList.remove("fading");
@@ -258,7 +213,7 @@ function installTutorialDoneGuard() {
   window.goToStep = next => {
     if (next === "done") {
       const currentStep = currentTutorialStepNumber();
-      if (currentStep && currentStep < 6) return showStepNumber(currentStep + 1);
+      if (currentStep && currentStep < 5) return showStepNumber(currentStep + 1);
     }
     return window.__rcOriginalGoToStep(next);
   };
@@ -316,20 +271,8 @@ function injectTutorialStepCopy() {
     });
 
     const progress = content.querySelector(".progress-label");
-    if (progress && /^[12] \/ 3$/.test(progress.textContent.trim())) {
-      const activeStep = Number(progress.textContent.trim().split(" ")[0]);
-      progress.textContent = `${activeStep} / 6`;
-      const bar = content.querySelector(".progress-bar-inner");
-      if (bar) {
-        bar.innerHTML = Array.from({ length: 6 }, (_, index) =>
-          `<div class="progress-segment ${index < activeStep ? "done" : ""}"></div>`
-        ).join("");
-      }
-    }
-
-    content.querySelectorAll(".step-progress-note").forEach(note => {
-      note.innerHTML = note.innerHTML.replace(/([12])\/3/g, "$1/6");
-    });
+    if (progress?.textContent.trim() === "1 / 3") progress.textContent = "1 / 5";
+    if (progress?.textContent.trim() === "2 / 3") progress.textContent = "2 / 5";
 
     const stepTitle = content.querySelector(".step-title");
     if (!stepTitle || stepTitle.textContent.trim() !== "Watch the quick tutorial.") return;
