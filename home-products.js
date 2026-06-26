@@ -74,6 +74,23 @@ function injectHomepageModalPolish() {
       color: #fff;
       box-shadow: 0 8px 24px rgba(77,166,255,0.25);
     }
+    .tutorial-step2-sub {
+      margin: -6px 0 16px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      text-align: center;
+    }
+    .tutorial-step2-shot {
+      display: block;
+      width: 100%;
+      max-height: 315px;
+      aspect-ratio: 16 / 9;
+      object-fit: contain;
+      border: 0;
+      border-radius: 12px;
+      background: var(--surface2);
+    }
   `;
   document.head.appendChild(style);
 }
@@ -134,9 +151,48 @@ function injectTutorialNavButtons() {
   waitForContent();
 }
 
+function injectTutorialStepTwoCopy() {
+  const stepTwoImage = "https://github.com/MinerBlox/repssite/blob/main/systemimages/tutorial/step2.png?raw=true";
+  const patch = () => {
+    const content = document.getElementById("modal-content");
+    if (!content) return;
+
+    content.querySelectorAll(".modal-title span, .step-link .sub").forEach(node => {
+      if (node.textContent.includes("35%")) node.textContent = node.textContent.replace(/35%/g, "25%");
+    });
+
+    const stepTitle = content.querySelector(".step-title");
+    if (!stepTitle || stepTitle.textContent.trim() !== "Watch the quick tutorial.") return;
+    stepTitle.textContent = "Browse our spreadsheet";
+
+    if (!content.querySelector(".tutorial-step2-sub")) {
+      const subtext = document.createElement("p");
+      subtext.className = "tutorial-step2-sub";
+      subtext.textContent = "Pick an item and open the link in your browser.";
+      stepTitle.insertAdjacentElement("afterend", subtext);
+    }
+
+    const frame = content.querySelector(".yt-embed");
+    if (frame && frame.dataset.repsStep2Image !== "true") {
+      frame.dataset.repsStep2Image = "true";
+      frame.innerHTML = `<img class="tutorial-step2-shot" src="${stepTwoImage}" alt="Browse spreadsheet tutorial step">`;
+    }
+  };
+
+  patch();
+  const observer = new MutationObserver(patch);
+  const waitForContent = () => {
+    const content = document.getElementById("modal-content");
+    if (content) observer.observe(content, { childList: true, subtree: true });
+    else requestAnimationFrame(waitForContent);
+  };
+  waitForContent();
+}
+
 injectHomepageModalPolish();
 injectTutorialCloseLink();
 injectTutorialNavButtons();
+injectTutorialStepTwoCopy();
 
 const medals = [
   { rank: 1, label: "1st", borderColor: "#FFD700", glowColor: "rgba(255,215,0,0.18)", badgeColor: "#FFD700", badgeText: "#000", textColor: "#FFD700", emoji: "🥇" },
