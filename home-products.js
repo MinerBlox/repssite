@@ -49,11 +49,76 @@ function injectHomepageModalPolish() {
       opacity: 0.85 !important;
     }
     .modal-body { padding-top: 32px !important; }
+    .tutorial-nav-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .tutorial-nav-row.single { grid-template-columns: 1fr; }
+    .tutorial-nav-btn {
+      min-height: 46px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    .tutorial-nav-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    .tutorial-nav-btn.primary {
+      background: #4da6ff;
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(77,166,255,0.25);
+    }
   `;
   document.head.appendChild(style);
 }
 
+function injectTutorialNavButtons() {
+  const patch = () => {
+    const content = document.getElementById("modal-content");
+    if (!content) return;
+    const row = content.querySelector(".checkbox-row");
+    if (!row || row.dataset.repsNavPatched === "true") return;
+    const progress = content.querySelector(".progress-label")?.textContent?.trim() || "";
+    if (!progress) return;
+
+    const nav = document.createElement("div");
+    nav.className = "tutorial-nav-row";
+    row.dataset.repsNavPatched = "true";
+
+    if (progress.startsWith("1")) {
+      nav.classList.add("single");
+      nav.innerHTML = `<button class="tutorial-nav-btn primary" type="button">Next Step</button>`;
+      nav.querySelector("button").addEventListener("click", () => window.goToStep?.("step2"));
+    } else {
+      nav.innerHTML = `
+        <button class="tutorial-nav-btn" type="button">Previous Step</button>
+        <button class="tutorial-nav-btn primary" type="button">Next Step</button>
+      `;
+      nav.children[0].addEventListener("click", () => window.goToStep?.("step1"));
+      nav.children[1].addEventListener("click", () => window.goToStep?.("done"));
+    }
+
+    row.replaceWith(nav);
+  };
+
+  patch();
+  const observer = new MutationObserver(patch);
+  const waitForContent = () => {
+    const content = document.getElementById("modal-content");
+    if (content) observer.observe(content, { childList: true, subtree: true });
+    else requestAnimationFrame(waitForContent);
+  };
+  waitForContent();
+}
+
 injectHomepageModalPolish();
+injectTutorialNavButtons();
 
 const medals = [
   { rank: 1, label: "1st", borderColor: "#FFD700", glowColor: "rgba(255,215,0,0.18)", badgeColor: "#FFD700", badgeText: "#000", textColor: "#FFD700", emoji: "🥇" },
