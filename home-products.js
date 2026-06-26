@@ -74,13 +74,15 @@ function injectHomepageModalPolish() {
       color: #fff;
       box-shadow: 0 8px 24px rgba(77,166,255,0.25);
     }
+    .tutorial-step-sub,
     .tutorial-step2-sub {
       margin: -6px 0 16px;
       color: var(--muted);
       font-size: 13px;
       line-height: 1.45;
-      text-align: center;
+      text-align: left;
     }
+    .tutorial-step-shot,
     .tutorial-step2-shot {
       display: block;
       width: 100%;
@@ -129,12 +131,19 @@ function injectTutorialNavButtons() {
       nav.classList.add("single");
       nav.innerHTML = `<button class="tutorial-nav-btn primary" type="button">Next Step</button>`;
       nav.querySelector("button").addEventListener("click", () => window.goToStep?.("step2"));
-    } else {
+    } else if (progress.startsWith("2")) {
       nav.innerHTML = `
         <button class="tutorial-nav-btn" type="button">Previous Step</button>
         <button class="tutorial-nav-btn primary" type="button">Next Step</button>
       `;
       nav.children[0].addEventListener("click", () => window.goToStep?.("step1"));
+      nav.children[1].addEventListener("click", () => window.showTutorialStepThree?.());
+    } else {
+      nav.innerHTML = `
+        <button class="tutorial-nav-btn" type="button">Previous Step</button>
+        <button class="tutorial-nav-btn primary" type="button">Next Step</button>
+      `;
+      nav.children[0].addEventListener("click", () => window.goToStep?.("step2"));
       nav.children[1].addEventListener("click", () => window.goToStep?.("done"));
     }
 
@@ -151,8 +160,44 @@ function injectTutorialNavButtons() {
   waitForContent();
 }
 
-function injectTutorialStepTwoCopy() {
+function injectTutorialStepCopy() {
   const stepTwoImage = "https://github.com/MinerBlox/repssite/blob/main/systemimages/tutorial/step2.png?raw=true";
+  const stepThreeImage = "https://github.com/MinerBlox/repssite/blob/main/systemimages/tutorial/step3.png?raw=true";
+
+  window.showTutorialStepThree = () => {
+    const content = document.getElementById("modal-content");
+    const box = document.getElementById("modal-box");
+    if (!content) return;
+    content.classList.add("fading");
+    setTimeout(() => {
+      box?.classList.add("wide");
+      content.innerHTML = `
+        <div style="animation:rc-fadein 0.4s ease">
+          <div class="progress-bar">
+            <div class="progress-bar-inner">
+              <div class="progress-segment done"></div>
+              <div class="progress-segment done"></div>
+              <div class="progress-segment done"></div>
+            </div>
+            <span class="progress-label">3 / 3</span>
+          </div>
+          <div class="step-badge">STEP 3</div>
+          <h2 class="step-title">Customise item.</h2>
+          <p class="tutorial-step-sub">Choose size and style under the price.</p>
+          <div class="yt-embed">
+            <img class="tutorial-step-shot" src="${stepThreeImage}" alt="Customise item tutorial step">
+          </div>
+          <div class="checkbox-row" onclick="window.goToStep?.('done')">
+            <div class="checkbox-box"></div>
+            <span class="checkbox-label">Next Step</span>
+          </div>
+          <div class="step-progress-note">You're <span>3/3</span> of the way to your future hauls!</div>
+        </div>
+      `;
+      content.classList.remove("fading");
+    }, 350);
+  };
+
   const patch = () => {
     const content = document.getElementById("modal-content");
     if (!content) return;
@@ -165,9 +210,9 @@ function injectTutorialStepTwoCopy() {
     if (!stepTitle || stepTitle.textContent.trim() !== "Watch the quick tutorial.") return;
     stepTitle.textContent = "Browse our spreadsheet";
 
-    if (!content.querySelector(".tutorial-step2-sub")) {
+    if (!content.querySelector(".tutorial-step-sub") && !content.querySelector(".tutorial-step2-sub")) {
       const subtext = document.createElement("p");
-      subtext.className = "tutorial-step2-sub";
+      subtext.className = "tutorial-step-sub";
       subtext.textContent = "Pick an item and open the link in your browser.";
       stepTitle.insertAdjacentElement("afterend", subtext);
     }
@@ -175,7 +220,7 @@ function injectTutorialStepTwoCopy() {
     const frame = content.querySelector(".yt-embed");
     if (frame && frame.dataset.repsStep2Image !== "true") {
       frame.dataset.repsStep2Image = "true";
-      frame.innerHTML = `<img class="tutorial-step2-shot" src="${stepTwoImage}" alt="Browse spreadsheet tutorial step">`;
+      frame.innerHTML = `<img class="tutorial-step-shot" src="${stepTwoImage}" alt="Browse spreadsheet tutorial step">`;
     }
   };
 
@@ -192,7 +237,7 @@ function injectTutorialStepTwoCopy() {
 injectHomepageModalPolish();
 injectTutorialCloseLink();
 injectTutorialNavButtons();
-injectTutorialStepTwoCopy();
+injectTutorialStepCopy();
 
 const medals = [
   { rank: 1, label: "1st", borderColor: "#FFD700", glowColor: "rgba(255,215,0,0.18)", badgeColor: "#FFD700", badgeText: "#000", textColor: "#FFD700", emoji: "🥇" },
