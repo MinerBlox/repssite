@@ -19,36 +19,36 @@ function injectHomepageModalPolish() {
   const style = document.createElement("style");
   style.id = "homepage-modal-polish";
   style.textContent = `
+    #modal-overlay {
+      flex-direction: column !important;
+      gap: 10px !important;
+    }
     .modal-box {
       box-shadow: 0 0 34px rgba(77,166,255,0.24), 0 0 0 1px rgba(77,166,255,0.08), 0 24px 70px rgba(0,0,0,0.52) !important;
     }
     body.light .modal-box {
       box-shadow: 0 0 34px rgba(77,166,255,0.22), 0 0 0 1px rgba(77,166,255,0.1), 0 24px 70px rgba(15,23,42,0.18) !important;
     }
-    .modal-close {
-      top: 18px !important;
-      right: 18px !important;
-      width: 36px !important;
-      height: 36px !important;
-      padding: 0 !important;
-      display: grid !important;
-      place-items: center !important;
-      border-radius: 999px !important;
-      background: rgba(24,24,28,0.92) !important;
-      border: 1px solid rgba(255,255,255,0.08) !important;
-      backdrop-filter: blur(10px) !important;
-      z-index: 20 !important;
+    .modal-close { display: none !important; }
+    .modal-body { padding: 22px 28px 24px !important; }
+    .tutorial-close-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      padding: 0 12px;
+      color: #fff;
+      background: transparent;
+      border: 0;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      opacity: 0.82;
+      text-shadow: 0 1px 14px rgba(0,0,0,0.45);
+      transition: opacity 0.15s, transform 0.15s;
     }
-    body.light .modal-close {
-      background: rgba(255,255,255,0.92) !important;
-      border-color: rgba(15,23,42,0.1) !important;
-    }
-    .modal-close:hover {
-      color: var(--text) !important;
-      background: var(--surface2) !important;
-      opacity: 0.85 !important;
-    }
-    .modal-body { padding-top: 32px !important; }
+    .tutorial-close-link:hover { opacity: 1; transform: translateY(-1px); }
+    body.light .tutorial-close-link { color: #fff; }
     .tutorial-nav-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -76,6 +76,23 @@ function injectHomepageModalPolish() {
     }
   `;
   document.head.appendChild(style);
+}
+
+function injectTutorialCloseLink() {
+  const add = () => {
+    const overlay = document.getElementById("modal-overlay");
+    const box = document.getElementById("modal-box");
+    if (!overlay || !box || document.getElementById("tutorial-close-link")) return;
+    const button = document.createElement("button");
+    button.id = "tutorial-close-link";
+    button.className = "tutorial-close-link";
+    button.type = "button";
+    button.textContent = "Close tutorial -->";
+    button.addEventListener("click", () => window.closeModal?.());
+    box.insertAdjacentElement("afterend", button);
+  };
+  add();
+  requestAnimationFrame(add);
 }
 
 function injectTutorialNavButtons() {
@@ -118,6 +135,7 @@ function injectTutorialNavButtons() {
 }
 
 injectHomepageModalPolish();
+injectTutorialCloseLink();
 injectTutorialNavButtons();
 
 const medals = [
