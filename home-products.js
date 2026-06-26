@@ -14,6 +14,45 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+const tutorialSteps = [
+  {
+    number: 3,
+    title: "Customise item.",
+    subtext: "Choose size and style under the price.",
+    image: "https://github.com/MinerBlox/repssite/blob/main/systemimages/tutorial/step3.png?raw=true",
+    alt: "Customise item tutorial step"
+  },
+  {
+    number: 4,
+    title: "Add item to cart",
+    subtext: "Fill in information and check out to order item.",
+    image: "https://github.com/MinerBlox/repssite/blob/main/systemimages/tutorial/step4.png?raw=true",
+    alt: "Add item to cart tutorial step"
+  },
+  {
+    number: 5,
+    title: "Check item QCs",
+    subtext: "When the item arrives, check QCs (sorry I had to use another item due to lack of time)",
+    image: "https://github.com/MinerBlox/repssite/blob/main/systemimages/tutorial/step5.png?raw=true",
+    alt: "Check item QCs tutorial step"
+  }
+];
+
+const stepTwoImage = "https://github.com/MinerBlox/repssite/blob/main/systemimages/tutorial/step2.png?raw=true";
+const tutorialImageUrls = [stepTwoImage, ...tutorialSteps.map(step => step.image)];
+
+function preloadTutorialImages() {
+  tutorialImageUrls.forEach(url => {
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "image";
+    link.href = url;
+    document.head.appendChild(link);
+    const image = new Image();
+    image.src = url;
+  });
+}
+
 function injectHomepageModalPolish() {
   if (document.getElementById("homepage-modal-polish")) return;
   const style = document.createElement("style");
@@ -114,6 +153,49 @@ function injectTutorialCloseLink() {
   requestAnimationFrame(add);
 }
 
+function renderTutorialProgress(activeStep) {
+  return `
+    <div class="progress-bar">
+      <div class="progress-bar-inner">
+        ${Array.from({ length: 5 }, (_, index) => `<div class="progress-segment ${index < activeStep ? "done" : ""}"></div>`).join("")}
+      </div>
+      <span class="progress-label">${activeStep} / 5</span>
+    </div>
+  `;
+}
+
+function showStepNumber(stepNumber) {
+  if (stepNumber <= 1) return window.goToStep?.("step1");
+  if (stepNumber === 2) return window.goToStep?.("step2");
+  const step = tutorialSteps.find(item => item.number === stepNumber);
+  if (!step) return window.goToStep?.("done");
+
+  const content = document.getElementById("modal-content");
+  const box = document.getElementById("modal-box");
+  if (!content) return;
+  content.classList.add("fading");
+  setTimeout(() => {
+    box?.classList.add("wide");
+    content.innerHTML = `
+      <div style="animation:rc-fadein 0.4s ease">
+        ${renderTutorialProgress(step.number)}
+        <div class="step-badge">STEP ${step.number}</div>
+        <h2 class="step-title">${step.title}</h2>
+        <p class="tutorial-step-sub">${step.subtext}</p>
+        <div class="yt-embed">
+          <img class="tutorial-step-shot" src="${step.image}" alt="${step.alt}">
+        </div>
+        <div class="checkbox-row" onclick="window.showTutorialStep?.(${step.number + 1})">
+          <div class="checkbox-box"></div>
+          <span class="checkbox-label">Next Step</span>
+        </div>
+        <div class="step-progress-note">You're <span>${step.number}/5</span> of the way to your future hauls!</div>
+      </div>
+    `;
+    content.classList.remove("fading");
+  }, 350);
+}
+
 function injectTutorialNavButtons() {
   const patch = () => {
     const content = document.getElementById("modal-content");
@@ -121,30 +203,24 @@ function injectTutorialNavButtons() {
     const row = content.querySelector(".checkbox-row");
     if (!row || row.dataset.repsNavPatched === "true") return;
     const progress = content.querySelector(".progress-label")?.textContent?.trim() || "";
-    if (!progress) return;
+    const currentStep = Number(progress.match(/^(\d+)/)?.[1] || 0);
+    if (!currentStep) return;
 
     const nav = document.createElement("div");
     nav.className = "tutorial-nav-row";
     row.dataset.repsNavPatched = "true";
 
-    if (progress.startsWith("1")) {
+    if (currentStep === 1) {
       nav.classList.add("single");
       nav.innerHTML = `<button class="tutorial-nav-btn primary" type="button">Next Step</button>`;
       nav.querySelector("button").addEventListener("click", () => window.goToStep?.("step2"));
-    } else if (progress.startsWith("2")) {
-      nav.innerHTML = `
-        <button class="tutorial-nav-btn" type="button">Previous Step</button>
-        <button class="tutorial-nav-btn primary" type="button">Next Step</button>
-      `;
-      nav.children[0].addEventListener("click", () => window.goToStep?.("step1"));
-      nav.children[1].addEventListener("click", () => window.showTutorialStepThree?.());
     } else {
       nav.innerHTML = `
         <button class="tutorial-nav-btn" type="button">Previous Step</button>
         <button class="tutorial-nav-btn primary" type="button">Next Step</button>
       `;
-      nav.children[0].addEventListener("click", () => window.goToStep?.("step2"));
-      nav.children[1].addEventListener("click", () => window.goToStep?.("done"));
+      nav.children[0].addEventListener("click", () => showStepNumber(currentStep - 1));
+      nav.children[1].addEventListener("click", () => showStepNumber(currentStep + 1));
     }
 
     row.replaceWith(nav);
@@ -161,42 +237,8 @@ function injectTutorialNavButtons() {
 }
 
 function injectTutorialStepCopy() {
-  const stepTwoImage = "https://github.com/MinerBlox/repssite/blob/main/systemimages/tutorial/step2.png?raw=true";
-  const stepThreeImage = "https://github.com/MinerBlox/repssite/blob/main/systemimages/tutorial/step3.png?raw=true";
-
-  window.showTutorialStepThree = () => {
-    const content = document.getElementById("modal-content");
-    const box = document.getElementById("modal-box");
-    if (!content) return;
-    content.classList.add("fading");
-    setTimeout(() => {
-      box?.classList.add("wide");
-      content.innerHTML = `
-        <div style="animation:rc-fadein 0.4s ease">
-          <div class="progress-bar">
-            <div class="progress-bar-inner">
-              <div class="progress-segment done"></div>
-              <div class="progress-segment done"></div>
-              <div class="progress-segment done"></div>
-            </div>
-            <span class="progress-label">3 / 3</span>
-          </div>
-          <div class="step-badge">STEP 3</div>
-          <h2 class="step-title">Customise item.</h2>
-          <p class="tutorial-step-sub">Choose size and style under the price.</p>
-          <div class="yt-embed">
-            <img class="tutorial-step-shot" src="${stepThreeImage}" alt="Customise item tutorial step">
-          </div>
-          <div class="checkbox-row" onclick="window.goToStep?.('done')">
-            <div class="checkbox-box"></div>
-            <span class="checkbox-label">Next Step</span>
-          </div>
-          <div class="step-progress-note">You're <span>3/3</span> of the way to your future hauls!</div>
-        </div>
-      `;
-      content.classList.remove("fading");
-    }, 350);
-  };
+  window.showTutorialStep = showStepNumber;
+  window.showTutorialStepThree = () => showStepNumber(3);
 
   const patch = () => {
     const content = document.getElementById("modal-content");
@@ -205,6 +247,10 @@ function injectTutorialStepCopy() {
     content.querySelectorAll(".modal-title span, .step-link .sub").forEach(node => {
       if (node.textContent.includes("35%")) node.textContent = node.textContent.replace(/35%/g, "25%");
     });
+
+    const progress = content.querySelector(".progress-label");
+    if (progress?.textContent.trim() === "1 / 3") progress.textContent = "1 / 5";
+    if (progress?.textContent.trim() === "2 / 3") progress.textContent = "2 / 5";
 
     const stepTitle = content.querySelector(".step-title");
     if (!stepTitle || stepTitle.textContent.trim() !== "Watch the quick tutorial.") return;
@@ -234,6 +280,7 @@ function injectTutorialStepCopy() {
   waitForContent();
 }
 
+preloadTutorialImages();
 injectHomepageModalPolish();
 injectTutorialCloseLink();
 injectTutorialNavButtons();
