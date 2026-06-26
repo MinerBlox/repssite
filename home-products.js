@@ -164,11 +164,16 @@ function renderTutorialProgress(activeStep) {
   `;
 }
 
+function currentTutorialStepNumber() {
+  const progress = document.querySelector("#modal-content .progress-label")?.textContent?.trim() || "";
+  return Number(progress.match(/^(\d+)/)?.[1] || 0);
+}
+
 function showStepNumber(stepNumber) {
   if (stepNumber <= 1) return window.goToStep?.("step1");
   if (stepNumber === 2) return window.goToStep?.("step2");
   const step = tutorialSteps.find(item => item.number === stepNumber);
-  if (!step) return window.goToStep?.("done");
+  if (!step) return window.__rcOriginalGoToStep?.("done") || window.goToStep?.("done");
 
   const content = document.getElementById("modal-content");
   const box = document.getElementById("modal-box");
@@ -196,14 +201,31 @@ function showStepNumber(stepNumber) {
   }, 350);
 }
 
+function installTutorialDoneGuard() {
+  if (window.__rcTutorialDoneGuard === true) return;
+  if (typeof window.goToStep !== "function") {
+    requestAnimationFrame(installTutorialDoneGuard);
+    return;
+  }
+
+  window.__rcOriginalGoToStep = window.goToStep;
+  window.__rcTutorialDoneGuard = true;
+  window.goToStep = next => {
+    if (next === "done") {
+      const currentStep = currentTutorialStepNumber();
+      if (currentStep && currentStep < 5) return showStepNumber(currentStep + 1);
+    }
+    return window.__rcOriginalGoToStep(next);
+  };
+}
+
 function injectTutorialNavButtons() {
   const patch = () => {
     const content = document.getElementById("modal-content");
     if (!content) return;
     const row = content.querySelector(".checkbox-row");
     if (!row || row.dataset.repsNavPatched === "true") return;
-    const progress = content.querySelector(".progress-label")?.textContent?.trim() || "";
-    const currentStep = Number(progress.match(/^(\d+)/)?.[1] || 0);
+    const currentStep = currentTutorialStepNumber();
     if (!currentStep) return;
 
     const nav = document.createElement("div");
@@ -283,6 +305,7 @@ function injectTutorialStepCopy() {
 preloadTutorialImages();
 injectHomepageModalPolish();
 injectTutorialCloseLink();
+installTutorialDoneGuard();
 injectTutorialNavButtons();
 injectTutorialStepCopy();
 
@@ -308,8 +331,7 @@ function formatPrice(item) {
 
 function itemHref(item) {
   return item.id ? `items/${encodeURIComponent(item.id)}/` : "spreadsheet.html";
-}
-
+}\n
 function badgeLabel(type) {
   if (type === "best") return "Best Batch";
   if (type === "budget") return "Budget Batch";
