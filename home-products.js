@@ -292,7 +292,9 @@ function injectTutorialStepCopy() {
     if (progress?.textContent.trim() === "2 / 3") progress.textContent = "2 / 5";
 
     content.querySelectorAll(".step-progress-note span").forEach(note => {
-      note.textContent = note.textContent.replace("/3", "/5");
+      if (note.textContent.includes("/3")) {
+        note.textContent = note.textContent.replace("/3", "/5");
+      }
     });
 
     const stepTitle = content.querySelector(".step-title");
