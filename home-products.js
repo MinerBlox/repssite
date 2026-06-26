@@ -87,7 +87,7 @@ function injectTutorialCloseLink() {
     button.id = "tutorial-close-link";
     button.className = "tutorial-close-link";
     button.type = "button";
-    button.textContent = "Close tutorial -->";
+    button.textContent = "Close tutorial →";
     button.addEventListener("click", () => window.closeModal?.());
     box.insertAdjacentElement("afterend", button);
   };
