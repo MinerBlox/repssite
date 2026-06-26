@@ -331,7 +331,8 @@ function formatPrice(item) {
 
 function itemHref(item) {
   return item.id ? `items/${encodeURIComponent(item.id)}/` : "spreadsheet.html";
-}\n
+}
+
 function badgeLabel(type) {
   if (type === "best") return "Best Batch";
   if (type === "budget") return "Budget Batch";
