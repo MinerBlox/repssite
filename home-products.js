@@ -69,6 +69,7 @@ function injectHomepageModalPolish() {
       box-shadow: 0 0 34px rgba(77,166,255,0.22), 0 0 0 1px rgba(77,166,255,0.1), 0 24px 70px rgba(15,23,42,0.18) !important;
     }
     .modal-close { display: none !important; }
+    .tutorial-close-link[hidden] { display: none !important; }
     .modal-body { padding: 22px 28px 24px !important; }
     .tutorial-close-link {
       display: inline-flex;
@@ -147,7 +148,18 @@ function injectTutorialCloseLink() {
     button.type = "button";
     button.textContent = "Close tutorial →";
     button.addEventListener("click", () => window.closeModal?.());
+    button.hidden = true;
     box.insertAdjacentElement("afterend", button);
+
+    const updateVisibility = () => {
+      button.hidden = currentTutorialStepNumber() === 0;
+    };
+    updateVisibility();
+
+    const content = document.getElementById("modal-content");
+    if (content) {
+      new MutationObserver(updateVisibility).observe(content, { childList: true, subtree: true });
+    }
   };
   add();
   requestAnimationFrame(add);
