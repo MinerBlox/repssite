@@ -69,7 +69,7 @@ function injectHomepageModalPolish() {
       box-shadow: 0 0 34px rgba(77,166,255,0.22), 0 0 0 1px rgba(77,166,255,0.1), 0 24px 70px rgba(15,23,42,0.18) !important;
     }
     .modal-close { display: none !important; }
-    .modal-close.rc-initial-close { display: flex !important; }
+    .modal-close.rc-visible { display: block !important; }
     .tutorial-close-link[hidden] { display: none !important; }
     .modal-body { padding: 22px 28px 24px !important; }
     .tutorial-close-link {
@@ -151,20 +151,6 @@ function injectTutorialCloseLink() {
     button.addEventListener("click", () => window.closeModal?.());
     button.hidden = true;
     box.insertAdjacentElement("afterend", button);
-
-    const nativeClose = box.querySelector(".modal-close");
-    const updateVisibility = () => {
-      const isTutorialStep = currentTutorialStepNumber() > 0;
-      const isOpeningScreen = document.getElementById("modal-content")?.textContent?.includes("START TUTORIAL");
-      button.hidden = !isTutorialStep;
-      nativeClose?.classList.toggle("rc-initial-close", Boolean(isOpeningScreen));
-    };
-    updateVisibility();
-
-    const content = document.getElementById("modal-content");
-    if (content) {
-      new MutationObserver(updateVisibility).observe(content, { childList: true, subtree: true });
-    }
   };
   add();
   requestAnimationFrame(add);
@@ -195,6 +181,8 @@ function showStepNumber(stepNumber) {
   const content = document.getElementById("modal-content");
   const box = document.getElementById("modal-box");
   if (!content) return;
+  const tutorialClose = document.getElementById("tutorial-close-link");
+  if (tutorialClose) tutorialClose.hidden = false;
   content.classList.add("fading");
   setTimeout(() => {
     box?.classList.add("wide");
@@ -290,12 +278,6 @@ function injectTutorialStepCopy() {
     const progress = content.querySelector(".progress-label");
     if (progress?.textContent.trim() === "1 / 3") progress.textContent = "1 / 5";
     if (progress?.textContent.trim() === "2 / 3") progress.textContent = "2 / 5";
-
-    content.querySelectorAll(".step-progress-note span").forEach(note => {
-      if (note.textContent.includes("/3")) {
-        note.textContent = note.textContent.replace("/3", "/5");
-      }
-    });
 
     const stepTitle = content.querySelector(".step-title");
     if (!stepTitle || stepTitle.textContent.trim() !== "Watch the quick tutorial.") return;
