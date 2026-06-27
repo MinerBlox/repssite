@@ -35,11 +35,17 @@ const tutorialSteps = [
     subtext: "When the item arrives, check QCs (sorry I had to use another item due to lack of time)",
     image: "https://github.com/MinerBlox/repssite/blob/main/systemimages/tutorial/step5.png?raw=true",
     alt: "Check item QCs tutorial step"
+  },
+  {
+    number: 6,
+    title: "NEXT STEPS COMING SOON",
+    subtext: "Waiting for items to arrive at warehouse to finish tutorial...",
+    comingSoon: true
   }
 ];
 
 const stepTwoImage = "https://github.com/MinerBlox/repssite/blob/main/systemimages/tutorial/step2.png?raw=true";
-const tutorialImageUrls = [stepTwoImage, ...tutorialSteps.map(step => step.image)];
+const tutorialImageUrls = [stepTwoImage, ...tutorialSteps.map(step => step.image).filter(Boolean)];
 
 function preloadTutorialImages() {
   tutorialImageUrls.forEach(url => {
@@ -134,6 +140,11 @@ function injectHomepageModalPolish() {
       border-radius: 12px;
       background: var(--surface2);
     }
+    .tutorial-coming-soon { display:grid; place-items:center; min-height:300px; padding:32px; position:relative; overflow:hidden; border:1px solid var(--border); border-radius:12px; text-align:center; background:var(--surface2); }
+    .tutorial-coming-soon::before { content:""; position:absolute; inset:-30px; background:radial-gradient(circle at 30% 25%, rgba(77,166,255,0.25), transparent 44%), var(--surface2); filter:blur(18px); opacity:0.9; }
+    .tutorial-coming-soon-copy { position:relative; z-index:1; max-width:390px; }
+    .tutorial-coming-soon-copy strong { display:block; color:var(--text); font-size:26px; line-height:1.15; }
+    .tutorial-coming-soon-copy span { display:block; margin-top:10px; color:var(--muted); font-size:14px; line-height:1.5; }
   `;
   document.head.appendChild(style);
 }
@@ -160,9 +171,9 @@ function renderTutorialProgress(activeStep) {
   return `
     <div class="progress-bar">
       <div class="progress-bar-inner">
-        ${Array.from({ length: 5 }, (_, index) => `<div class="progress-segment ${index < activeStep ? "done" : ""}"></div>`).join("")}
+        ${Array.from({ length: 6 }, (_, index) => `<div class="progress-segment ${index < activeStep ? "done" : ""}"></div>`).join("")}
       </div>
-      <span class="progress-label">${activeStep} / 5</span>
+      <span class="progress-label">${activeStep} / 6</span>
     </div>
   `;
 }
@@ -190,16 +201,12 @@ function showStepNumber(stepNumber) {
       <div style="animation:rc-fadein 0.4s ease">
         ${renderTutorialProgress(step.number)}
         <div class="step-badge">STEP ${step.number}</div>
-        <h2 class="step-title">${step.title}</h2>
-        <p class="tutorial-step-sub">${step.subtext}</p>
-        <div class="yt-embed">
-          <img class="tutorial-step-shot" src="${step.image}" alt="${step.alt}">
-        </div>
+        ${step.comingSoon ? `<div class="tutorial-coming-soon"><div class="tutorial-coming-soon-copy"><strong>${step.title}</strong><span>${step.subtext}</span></div></div>` : `<h2 class="step-title">${step.title}</h2><p class="tutorial-step-sub">${step.subtext}</p><div class="yt-embed"><img class="tutorial-step-shot" src="${step.image}" alt="${step.alt}"></div>`}
         <div class="checkbox-row" onclick="window.showTutorialStep?.(${step.number + 1})">
           <div class="checkbox-box"></div>
           <span class="checkbox-label">Next Step</span>
         </div>
-        <div class="step-progress-note">You're <span>${step.number}/5</span> of the way to your future hauls!</div>
+        <div class="step-progress-note">You're <span>${step.number}/6</span> of the way to your future hauls!</div>
       </div>
     `;
     content.classList.remove("fading");
@@ -218,7 +225,7 @@ function installTutorialDoneGuard() {
   window.goToStep = next => {
     if (next === "done") {
       const currentStep = currentTutorialStepNumber();
-      if (currentStep && currentStep < 5) return showStepNumber(currentStep + 1);
+      if (currentStep && currentStep < 6) return showStepNumber(currentStep + 1);
     }
     return window.__rcOriginalGoToStep(next);
   };
@@ -276,8 +283,8 @@ function injectTutorialStepCopy() {
     });
 
     const progress = content.querySelector(".progress-label");
-    if (progress?.textContent.trim() === "1 / 3") progress.textContent = "1 / 5";
-    if (progress?.textContent.trim() === "2 / 3") progress.textContent = "2 / 5";
+    if (progress?.textContent.trim() === "1 / 3") progress.textContent = "1 / 6";
+    if (progress?.textContent.trim() === "2 / 3") progress.textContent = "2 / 6";
 
     const stepTitle = content.querySelector(".step-title");
     if (!stepTitle || stepTitle.textContent.trim() !== "Watch the quick tutorial.") return;
