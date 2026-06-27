@@ -325,7 +325,6 @@
       transform: translateY(-1px);
       background: var(--surface2);
     }
-
     .category-chip.active {
       background: var(--blue-soft);
       border-color: rgba(77,166,255,0.32);
@@ -440,6 +439,28 @@
       font-weight: 800;
       color: var(--blue);
     }
+    .product-price-stack { display:flex; align-items:baseline; gap:8px; min-width:0; }
+    .yuan-price { color:var(--muted); font-size:11px; font-weight:600; white-space:nowrap; }
+    .currency-pill { cursor:pointer; color:#4da6ff; background:rgba(77,166,255,0.1); border-color:rgba(77,166,255,0.3); }
+    .currency-pill:hover { background:rgba(77,166,255,0.17); }
+
+    .currency-overlay { position:fixed; inset:0; z-index:3000; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(0,0,0,0.72); backdrop-filter:blur(8px); }
+    .currency-overlay.open { display:flex; }
+    .currency-modal { width:min(620px,100%); max-height:min(720px,88dvh); display:flex; flex-direction:column; overflow:hidden; position:relative; border:1px solid var(--border); border-radius:8px; background:var(--surface); box-shadow:0 0 34px rgba(77,166,255,0.2),0 28px 80px rgba(0,0,0,0.55); }
+    .currency-modal::before { content:""; height:3px; flex:none; background:#4da6ff; }
+    .currency-modal-head { padding:28px 28px 18px; }
+    .currency-modal-head h2 { font-family:'Syne',sans-serif; font-size:26px; line-height:1.1; }
+    .currency-modal-head p { margin-top:8px; color:var(--muted); font-size:13px; }
+    .currency-close { position:absolute; top:16px; right:16px; width:44px; height:44px; display:grid; place-items:center; color:var(--muted); font-size:24px; }
+    .currency-search { margin:0 28px 16px; min-height:48px; padding:0 16px; border:1px solid var(--border); border-radius:6px; background:var(--surface2); color:var(--text); font:inherit; font-size:16px; outline:none; }
+    .currency-search:focus { border-color:#4da6ff; box-shadow:0 0 0 3px rgba(77,166,255,0.12); }
+    .currency-list { padding:0 20px 24px; overflow-y:auto; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .currency-option { min-height:58px; padding:10px 14px; display:flex; align-items:center; gap:12px; border:1px solid var(--border); border-radius:6px; background:var(--surface2); color:var(--text); text-align:left; cursor:pointer; }
+    .currency-option:hover,.currency-option.selected { border-color:#4da6ff; background:rgba(77,166,255,0.1); }
+    .currency-code { width:48px; flex:none; color:#4da6ff; font-weight:900; }
+    .currency-name { overflow:hidden; color:var(--muted); font-size:13px; text-overflow:ellipsis; white-space:nowrap; }
+    .currency-empty { grid-column:1/-1; padding:30px; color:var(--muted); text-align:center; }
+    @media (max-width:600px) { .currency-list { grid-template-columns:1fr; } .currency-modal-head { padding:24px 20px 16px; } .currency-search { margin-inline:20px; } .currency-list { padding-inline:12px; } }
 
     .product-category {
       font-size: 11px;
@@ -604,6 +625,7 @@
           <p class="page-sub">Search the full catalogue, filter by category, and browse every find in one clean place.</p>
         </div>
         <div class="header-stats">
+          <button class="stat-pill currency-pill" id="currency-pill" type="button" onclick="openCurrencyPicker()">Currency: Select</button>
           <div class="stat-pill"><span class="live-dot"></span><span id="results-count">0 items</span></div>
           <div class="stat-pill" id="active-filter-pill">Category: All</div>
         </div>
@@ -669,6 +691,18 @@
 
     applyTheme();
   </script>
-  <script type="module" src="firebase-products.js?v=2026-06-22-2"></script>
+  <div class="currency-overlay" id="currency-overlay" role="dialog" aria-modal="true" aria-labelledby="currency-title">
+    <div class="currency-modal">
+      <button class="currency-close" id="currency-close" type="button" aria-label="Close currency picker">×</button>
+      <div class="currency-modal-head">
+        <div class="eyebrow">✦ Local pricing</div>
+        <h2 id="currency-title">SELECT YOUR CURRENCY</h2>
+        <p>Product prices will be converted from Chinese yuan.</p>
+      </div>
+      <input class="currency-search" id="currency-search" type="search" placeholder="Search currencies..." autocomplete="off">
+      <div class="currency-list" id="currency-list"></div>
+    </div>
+  </div>
+  <script type="module" src="firebase-products.js?v=2026-06-27-currency-1"></script>
 </body>
 </html>
