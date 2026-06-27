@@ -94,8 +94,8 @@ function itemCard(item) {
           <span class="product-category">${item.category || "Unsorted"}</span>
         </div>
         <div class="product-actions">
-          <a href="${escapeAttr(href)}" class="product-btn primary">View Item</a>
-          <button class="product-btn" type="button" onclick="copyProductLink('${href.replace(/'/g, "\\'")}')">Copy Link</button>
+          <a href="${escapeAttr(href)}" class="product-btn primary" onclick="window.rcTrackProductInteraction?.('${escapeAttr(item.id)}', 'viewClicks')">View Item</a>
+          <button class="product-btn" type="button" onclick="copyProductLink('${href.replace(/'/g, "\\'")}', '${escapeAttr(item.id)}')">Copy Link</button>
         </div>
       </div>
     </article>
@@ -232,9 +232,10 @@ async function initializeCurrency() {
 
 const currencyReady = initializeCurrency();
 
-async function copyProductLink(url) {
+async function copyProductLink(url, productId) {
   if (!url || url === "#") return;
   await navigator.clipboard.writeText(new URL(url, window.location.href).href);
+  window.rcTrackProductInteraction?.(productId, "copyClicks");
 }
 
 function setCategory(category) {
