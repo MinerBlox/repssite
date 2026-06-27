@@ -17,7 +17,9 @@ const db = getFirestore(app);
 let firebaseItems = [];
 let selectedCategory = "All";
 let searchTerm = new URLSearchParams(window.location.search).get("search") || "";
-let selectedBrand = new URLSearchParams(window.location.search).get("brand") || "";
+const requestedBrand = new URLSearchParams(window.location.search).get("brand");
+let selectedBrand = requestedBrand || sessionStorage.getItem("rc-pending-brand") || "";
+sessionStorage.removeItem("rc-pending-brand");
 const CURRENCY_KEY = "rc-currency";
 const RATE_CACHE_KEY = "rc-cny-rates";
 const FALLBACK_CURRENCIES = {
