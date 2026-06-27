@@ -170,7 +170,21 @@
     .tool-card h2 { font-family: 'Syne', sans-serif; font-size: 18px; margin-bottom: 6px; }
     .tool-card p { color: var(--muted); font-size: 13px; line-height: 1.5; }
     .tool-arrow { margin-top: auto; padding-top: 16px; display: flex; align-items: center; justify-content: space-between; color: var(--blue); font-size: 12px; font-weight: 700; }
-    .quick-links { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border); }
+    .stats-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 28px; }
+    .stat-card { padding: 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+    .stat-label { margin-bottom: 10px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .stat-value { font-family: Arial, Helvetica, sans-serif; font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .stat-note { margin-top: 5px; color: var(--muted); font-size: 11px; }
+    .pages-panel { margin-bottom: 28px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+    .pages-head, .page-stat-row { display: grid; grid-template-columns: minmax(0, 1fr) 100px 120px; align-items: center; gap: 12px; padding: 13px 16px; }
+    .pages-head { color: var(--muted); background: var(--surface2); font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+    .page-stat-row { min-height: 52px; border-top: 1px solid var(--border); font-size: 13px; }
+    .page-stat-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+    .page-stat-number { font-family: Arial, Helvetica, sans-serif; font-variant-numeric: tabular-nums; text-align: right; }
+    .live-number { display: inline-flex; align-items: center; justify-content: flex-end; gap: 7px; }
+    .live-number::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+    .pages-empty { padding: 24px 16px; color: var(--muted); font-size: 13px; text-align: center; }
+        .quick-links { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border); }
     .link-row { display: flex; flex-wrap: wrap; gap: 8px; }
     .quick-link {
       min-height: 38px;
@@ -190,6 +204,8 @@
       .topbar { padding: 10px 14px; }
       .topbar .status { display: none; }
       main { padding: 36px 16px 56px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .pages-head, .page-stat-row { grid-template-columns: minmax(0, 1fr) 70px 82px; padding-left: 12px; padding-right: 12px; }
       .tool-grid { grid-template-columns: 1fr; }
       .tool-card { min-height: 164px; }
     }
@@ -232,6 +248,25 @@
         <p>Open the tools used to manage products and check the public site.</p>
       </header>
 
+      <div class="section-label">Live Site Stats</div>
+      <section class="stats-grid">
+        <article class="stat-card">
+          <div class="stat-label">Live Viewers</div>
+          <div class="stat-value" id="live-viewers">0</div>
+          <div class="stat-note">Active in the last minute</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-label">Total Visits</div>
+          <div class="stat-value" id="total-visits">0</div>
+          <div class="stat-note">Recorded page views</div>
+        </article>
+      </section>
+
+      <section class="pages-panel" aria-label="Page analytics">
+        <div class="pages-head"><span>Page</span><span style="text-align:right">Live</span><span style="text-align:right">Visits</span></div>
+        <div id="page-stats"><div class="pages-empty">Waiting for analytics data...</div></div>
+      </section>
+
       <div class="section-label">Management</div>
       <section class="tool-grid">
         <a class="tool-card" href="/spreadsheetadmin/">
@@ -259,6 +294,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import { getFirestore, collection, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA",
@@ -272,13 +308,72 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const db = getFirestore(app);
+    let analyticsUnsubscribers = [];
+    let pageVisits = new Map();
+    let presenceDocs = [];
     const loginView = document.getElementById("login-view");
     const adminView = document.getElementById("admin-view");
     const loginForm = document.getElementById("login-form");
     const loginButton = document.getElementById("login-btn");
     const loginError = document.getElementById("login-error");
 
+    function formatNumber(value) {
+      return Number(value || 0).toLocaleString();
+    }
+
+    function renderAnalytics() {
+      const cutoff = Date.now() - 65000;
+      const activePresence = presenceDocs.filter(item => {
+        const timestamp = item.lastSeen?.toMillis?.() || 0;
+        return timestamp >= cutoff;
+      });
+      const liveByPage = new Map();
+      activePresence.forEach(item => liveByPage.set(item.pageId, (liveByPage.get(item.pageId) || 0) + 1));
+
+      document.getElementById("live-viewers").textContent = formatNumber(activePresence.length);
+      const pageIds = new Set([...pageVisits.keys(), ...liveByPage.keys()]);
+      const rows = [...pageIds].map(id => {
+        const page = pageVisits.get(id) || {};
+        return {
+          id,
+          name: page.name || presenceDocs.find(item => item.pageId === id)?.pageName || id,
+          visits: Number(page.totalVisits || 0),
+          live: Number(liveByPage.get(id) || 0)
+        };
+      }).sort((a, b) => b.visits - a.visits || b.live - a.live);
+
+      document.getElementById("page-stats").innerHTML = rows.length ? rows.map(page => `
+        <div class="page-stat-row">
+          <span class="page-stat-name">${page.name}</span>
+          <span class="page-stat-number live-number">${formatNumber(page.live)}</span>
+          <span class="page-stat-number">${formatNumber(page.visits)}</span>
+        </div>
+      `).join("") : '<div class="pages-empty">No visits recorded yet.</div>';
+    }
+
+    function stopAnalytics() {
+      analyticsUnsubscribers.forEach(unsubscribe => unsubscribe());
+      analyticsUnsubscribers = [];
+    }
+
+    function startAnalytics() {
+      stopAnalytics();
+      analyticsUnsubscribers.push(onSnapshot(doc(db, "analyticsTotals", "summary"), snapshot => {
+        document.getElementById("total-visits").textContent = formatNumber(snapshot.data()?.totalVisits);
+      }));
+      analyticsUnsubscribers.push(onSnapshot(collection(db, "analyticsPages"), snapshot => {
+        pageVisits = new Map(snapshot.docs.map(pageDoc => [pageDoc.id, pageDoc.data()]));
+        renderAnalytics();
+      }));
+      analyticsUnsubscribers.push(onSnapshot(collection(db, "analyticsPresence"), snapshot => {
+        presenceDocs = snapshot.docs.map(presenceDoc => presenceDoc.data());
+        renderAnalytics();
+      }));
+    }
+
     function showLogin() {
+      stopAnalytics();
       adminView.style.display = "none";
       loginView.style.display = "grid";
       loginButton.disabled = false;
@@ -289,6 +384,7 @@
       loginView.style.display = "none";
       adminView.style.display = "block";
       document.getElementById("user-email").textContent = user.email || "Signed in";
+      startAnalytics();
     }
 
     loginForm.addEventListener("submit", async event => {
