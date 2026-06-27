@@ -1,13 +1,15 @@
 export async function onRequest(context) {
   try {
+    if (context.request.method !== "GET") return json({ error: "method not allowed" }, 405);
     const url = new URL(context.request.url);
     const rawGoodsId = url.searchParams.get("goodsId");
     const platform = (url.searchParams.get("platform") || "WD").toUpperCase();
 
     if (!rawGoodsId) return json({ error: "missing goodsId" }, 400);
+    if (!["WD", "TB", "AL"].includes(platform)) return json({ error: "invalid platform" }, 400);
 
     const numericId = String(rawGoodsId).replace(/^(WD|TB|AL)/i, "").replace(/\D/g, "");
-    if (!numericId) return json({ error: "invalid goodsId", goodsId: rawGoodsId }, 400);
+    if (!/^\d{1,30}$/.test(numericId)) return json({ error: "invalid goodsId" }, 400);
 
     const acPrefix = platform === "TB" ? "TB" : platform === "AL" ? "AL" : "WD";
     const oopbuyChannel = platform === "TB" ? "TAOBAO" : platform === "AL" ? "1688" : "weidian";
@@ -50,19 +52,20 @@ export async function onRequest(context) {
       }
     });
   } catch (error) {
-    return json({ error: error.message }, 500);
+    console.error("QC proxy error", error);
+    return json({ error: "internal server error" }, 500);
   }
 }
 
 async function fetchProvider(api, headers, name) {
   try {
-    const response = await fetch(api, { headers });
+    const response = await fetch(api, { headers, signal: AbortSignal.timeout(8000) });
     const text = await response.text();
     let data;
     try {
       data = JSON.parse(text);
     } catch {
-      return { ok: false, status: response.status, error: `Invalid JSON from ${name}`, raw: text.slice(0, 500) };
+      return { ok: false, status: response.status, error: `Invalid JSON from ${name}` };
     }
     if (!response.ok) {
       return { ok: false, status: response.status, error: `${name} returned ${response.status}`, data };
@@ -78,7 +81,7 @@ function json(body, status = 200) {
     status,
     headers: {
       "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
+      "X-Content-Type-Options": "nosniff",
       "Cache-Control": "public, max-age=300"
     }
   });
