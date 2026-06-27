@@ -65,9 +65,16 @@ function priceMarkup(item) {
   return `<span class="product-price-stack"><span class="product-price">${formatMoney(yuan * rate, currency)}</span><span class="yuan-price">~ ¥${yuan.toFixed(2)}</span></span>`;
 }
 
-function escapeAttr(value) {
-  return String(value || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
+
+const escapeAttr = escapeHtml;
 
 function productImage(item) {
   if (!item.imageUrl) {
@@ -91,14 +98,14 @@ function itemCard(item) {
         ${productImage(item)}
       </div>
       <div class="product-body">
-        <div class="product-name">${item.name || "Unnamed item"}</div>
+        <div class="product-name">${escapeHtml(item.name || "Unnamed item")}</div>
         <div class="product-meta">
           ${priceMarkup(item)}
-          <span class="product-category">${item.category || "Unsorted"}</span>
+          <span class="product-category">${escapeHtml(item.category || "Unsorted")}</span>
         </div>
         <div class="product-actions">
-          <a href="${escapeAttr(href)}" class="product-btn primary" onclick="window.rcTrackProductInteraction?.('${escapeAttr(item.id)}', 'viewClicks')">View Item</a>
-          <button class="product-btn" type="button" onclick="copyProductLink('${href.replace(/'/g, "\\'")}', '${escapeAttr(item.id)}')">Copy Link</button>
+          <a href="${escapeAttr(href)}" class="product-btn primary" data-view-product="${escapeAttr(item.id)}">View Item</a>
+          <button class="product-btn" type="button" data-copy-url="${escapeAttr(href)}" data-copy-product="${escapeAttr(item.id)}">Copy Link</button>
         </div>
       </div>
     </article>
@@ -119,7 +126,7 @@ function renderCategoryChips() {
   const wrap = document.getElementById("category-chips");
   const itemCategories = categories(firebaseItems);
   wrap.innerHTML = itemCategories.map(category => `
-    <button class="category-chip ${selectedCategory === category ? "active" : ""}" onclick="setCategory('${category.replace(/'/g, "\\'")}')">${category}</button>
+    <button class="category-chip ${selectedCategory === category ? "active" : ""}" type="button" data-category="${escapeAttr(category)}">${escapeHtml(category)}</button>
   `).join("");
 }
 
@@ -281,6 +288,21 @@ async function loadProducts() {
   if (loading) loading.style.display = "none";
   if (grid) grid.style.display = "grid";
 }
+
+document.getElementById("category-chips")?.addEventListener("click", event => {
+  const chip = event.target.closest("[data-category]");
+  if (chip) setCategory(chip.dataset.category);
+});
+
+document.getElementById("product-grid")?.addEventListener("click", event => {
+  const copyButton = event.target.closest("[data-copy-url]");
+  if (copyButton) {
+    copyProductLink(copyButton.dataset.copyUrl, copyButton.dataset.copyProduct);
+    return;
+  }
+  const viewLink = event.target.closest("[data-view-product]");
+  if (viewLink) window.rcTrackProductInteraction?.(viewLink.dataset.viewProduct, "viewClicks");
+});
 
 window.setCategory = setCategory;
 window.clearCategory = clearCategory;
