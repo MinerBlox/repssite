@@ -17,6 +17,23 @@ const db = getFirestore(app);
 let firebaseItems = [];
 let selectedCategory = "All";
 let searchTerm = new URLSearchParams(window.location.search).get("search") || "";
+const CURRENCY_KEY = "rc-currency";
+const RATE_CACHE_KEY = "rc-cny-rates";
+const FALLBACK_CURRENCIES = {
+  CNY: "Chinese Yuan", GBP: "British Pound", USD: "United States Dollar", EUR: "Euro",
+  AUD: "Australian Dollar", CAD: "Canadian Dollar", JPY: "Japanese Yen", KRW: "South Korean Won",
+  HKD: "Hong Kong Dollar", SGD: "Singapore Dollar", NZD: "New Zealand Dollar", CHF: "Swiss Franc",
+  SEK: "Swedish Krona", NOK: "Norwegian Krone", DKK: "Danish Krone", PLN: "Polish Zloty",
+  CZK: "Czech Koruna", HUF: "Hungarian Forint", RON: "Romanian Leu", BGN: "Bulgarian Lev",
+  TRY: "Turkish Lira", INR: "Indian Rupee", IDR: "Indonesian Rupiah", MYR: "Malaysian Ringgit",
+  PHP: "Philippine Peso", THB: "Thai Baht", VND: "Vietnamese Dong", ZAR: "South African Rand",
+  BRL: "Brazilian Real", MXN: "Mexican Peso", ILS: "Israeli Shekel", ISK: "Icelandic Krona"
+};
+const FALLBACK_RATES = { CNY:1, GBP:0.103, USD:0.139, EUR:0.119, AUD:0.212, CAD:0.190, JPY:21.8, HKD:1.09, SGD:0.178, CHF:0.111, NZD:0.232, KRW:191.5 };
+let selectedCurrency = localStorage.getItem(CURRENCY_KEY) || "";
+let currencyNames = { ...FALLBACK_CURRENCIES };
+let cnyRates = { ...FALLBACK_RATES };
+let currencyPickerRequired = false;
 
 function categories(items) {
   return ["All", ...new Set(items.map(item => item.category).filter(Boolean))];
@@ -30,11 +47,19 @@ function badgeLabel(type) {
   return "";
 }
 
-function formatPrice(item) {
-  const currency = item.currency || "CNY";
-  const symbol = currency === "CNY" ? "¥" : "$";
-  const value = Number(item.price || 0);
-  return `${symbol}${value.toFixed(2)}`;
+function formatMoney(value, currency) {
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(value);
+  } catch {
+    return `${currency} ${Number(value).toFixed(2)}`;
+  }
+}
+
+function priceMarkup(item) {
+  const yuan = Number(item.price || 0);
+  const currency = selectedCurrency || "CNY";
+  const rate = currency === "CNY" ? 1 : Number(cnyRates[currency] || FALLBACK_RATES[currency] || 1);
+  return `<span class="product-price-stack"><span class="yuan-price">~ ¥${yuan.toFixed(2)}</span><span class="product-price">${formatMoney(yuan * rate, currency)}</span></span>`;
 }
 
 function escapeAttr(value) {
@@ -65,7 +90,7 @@ function itemCard(item) {
       <div class="product-body">
         <div class="product-name">${item.name || "Unnamed item"}</div>
         <div class="product-meta">
-          <span class="product-price">${formatPrice(item)}</span>
+          ${priceMarkup(item)}
           <span class="product-category">${item.category || "Unsorted"}</span>
         </div>
         <div class="product-actions">
@@ -123,6 +148,90 @@ function renderItems() {
   grid.innerHTML = items.map(itemCard).join("");
 }
 
+function renderCurrencyList(query = "") {
+  const list = document.getElementById("currency-list");
+  if (!list) return;
+  const normalized = query.trim().toLowerCase();
+  const entries = Object.entries(currencyNames)
+    .filter(([code, name]) => !normalized || code.toLowerCase().includes(normalized) || name.toLowerCase().includes(normalized))
+    .sort(([codeA, nameA], [codeB, nameB]) => {
+      const popular = ["GBP", "USD", "EUR", "CNY", "AUD", "CAD"];
+      const a = popular.indexOf(codeA), b = popular.indexOf(codeB);
+      if (a !== -1 || b !== -1) return (a === -1 ? 99 : a) - (b === -1 ? 99 : b);
+      return nameA.localeCompare(nameB);
+    });
+  list.innerHTML = entries.length ? entries.map(([code, name]) => `
+    <button class="currency-option ${code === selectedCurrency ? "selected" : ""}" type="button" data-currency="${code}">
+      <span class="currency-code">${code}</span><span class="currency-name">${name}</span>
+    </button>`).join("") : '<div class="currency-empty">No currencies found.</div>';
+}
+
+function openCurrencyPicker(required = false) {
+  currencyPickerRequired = required || !selectedCurrency;
+  const overlay = document.getElementById("currency-overlay");
+  const close = document.getElementById("currency-close");
+  if (!overlay) return;
+  overlay.classList.add("open");
+  if (close) close.hidden = currencyPickerRequired;
+  renderCurrencyList();
+  const search = document.getElementById("currency-search");
+  if (search) { search.value = ""; requestAnimationFrame(() => search.focus()); }
+}
+
+function closeCurrencyPicker() {
+  if (currencyPickerRequired || !selectedCurrency) return;
+  document.getElementById("currency-overlay")?.classList.remove("open");
+}
+
+async function loadCurrencyData() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(RATE_CACHE_KEY) || "null");
+    if (cached?.rates && Date.now() - cached.savedAt < 43200000) cnyRates = { ...cnyRates, ...cached.rates };
+  } catch {}
+
+  try {
+    const [currenciesResponse, ratesResponse] = await Promise.all([
+      fetch("https://api.frankfurter.dev/v1/currencies"),
+      fetch("https://api.frankfurter.dev/v1/latest?base=CNY")
+    ]);
+    if (currenciesResponse.ok) currencyNames = { ...currencyNames, ...await currenciesResponse.json() };
+    if (ratesResponse.ok) {
+      const data = await ratesResponse.json();
+      cnyRates = { ...cnyRates, CNY: 1, ...data.rates };
+      localStorage.setItem(RATE_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), rates: cnyRates }));
+    }
+  } catch (error) {
+    console.warn("Using cached currency rates:", error);
+  }
+}
+
+async function chooseCurrency(code) {
+  selectedCurrency = code;
+  localStorage.setItem(CURRENCY_KEY, code);
+  currencyPickerRequired = false;
+  document.getElementById("currency-overlay")?.classList.remove("open");
+  const pill = document.getElementById("currency-pill");
+  if (pill) pill.textContent = `Currency: ${code}`;
+  renderItems();
+}
+
+async function initializeCurrency() {
+  const pill = document.getElementById("currency-pill");
+  if (pill) pill.textContent = `Currency: ${selectedCurrency || "Select"}`;
+  document.getElementById("currency-search")?.addEventListener("input", event => renderCurrencyList(event.target.value));
+  document.getElementById("currency-list")?.addEventListener("click", event => {
+    const option = event.target.closest("[data-currency]");
+    if (option) chooseCurrency(option.dataset.currency);
+  });
+  document.getElementById("currency-close")?.addEventListener("click", closeCurrencyPicker);
+  document.addEventListener("keydown", event => { if (event.key === "Escape") closeCurrencyPicker(); });
+  if (!selectedCurrency) openCurrencyPicker(true);
+  await loadCurrencyData();
+  if (document.getElementById("currency-overlay")?.classList.contains("open")) renderCurrencyList();
+}
+
+const currencyReady = initializeCurrency();
+
 async function copyProductLink(url) {
   if (!url || url === "#") return;
   await navigator.clipboard.writeText(new URL(url, window.location.href).href);
@@ -141,6 +250,7 @@ function clearCategory() {
 }
 
 async function loadProducts() {
+  await currencyReady;
   try {
     const snapshot = await getDocs(collection(db, "products"));
     firebaseItems = snapshot.docs
@@ -164,6 +274,7 @@ async function loadProducts() {
 window.setCategory = setCategory;
 window.clearCategory = clearCategory;
 window.copyProductLink = copyProductLink;
+window.openCurrencyPicker = openCurrencyPicker;
 
 const spreadsheetSearchInput = document.getElementById("search-input");
 spreadsheetSearchInput.value = searchTerm;
