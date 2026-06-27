@@ -457,8 +457,8 @@
       #our-picks-grid > .product-card,
       #season-grid > .product-card { scroll-snap-align: start; }
       .mobile-product-link {
-        display: inline-flex; margin-top: 14px; min-height: 44px; align-items: center;
-        color: #fff; font-size: 13px; font-weight: 700;
+        display: flex; width: 100%; margin-top: 14px; min-height: 44px; align-items: center; justify-content: center; gap: 7px;
+        color: #fff; font-size: 13px; font-weight: 700; text-align: center;
       }
     }
 
@@ -651,7 +651,7 @@
       </div>
     </div>
     <div class="product-grid" id="our-picks-grid"></div>
-    <a href="spreadsheet.html" class="mobile-product-link">View all our picks --&gt;</a>
+    <a href="spreadsheet.html" class="mobile-product-link">View all our picks <span aria-hidden="true">&rarr;</span></a>
   </div>
 
   <hr class="divider">
@@ -670,7 +670,7 @@
       <button class="season-tab" data-season="winter" onclick="setSeason('winter')">❄️ Winter Finds</button>
     </div>
     <div class="product-grid" id="season-grid"></div>
-    <a href="spreadsheet.html" class="mobile-product-link">View all season finds --&gt;</a>
+    <a href="spreadsheet.html" class="mobile-product-link">View all season finds <span aria-hidden="true">&rarr;</span></a>
   </div>
 
   <hr class="divider">
