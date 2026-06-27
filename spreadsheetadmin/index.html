@@ -413,13 +413,13 @@
           return;
         }
         const data = normalizeProduct({
-        name,
-        price: document.getElementById("new-price").value,
-        category: document.getElementById("new-category").value,
-        brand: document.getElementById("new-brand").value,
-        imageUrl: document.getElementById("new-image").value.trim(),
-        agentUrl: document.getElementById("new-agent").value.trim(),
-        isActive: true,
+          name,
+          price: document.getElementById("new-price").value,
+          category: document.getElementById("new-category").value,
+          brand: document.getElementById("new-brand").value,
+          imageUrl: document.getElementById("new-image").value.trim(),
+          agentUrl: document.getElementById("new-agent").value.trim(),
+          isActive: true,
           sortOrder: products.length + 1
         });
         await setDoc(doc(db, "products", id), { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
