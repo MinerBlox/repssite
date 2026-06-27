@@ -379,7 +379,7 @@ function productCard(item) {
           <span class="product-price">${formatPrice(item)}</span>
           <span class="product-cat">${escapeHtml(item.category || "Unsorted")}</span>
         </div>
-        <a href="${escapeHtml(itemHref(item))}" class="product-btn">View Item →</a>
+        <a href="${escapeHtml(itemHref(item))}" class="product-btn" onclick="window.rcTrackProductInteraction?.('${escapeHtml(item.id)}', 'viewClicks')">View Item →</a>
       </div>
     </div>
   `;
@@ -420,7 +420,7 @@ function podiumCard(item, medal, delay) {
           <span class="podium-price" style="color:${medal.textColor}">${formatPrice(item)}</span>
           <span class="podium-cat">${escapeHtml(item.category || "Unsorted")}</span>
         </div>
-        <a href="${escapeHtml(itemHref(item))}" class="podium-btn" style="background:${medal.badgeColor};color:${medal.badgeText}">View Find →</a>
+        <a href="${escapeHtml(itemHref(item))}" class="podium-btn" style="background:${medal.badgeColor};color:${medal.badgeText}" onclick="window.rcTrackProductInteraction?.('${escapeHtml(item.id)}', 'viewClicks')">View Find →</a>
       </div>
     </div>
   `;
@@ -552,13 +552,14 @@ function renderProductRows(items) {
   renderProductRow(document.getElementById("season-grid"), rows.seasons[window.activeSeason] || items);
 }
 
-function renderHomeProducts(items) {
+function renderHomeProducts(items, popularity = new Map()) {
   const podium = document.getElementById("podium-grid");
   if (!items.length) return;
   currentHomeItems = items;
 
-  const best = items.filter(item => item.badge === "best");
-  const podiumItems = (best.length >= 3 ? best : items).slice(0, 3);
+  const podiumItems = [...items]
+    .sort((a, b) => (popularity.get(b.id) || 0) - (popularity.get(a.id) || 0) || (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
+    .slice(0, 3);
   if (podium && podiumItems.length) {
     podium.innerHTML = podiumItems.map((item, index) => podiumCard(item, medals[index], index * 0.1)).join("");
   }
@@ -618,7 +619,7 @@ function renderProductSearch(query) {
       const image = item.imageUrl
         ? `<img src="${escapeHtml(item.imageUrl)}" alt="" loading="lazy">`
         : '<span class="nav-search-thumb-empty" aria-hidden="true">-</span>';
-      return `<a class="nav-search-result" role="option" aria-selected="false" data-search-index="${index}" href="${escapeHtml(itemHref(item))}">
+      return `<a class="nav-search-result" role="option" aria-selected="false" data-search-index="${index}" href="${escapeHtml(itemHref(item))}" onclick="window.rcTrackProductInteraction?.('${escapeHtml(item.id)}', 'viewClicks')">
         ${image}
         <span><span class="nav-search-result-name">${escapeHtml(item.name || "Unnamed item")}</span><span class="nav-search-result-category">${escapeHtml(item.category || "Unsorted")}</span></span>
         <span class="nav-search-result-price">${formatPrice(item)}</span>
@@ -702,7 +703,16 @@ async function loadHomeProducts() {
       .map(productDoc => ({ id: productDoc.id, ...productDoc.data() }))
       .filter(item => item.isActive !== false)
       .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
-    renderHomeProducts(items);
+
+    let popularity = new Map();
+    try {
+      const popularitySnapshot = await getDocs(collection(db, "analyticsProducts"));
+      popularity = new Map(popularitySnapshot.docs.map(statsDoc => [statsDoc.id, Number(statsDoc.data().totalInteractions || 0)]));
+    } catch (analyticsError) {
+      console.warn("Could not load product popularity:", analyticsError);
+    }
+
+    renderHomeProducts(items, popularity);
   } catch (error) {
     console.error("Could not load Firebase homepage products:", error);
   }
