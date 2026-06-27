@@ -235,7 +235,7 @@
   <section class="admin-view" id="admin-view">
     <header class="topbar">
       <div class="topbar-left">
-        <a class="brand" href="/admin/">repscentral admin</a>
+        <a class="brand" href="./">repscentral admin</a>
         <div class="status"><span class="status-dot"></span><span id="user-email">Signed in</span></div>
       </div>
       <button class="btn" id="sign-out-btn" type="button">Sign Out</button>
@@ -269,7 +269,7 @@
 
       <div class="section-label">Management</div>
       <section class="tool-grid">
-        <a class="tool-card" href="/spreadsheetadmin/">
+        <a class="tool-card" href="../spreadsheetadmin/">
           <span class="tool-icon">
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3h18v18H3z"/><path d="M3 9h18M9 3v18"/></svg>
           </span>
@@ -282,10 +282,10 @@
       <section class="quick-links">
         <div class="section-label">View Site</div>
         <div class="link-row">
-          <a class="quick-link" href="/index.html?noPopup=1" target="_blank" rel="noopener">Homepage <span aria-hidden="true">&nearr;</span></a>
-          <a class="quick-link" href="/spreadsheet.html" target="_blank" rel="noopener">Spreadsheet <span aria-hidden="true">&nearr;</span></a>
-          <a class="quick-link" href="/quality-checks.html" target="_blank" rel="noopener">QC Viewer <span aria-hidden="true">&nearr;</span></a>
-          <a class="quick-link" href="/link-converter.html" target="_blank" rel="noopener">Link Converter <span aria-hidden="true">&nearr;</span></a>
+          <a class="quick-link" href="../index.html?noPopup=1" target="_blank" rel="noopener">Homepage <span aria-hidden="true">&nearr;</span></a>
+          <a class="quick-link" href="../spreadsheet.html" target="_blank" rel="noopener">Spreadsheet <span aria-hidden="true">&nearr;</span></a>
+          <a class="quick-link" href="../quality-checks.html" target="_blank" rel="noopener">QC Viewer <span aria-hidden="true">&nearr;</span></a>
+          <a class="quick-link" href="../link-converter.html" target="_blank" rel="noopener">Link Converter <span aria-hidden="true">&nearr;</span></a>
         </div>
       </section>
     </main>
@@ -319,6 +319,15 @@
     const loginButton = document.getElementById("login-btn");
     const loginError = document.getElementById("login-error");
 
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
     function formatNumber(value) {
       return Number(value || 0).toLocaleString();
     }
@@ -346,7 +355,7 @@
 
       document.getElementById("page-stats").innerHTML = rows.length ? rows.map(page => `
         <div class="page-stat-row">
-          <span class="page-stat-name">${page.name}</span>
+          <span class="page-stat-name">${escapeHtml(page.name)}</span>
           <span class="page-stat-number live-number">${formatNumber(page.live)}</span>
           <span class="page-stat-number">${formatNumber(page.visits)}</span>
         </div>
