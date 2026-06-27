@@ -70,17 +70,19 @@
   const sourceStatus=document.getElementById("source-status");
   window.__rcQcDebug={};
 
+  function hostMatches(host,domain){return host===domain||host.endsWith(`.${domain}`)}
+
   function parseProductLink(rawUrl){
     let url;
     try{url=new URL(rawUrl.trim())}catch{return null}
     const host=url.hostname.toLowerCase();
     let itemId="";
     let platform="";
-    if(host.includes("weidian.com")||host.includes("youshop10.com")){itemId=url.searchParams.get("itemID")||url.searchParams.get("itemId")||url.searchParams.get("id");platform="WD"}
-    else if(host.includes("taobao.com")||host.includes("tmall.com")){itemId=url.searchParams.get("id");platform="TB"}
-    else if(host.includes("1688.com")||host.includes("alibaba.com")){itemId=url.href.match(/offer\/(\d+)\.html/i)?.[1]||url.searchParams.get("offerId")||url.searchParams.get("id");platform="AL"}
+    if(hostMatches(host,"weidian.com")||hostMatches(host,"youshop10.com")){itemId=url.searchParams.get("itemID")||url.searchParams.get("itemId")||url.searchParams.get("id");platform="WD"}
+    else if(hostMatches(host,"taobao.com")||hostMatches(host,"tmall.com")){itemId=url.searchParams.get("id");platform="TB"}
+    else if(hostMatches(host,"1688.com")||hostMatches(host,"alibaba.com")){itemId=url.href.match(/offer\/(\d+)\.html/i)?.[1]||url.searchParams.get("offerId")||url.searchParams.get("id");platform="AL"}
     const clean=String(itemId||"").replace(/\D/g,"");
-    if(!clean)return null;
+    if(!/^\d{1,30}$/.test(clean))return null;
     return{platform,itemId:clean,goodsId:`${platform}${clean}`};
   }
 
