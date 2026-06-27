@@ -310,6 +310,7 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
     let analyticsUnsubscribers = [];
+    let analyticsRefreshTimer;
     let pageVisits = new Map();
     let presenceDocs = [];
     const loginView = document.getElementById("login-view");
@@ -355,10 +356,12 @@
     function stopAnalytics() {
       analyticsUnsubscribers.forEach(unsubscribe => unsubscribe());
       analyticsUnsubscribers = [];
+      clearInterval(analyticsRefreshTimer);
     }
 
     function startAnalytics() {
       stopAnalytics();
+      analyticsRefreshTimer = setInterval(renderAnalytics, 10000);
       analyticsUnsubscribers.push(onSnapshot(doc(db, "analyticsTotals", "summary"), snapshot => {
         document.getElementById("total-visits").textContent = formatNumber(snapshot.data()?.totalVisits);
       }));
