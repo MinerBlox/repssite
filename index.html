@@ -1020,6 +1020,14 @@ function safeDecode(value) {
   return output;
 }
 
+function hostMatches(host, domain) {
+  return host === domain || host.endsWith(`.${domain}`);
+}
+
+function validProductId(value) {
+  return /^\d{1,30}$/.test(String(value || ""));
+}
+
 function normalizePlatform(value) {
   if (!value) return null;
   const v = value.toLowerCase();
@@ -1093,58 +1101,58 @@ function convertLinkValue(rawInput) {
   const host = url.hostname.toLowerCase();
   const path = url.pathname;
 
-  if (host.includes("hipobuy.com")) {
+  if (hostMatches(host, "hipobuy.com")) {
     if (/\/product\/(weidian|taobao|1688)\/\d+/i.test(path)) {
       return { ok: true, link: url.toString(), platform: path.split("/")[2] };
     }
     return { ok: false, reason: "This is already a HipoBuy link, but it is not in a direct product format I can normalize safely." };
   }
 
-  if (host.includes("weidian.com") || host.includes("youshop10.com")) {
+  if (hostMatches(host, "weidian.com") || hostMatches(host, "youshop10.com")) {
     const id = url.searchParams.get("itemID") || url.searchParams.get("itemId") || url.searchParams.get("id");
-    if (id) return { ok: true, link: `https://hipobuy.com/product/weidian/${id}`, platform: "weidian" };
+    if (validProductId(id)) return { ok: true, link: `https://hipobuy.com/product/weidian/${id}`, platform: "weidian" };
   }
 
-  if (host.includes("taobao.com") || host.includes("tmall.com")) {
+  if (hostMatches(host, "taobao.com") || hostMatches(host, "tmall.com")) {
     const id = url.searchParams.get("id");
-    if (id) return { ok: true, link: `https://hipobuy.com/product/taobao/${id}`, platform: "taobao" };
+    if (validProductId(id)) return { ok: true, link: `https://hipobuy.com/product/taobao/${id}`, platform: "taobao" };
   }
 
-  if (host.includes("1688.com") || host.includes("alibaba.com")) {
+  if (hostMatches(host, "1688.com") || hostMatches(host, "alibaba.com")) {
     const id = extract1688Id(url.toString());
-    if (id) return { ok: true, link: `https://hipobuy.com/product/1688/${id}`, platform: "1688" };
+    if (validProductId(id)) return { ok: true, link: `https://hipobuy.com/product/1688/${id}`, platform: "1688" };
   }
 
-  if (host.includes("cnfans.com")) {
+  if (hostMatches(host, "cnfans.com")) {
     const id = url.searchParams.get("id") || url.searchParams.get("spuNo");
     const platform = normalizePlatform(url.searchParams.get("shop_type") || url.searchParams.get("platform"));
-    if (id && platform) return { ok: true, link: `https://hipobuy.com/product/${platform}/${id}`, platform };
+    if (validProductId(id) && platform) return { ok: true, link: `https://hipobuy.com/product/${platform}/${id}`, platform };
   }
 
-  if (host.includes("mulebuy.com")) {
+  if (hostMatches(host, "mulebuy.com")) {
     const id = url.searchParams.get("id");
     const platform = normalizePlatform(url.searchParams.get("platform"));
-    if (id && platform) return { ok: true, link: `https://hipobuy.com/product/${platform}/${id}`, platform };
+    if (validProductId(id) && platform) return { ok: true, link: `https://hipobuy.com/product/${platform}/${id}`, platform };
   }
 
-  if (host.includes("acbuy.com")) {
+  if (hostMatches(host, "acbuy.com")) {
     const id = url.searchParams.get("id");
     const platform = normalizePlatform(url.searchParams.get("source"));
-    if (id && platform) return { ok: true, link: `https://hipobuy.com/product/${platform}/${id}`, platform };
+    if (validProductId(id) && platform) return { ok: true, link: `https://hipobuy.com/product/${platform}/${id}`, platform };
   }
 
-  if (host.includes("oopbuy.com")) {
+  if (hostMatches(host, "oopbuy.com")) {
     const match = path.match(/\/product\/(weidian|taobao|1688)\/(\d+)/i);
     if (match) return { ok: true, link: `https://hipobuy.com/product/${match[1].toLowerCase()}/${match[2]}`, platform: match[1].toLowerCase() };
   }
 
-  if (host.includes("pandabuy.com") || host.includes("kakobuy.com") || host.includes("hoobuy.com") || host.includes("lovegobuy.com") || host.includes("orientdig.com") || host.includes("allchinabuy.com") || host.includes("superbuy.com") || host.includes("cssbuy.com")) {
+  if (hostMatches(host, "pandabuy.com") || hostMatches(host, "kakobuy.com") || hostMatches(host, "hoobuy.com") || hostMatches(host, "lovegobuy.com") || hostMatches(host, "orientdig.com") || hostMatches(host, "allchinabuy.com") || hostMatches(host, "superbuy.com") || hostMatches(host, "cssbuy.com")) {
     const maybeUnwrapped = unwrapAgentLink(url.toString());
     if (maybeUnwrapped !== url.toString()) return convertLinkValue(maybeUnwrapped);
   }
 
   const cssbuyMatch = url.toString().match(/item-(\d+)\.html/i);
-  if (host.includes("cssbuy.com") && cssbuyMatch) {
+  if (hostMatches(host, "cssbuy.com") && cssbuyMatch) {
     return { ok: false, reason: "I found the item ID, but CSSBuy links do not reliably expose the source platform. Paste the original Weidian, Taobao or 1688 link for a precise conversion." };
   }
 
