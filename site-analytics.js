@@ -39,6 +39,21 @@ function visitorId() {
 
 const page = pageDetails();
 const presenceRef = doc(db, "analyticsPresence", visitorId());
+const interactionFields = ["viewClicks", "copyClicks", "detailViews", "outboundClicks"];
+
+async function trackProductInteraction(productId, interactionType) {
+  if (!productId || !interactionFields.includes(interactionType)) return;
+  const counters = Object.fromEntries(interactionFields.map(field => [field, increment(field === interactionType ? 1 : 0)]));
+  await setDoc(doc(db, "analyticsProducts", String(productId)), {
+    ...counters,
+    totalInteractions: increment(1),
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+}
+
+window.rcTrackProductInteraction = (productId, interactionType) => {
+  trackProductInteraction(productId, interactionType).catch(error => console.warn("Product interaction tracking unavailable:", error));
+};
 
 async function recordVisit() {
   await Promise.all([
