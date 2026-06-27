@@ -49,7 +49,7 @@ function badgeLabel(type) {
 
 function formatMoney(value, currency) {
   try {
-    return new Intl.NumberFormat(undefined, { style: "currency", currency }).format(value);
+    return new Intl.NumberFormat(undefined, { style: "currency", currency, currencyDisplay: "narrowSymbol" }).format(value);
   } catch {
     return `${currency} ${Number(value).toFixed(2)}`;
   }
