@@ -152,7 +152,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-    import { getFirestore, collection, doc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+    import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA",
@@ -402,6 +402,15 @@
       const name = document.getElementById("new-name").value.trim();
       if (!name) return;
       const id = slugify(name);
+      if (!id) {
+        setStatus("Create failed - use a name containing letters or numbers");
+        return;
+      }
+      const existingProduct = await getDoc(doc(db, "products", id));
+      if (existingProduct.exists()) {
+        setStatus("Create stopped - an item with this slug already exists");
+        return;
+      }
       const data = normalizeProduct({
         name,
         price: document.getElementById("new-price").value,
