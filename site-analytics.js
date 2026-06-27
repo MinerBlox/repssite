@@ -1,5 +1,5 @@
 import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getFirestore, doc, setDoc, deleteDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, doc, setDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA",
@@ -76,5 +76,4 @@ document.addEventListener("visibilitychange", () => {
 
 window.addEventListener("pagehide", () => {
   clearInterval(heartbeatTimer);
-  deleteDoc(presenceRef).catch(() => {});
 });
