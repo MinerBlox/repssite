@@ -58,4 +58,46 @@ match /analyticsPresence/{visitorId} {
     && request.resource.data.path is string
     && request.resource.data.lastSeen == request.time;
 }
+
+match /analyticsProducts/{productId} {
+  allow read: if true;
+
+  allow create: if request.resource.data.keys().hasOnly([
+      "totalInteractions", "viewClicks", "copyClicks",
+      "detailViews", "outboundClicks", "updatedAt"
+    ])
+    && request.resource.data.keys().hasAll([
+      "totalInteractions", "viewClicks", "copyClicks",
+      "detailViews", "outboundClicks", "updatedAt"
+    ])
+    && request.resource.data.totalInteractions == 1
+    && request.resource.data.viewClicks
+      + request.resource.data.copyClicks
+      + request.resource.data.detailViews
+      + request.resource.data.outboundClicks == 1
+    && request.resource.data.updatedAt == request.time;
+
+  allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      "totalInteractions", "viewClicks", "copyClicks",
+      "detailViews", "outboundClicks", "updatedAt"
+    ])
+    && request.resource.data.totalInteractions == resource.data.totalInteractions + 1
+    && request.resource.data.viewClicks >= resource.data.viewClicks
+    && request.resource.data.viewClicks <= resource.data.viewClicks + 1
+    && request.resource.data.copyClicks >= resource.data.copyClicks
+    && request.resource.data.copyClicks <= resource.data.copyClicks + 1
+    && request.resource.data.detailViews >= resource.data.detailViews
+    && request.resource.data.detailViews <= resource.data.detailViews + 1
+    && request.resource.data.outboundClicks >= resource.data.outboundClicks
+    && request.resource.data.outboundClicks <= resource.data.outboundClicks + 1
+    && request.resource.data.viewClicks
+      + request.resource.data.copyClicks
+      + request.resource.data.detailViews
+      + request.resource.data.outboundClicks
+      == resource.data.viewClicks
+      + resource.data.copyClicks
+      + resource.data.detailViews
+      + resource.data.outboundClicks + 1
+    && request.resource.data.updatedAt == request.time;
+}
 ```
