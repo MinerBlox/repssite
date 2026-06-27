@@ -76,11 +76,21 @@ function escapeHtml(value) {
 
 const escapeAttr = escapeHtml;
 
+function safeImageUrl(value) {
+  try {
+    const url = new URL(String(value || ""), window.location.href);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
 function productImage(item) {
-  if (!item.imageUrl) {
+  const imageUrl = safeImageUrl(item.imageUrl);
+  if (!imageUrl) {
     return `<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l4-4 4 4 4-4 4 4"/><path d="M3 15l4-4 4 4 4-4 4 4"/></svg>`;
   }
-  return `<img class="product-image" src="${escapeAttr(item.imageUrl)}" alt="${escapeAttr(item.name || "Product image")}" loading="lazy">`;
+  return `<img class="product-image" src="${escapeAttr(imageUrl)}" alt="${escapeAttr(item.name || "Product image")}" loading="lazy">`;
 }
 
 function productHref(item) {
@@ -94,7 +104,7 @@ function itemCard(item) {
   return `
     <article class="product-card">
       <div class="product-top">
-        <span class="item-badge ${item.badge || ""}">${badgeLabel(item.badge)}</span>
+        <span class="item-badge ${escapeAttr(item.badge || "")}">${badgeLabel(item.badge)}</span>
         ${productImage(item)}
       </div>
       <div class="product-body">
