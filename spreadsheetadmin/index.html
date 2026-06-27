@@ -128,6 +128,7 @@
               <div class="field"><label for="new-price">Yuan Price</label><input id="new-price" type="number" step="0.01" min="0" placeholder="0"></div>
               <div class="field"><label for="new-category">Category</label><select id="new-category"></select></div>
             </div>
+            <div class="field"><label for="new-brand">Brand</label><select id="new-brand">${brandSelect("")}</select></div>
             <div class="field"><label for="new-image">Image URL</label><input id="new-image" placeholder="https://..."></div>
             <div class="field"><label for="new-agent">Agent URL</label><input id="new-agent" placeholder="https://..."></div>
             <button class="btn primary" type="submit">Create Item</button>
@@ -164,6 +165,7 @@
     };
 
     const defaultCategories = ["Shoes", "Hoodies", "T-Shirts", "Pants", "Jackets", "Hats", "Socks", "Accessories", "Bags", "Watches", "Jewellery", "Other"];
+    const brandOptions = ["", "Mertra", "Ralph Lauren", "Nike"];
     const badgeOptions = ["", "best", "budget", "new", "popular"];
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
@@ -204,6 +206,10 @@
       return badgeOptions.map(badge => `<option value="${badge}" ${badge === (selected || "") ? "selected" : ""}>${badge || "Blank"}</option>`).join("");
     }
 
+    function brandSelect(selected) {
+      return brandOptions.map(brand => `<option value="${escapeHtml(brand)}" ${brand === (selected || "") ? "selected" : ""}>${brand || "Blank"}</option>`).join("");
+    }
+
     function setStatus(text) { globalStatus.textContent = text; }
 
     function productStatus(id, text, className) {
@@ -218,6 +224,7 @@
         name: raw.name || "",
         price: Number(raw.price || 0),
         category: raw.category || "",
+        brand: raw.brand || "",
         badge: raw.badge || "",
         imageUrl: raw.imageUrl || "",
         productUrl: raw.productUrl || "",
@@ -235,6 +242,7 @@
         name: card.querySelector('[data-field="name"]').value,
         price: card.querySelector('[data-field="price"]').value,
         category: card.querySelector('[data-field="category"]').value,
+        brand: card.querySelector('[data-field="brand"]').value,
         badge: card.querySelector('[data-field="badge"]').value,
         imageUrl: card.querySelector('[data-field="imageUrl"]').value,
         productUrl: card.querySelector('[data-field="productUrl"]').value,
@@ -276,10 +284,11 @@
               <div class="save-state saved" data-save-state="${escapeHtml(item.id)}">Saved</div>
             </div>
             <div class="product-fields">
-              <div class="field span-4"><label>Name</label><input data-field="name" value="${escapeHtml(item.name)}"></div>
+              <div class="field span-3"><label>Name</label><input data-field="name" value="${escapeHtml(item.name)}"></div>
               <div class="field span-2"><label>Price</label><input data-field="price" type="number" step="0.01" min="0" value="${Number(item.price || 0)}"></div>
-              <div class="field span-3"><label>Category</label><select data-field="category">${categoryOptions(item.category)}</select></div>
-              <div class="field span-3"><label>Badge</label><select data-field="badge">${badgeSelect(item.badge)}</select></div>
+              <div class="field span-2"><label>Category</label><select data-field="category">${categoryOptions(item.category)}</select></div>
+              <div class="field span-3"><label>Brand</label><select data-field="brand">${brandSelect(item.brand)}</select></div>
+              <div class="field span-2"><label>Badge</label><select data-field="badge">${badgeSelect(item.badge)}</select></div>
               <div class="field span-6"><label>Image URL</label><input data-field="imageUrl" value="${escapeHtml(item.imageUrl)}"></div>
               <div class="field span-6"><label>Agent URL</label><input data-field="agentUrl" value="${escapeHtml(item.agentUrl)}"></div>
               <div class="field span-6"><label>Product URL</label><input data-field="productUrl" value="${escapeHtml(item.productUrl)}"></div>
@@ -397,6 +406,7 @@
         name,
         price: document.getElementById("new-price").value,
         category: document.getElementById("new-category").value,
+        brand: document.getElementById("new-brand").value,
         imageUrl: document.getElementById("new-image").value.trim(),
         agentUrl: document.getElementById("new-agent").value.trim(),
         isActive: true,
