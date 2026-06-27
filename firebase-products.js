@@ -17,6 +17,7 @@ const db = getFirestore(app);
 let firebaseItems = [];
 let selectedCategory = "All";
 let searchTerm = new URLSearchParams(window.location.search).get("search") || "";
+let selectedBrand = new URLSearchParams(window.location.search).get("brand") || "";
 const CURRENCY_KEY = "rc-currency";
 const RATE_CACHE_KEY = "rc-cny-rates";
 const FALLBACK_CURRENCIES = {
@@ -105,9 +106,10 @@ function itemCard(item) {
 function filteredItems() {
   return firebaseItems.filter(item => {
     const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
-    const value = `${item.name || ""} ${item.category || ""} ${(item.tags || []).join(" ")}`.toLowerCase();
+    const matchesBrand = !selectedBrand || String(item.brand || "").toLowerCase() === selectedBrand.toLowerCase();
+    const value = `${item.name || ""} ${item.brand || ""} ${item.category || ""} ${(item.tags || []).join(" ")}`.toLowerCase();
     const matchesSearch = value.includes(searchTerm.trim().toLowerCase());
-    return matchesCategory && matchesSearch;
+    return matchesCategory && matchesBrand && matchesSearch;
   });
 }
 
@@ -128,10 +130,12 @@ function renderItems() {
   const filterPill = document.getElementById("active-filter-pill");
 
   count.textContent = `${items.length} item${items.length === 1 ? "" : "s"}`;
-  filterPill.textContent = `Category: ${selectedCategory}`;
+  filterPill.textContent = selectedBrand ? `Brand: ${selectedBrand}` : `Category: ${selectedCategory}`;
 
   if (searchTerm.trim()) {
-    copy.textContent = `Showing results for “${searchTerm.trim()}” in ${selectedCategory === "All" ? "all categories" : selectedCategory}.`;
+    copy.textContent = `Showing results for “${searchTerm.trim()}”${selectedBrand ? ` from ${selectedBrand}` : ""}.`;
+  } else if (selectedBrand) {
+    copy.textContent = `Showing all ${selectedBrand} items.`;
   } else if (selectedCategory !== "All") {
     copy.textContent = `Showing all items in ${selectedCategory}.`;
   } else {
@@ -246,6 +250,10 @@ function setCategory(category) {
 
 function clearCategory() {
   selectedCategory = "All";
+  selectedBrand = "";
+  const url = new URL(window.location.href);
+  url.searchParams.delete("brand");
+  window.history.replaceState({}, "", url);
   renderCategoryChips();
   renderItems();
 }
