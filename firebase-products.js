@@ -59,7 +59,7 @@ function priceMarkup(item) {
   const yuan = Number(item.price || 0);
   const currency = selectedCurrency || "CNY";
   const rate = currency === "CNY" ? 1 : Number(cnyRates[currency] || FALLBACK_RATES[currency] || 1);
-  return `<span class="product-price-stack"><span class="yuan-price">~ ¥${yuan.toFixed(2)}</span><span class="product-price">${formatMoney(yuan * rate, currency)}</span></span>`;
+  return `<span class="product-price-stack"><span class="product-price">${formatMoney(yuan * rate, currency)}</span><span class="yuan-price">~ ¥${yuan.toFixed(2)}</span></span>`;
 }
 
 function escapeAttr(value) {
