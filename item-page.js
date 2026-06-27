@@ -56,6 +56,15 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;");
 }
 
+function safeHttpUrl(value) {
+  try {
+    const url = new URL(String(value || ""), window.location.href);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
 function priceText(item) {
   const value = Number(item.price || 0);
   const symbol = (item.currency || "CNY") === "CNY" ? "¥" : "$";
@@ -425,9 +434,11 @@ function renderProduct(item) {
     ? `<img class="item-image" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name || "Item image")}">`
     : `<div class="image-empty">No image yet</div>`;
   const description = item.description || "No description has been added yet.";
-  const agentButton = item.agentUrl ? `<a class="action-btn primary" data-product-action="outboundClicks" href="${escapeHtml(item.agentUrl)}" target="_blank" rel="noopener noreferrer">Open Agent Link</a>` : "";
+  const agentUrl = safeHttpUrl(item.agentUrl);
+  const agentButton = agentUrl ? `<a class="action-btn primary" data-product-action="outboundClicks" href="${escapeHtml(agentUrl)}" target="_blank" rel="noopener noreferrer">Open Agent Link</a>` : "";
   const productLink = originalProductLink(item);
-  const productButton = productLink ? `<a class="action-btn" data-product-action="outboundClicks" href="${escapeHtml(productLink)}" target="_blank" rel="noopener noreferrer">Original Link</a>` : "";
+  const safeProductUrl = safeHttpUrl(productLink);
+  const productButton = safeProductUrl ? `<a class="action-btn" data-product-action="outboundClicks" href="${escapeHtml(safeProductUrl)}" target="_blank" rel="noopener noreferrer">Original Link</a>` : "";
 
   root.innerHTML = `
     <a class="back-link" href="${sitePath("spreadsheet.html")}">Back to spreadsheet</a>
