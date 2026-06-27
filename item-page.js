@@ -410,6 +410,14 @@ async function loadQcPictures(item) {
   }
 }
 
+function trackItemInteraction(productId, interactionType, retries = 10) {
+  if (typeof window.rcTrackProductInteraction === "function") {
+    window.rcTrackProductInteraction(productId, interactionType);
+  } else if (retries > 0) {
+    setTimeout(() => trackItemInteraction(productId, interactionType, retries - 1), 200);
+  }
+}
+
 function renderProduct(item) {
   qcLog("Rendering product", { id: item.id, name: item.name, productUrl: item.productUrl });
   document.title = `${item.name || "Item"} - repscentral`;
@@ -417,9 +425,9 @@ function renderProduct(item) {
     ? `<img class="item-image" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name || "Item image")}">`
     : `<div class="image-empty">No image yet</div>`;
   const description = item.description || "No description has been added yet.";
-  const agentButton = item.agentUrl ? `<a class="action-btn primary" href="${escapeHtml(item.agentUrl)}" target="_blank" rel="noopener noreferrer">Open Agent Link</a>` : "";
+  const agentButton = item.agentUrl ? `<a class="action-btn primary" data-product-action="outboundClicks" href="${escapeHtml(item.agentUrl)}" target="_blank" rel="noopener noreferrer">Open Agent Link</a>` : "";
   const productLink = originalProductLink(item);
-  const productButton = productLink ? `<a class="action-btn" href="${escapeHtml(productLink)}" target="_blank" rel="noopener noreferrer">Original Link</a>` : "";
+  const productButton = productLink ? `<a class="action-btn" data-product-action="outboundClicks" href="${escapeHtml(productLink)}" target="_blank" rel="noopener noreferrer">Original Link</a>` : "";
 
   root.innerHTML = `
     <a class="back-link" href="${sitePath("spreadsheet.html")}">Back to spreadsheet</a>
@@ -455,6 +463,10 @@ function renderProduct(item) {
     </section>
   `;
 
+  trackItemInteraction(item.id, "detailViews");
+  root.querySelectorAll("[data-product-action]").forEach(link => {
+    link.addEventListener("click", () => trackItemInteraction(item.id, link.dataset.productAction));
+  });
   loadQcPictures(item);
 }
 
