@@ -408,11 +408,11 @@
       }
       try {
         const existingProduct = await getDoc(doc(db, "products", id));
-      if (existingProduct.exists()) {
-        setStatus("Create stopped - an item with this slug already exists");
-        return;
-      }
-      const data = normalizeProduct({
+        if (existingProduct.exists()) {
+          setStatus("Create stopped - an item with this slug already exists");
+          return;
+        }
+        const data = normalizeProduct({
         name,
         price: document.getElementById("new-price").value,
         category: document.getElementById("new-category").value,
@@ -420,8 +420,8 @@
         imageUrl: document.getElementById("new-image").value.trim(),
         agentUrl: document.getElementById("new-agent").value.trim(),
         isActive: true,
-        sortOrder: products.length + 1
-      });
+          sortOrder: products.length + 1
+        });
         await setDoc(doc(db, "products", id), { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         products.push({ id, ...data });
         products.sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
