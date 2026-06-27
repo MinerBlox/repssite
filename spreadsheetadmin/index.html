@@ -406,7 +406,8 @@
         setStatus("Create failed - use a name containing letters or numbers");
         return;
       }
-      const existingProduct = await getDoc(doc(db, "products", id));
+      try {
+        const existingProduct = await getDoc(doc(db, "products", id));
       if (existingProduct.exists()) {
         setStatus("Create stopped - an item with this slug already exists");
         return;
@@ -421,7 +422,6 @@
         isActive: true,
         sortOrder: products.length + 1
       });
-      try {
         await setDoc(doc(db, "products", id), { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         products.push({ id, ...data });
         products.sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
