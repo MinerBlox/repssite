@@ -109,6 +109,10 @@ function originalProductLink(item) {
   return link;
 }
 
+function hostMatches(host, domain) {
+  return host === domain || host.endsWith(`.${domain}`);
+}
+
 function parseMarketplaceLink(rawUrl) {
   qcLog("Parsing product URL", rawUrl);
   if (!rawUrl) {
@@ -129,19 +133,20 @@ function parseMarketplaceLink(rawUrl) {
   let itemId = null;
   let platform = "unsupported";
 
-  if (host.includes("weidian.com") || host.includes("youshop10.com")) {
+  if (hostMatches(host, "weidian.com") || hostMatches(host, "youshop10.com")) {
     itemId = url.searchParams.get("itemID") || url.searchParams.get("itemId") || url.searchParams.get("id");
     platform = "WD";
-  } else if (host.includes("1688.com") || host.includes("alibaba.com")) {
+  } else if (hostMatches(host, "1688.com") || hostMatches(host, "alibaba.com")) {
     const match = href.match(/offer\/(\d+)\.html/i);
     itemId = match?.[1] || url.searchParams.get("offerId") || url.searchParams.get("id");
     platform = "AL";
-  } else if (host.includes("taobao.com") || host.includes("tmall.com")) {
+  } else if (hostMatches(host, "taobao.com") || hostMatches(host, "tmall.com")) {
     itemId = url.searchParams.get("id");
     platform = "TB";
   }
 
   const cleanItemId = itemId ? String(itemId).replace(/\D/g, "") : "";
+  if (cleanItemId.length > 30) return null;
   const goodsId = cleanItemId ? `${platform}${cleanItemId}` : "";
   const details = cleanItemId ? { host, platform, itemId: cleanItemId, goodsId } : null;
   qcLog("Parsed marketplace details", details || { host, platform, itemId, goodsId: null });
