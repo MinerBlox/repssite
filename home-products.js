@@ -314,6 +314,11 @@ function injectTutorialStepCopy() {
   waitForContent();
 }
 
+document.addEventListener("click", event => {
+  const productLink = event.target.closest("[data-view-product]");
+  if (productLink) window.rcTrackProductInteraction?.(productLink.dataset.viewProduct, "viewClicks");
+});
+
 preloadTutorialImages();
 injectHomepageModalPolish();
 injectTutorialCloseLink();
@@ -379,7 +384,7 @@ function productCard(item) {
           <span class="product-price">${formatPrice(item)}</span>
           <span class="product-cat">${escapeHtml(item.category || "Unsorted")}</span>
         </div>
-        <a href="${escapeHtml(itemHref(item))}" class="product-btn" onclick="window.rcTrackProductInteraction?.('${escapeHtml(item.id)}', 'viewClicks')">View Item →</a>
+        <a href="${escapeHtml(itemHref(item))}" class="product-btn" data-view-product="${escapeHtml(item.id)}">View Item →</a>
       </div>
     </div>
   `;
@@ -420,7 +425,7 @@ function podiumCard(item, medal, delay) {
           <span class="podium-price" style="color:${medal.textColor}">${formatPrice(item)}</span>
           <span class="podium-cat">${escapeHtml(item.category || "Unsorted")}</span>
         </div>
-        <a href="${escapeHtml(itemHref(item))}" class="podium-btn" style="background:${medal.badgeColor};color:${medal.badgeText}" onclick="window.rcTrackProductInteraction?.('${escapeHtml(item.id)}', 'viewClicks')">View Find →</a>
+        <a href="${escapeHtml(itemHref(item))}" class="podium-btn" style="background:${medal.badgeColor};color:${medal.badgeText}" data-view-product="${escapeHtml(item.id)}">View Find →</a>
       </div>
     </div>
   `;
@@ -619,7 +624,7 @@ function renderProductSearch(query) {
       const image = item.imageUrl
         ? `<img src="${escapeHtml(item.imageUrl)}" alt="" loading="lazy">`
         : '<span class="nav-search-thumb-empty" aria-hidden="true">-</span>';
-      return `<a class="nav-search-result" role="option" aria-selected="false" data-search-index="${index}" href="${escapeHtml(itemHref(item))}" onclick="window.rcTrackProductInteraction?.('${escapeHtml(item.id)}', 'viewClicks')">
+      return `<a class="nav-search-result" role="option" aria-selected="false" data-search-index="${index}" href="${escapeHtml(itemHref(item))}" data-view-product="${escapeHtml(item.id)}">
         ${image}
         <span><span class="nav-search-result-name">${escapeHtml(item.name || "Unnamed item")}</span><span class="nav-search-result-category">${escapeHtml(item.category || "Unsorted")}</span></span>
         <span class="nav-search-result-price">${formatPrice(item)}</span>
