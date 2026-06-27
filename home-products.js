@@ -506,16 +506,50 @@ function renderProductRow(target, items, moreCount) {
   target.innerHTML = items.slice(0, count).map(productCard).join("") + moreProductCard(remaining, backgroundItem);
 }
 
+function itemIdentity(item) {
+  const name = String(item?.name || "").trim().toLowerCase();
+  return name || String(item?.id || "");
+}
+
+function putUniqueItemFirst(items, usedFirstItems) {
+  const ordered = [...items];
+  const uniqueIndex = ordered.findIndex(item => !usedFirstItems.has(itemIdentity(item)));
+  if (uniqueIndex > 0) {
+    const [uniqueItem] = ordered.splice(uniqueIndex, 1);
+    ordered.unshift(uniqueItem);
+  }
+  if (ordered[0]) usedFirstItems.add(itemIdentity(ordered[0]));
+  return ordered;
+}
+
+function buildProductRows(items) {
+  const selectedPicks = items.filter(item => item.isOurPick === true);
+  const picks = selectedPicks.length ? selectedPicks : items;
+  const usedFirstItems = new Set();
+
+  if (picks[0]) usedFirstItems.add(itemIdentity(picks[0]));
+
+  const seasons = {};
+  ["summer", "autumn", "winter"].forEach(seasonName => {
+    seasons[seasonName] = putUniqueItemFirst(seasonalItems(items, seasonName), usedFirstItems);
+  });
+
+  return { picks, seasons };
+}
+
 function renderSeasonProducts(items, seasonName) {
   window.activeSeason = seasonName;
   document.querySelectorAll(".season-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.season === seasonName));
-  renderProductRow(document.getElementById("season-grid"), seasonalItems(items, seasonName));
+  const rows = buildProductRows(items);
+  renderProductRow(document.getElementById("season-grid"), rows.seasons[seasonName] || items);
 }
 
 function renderProductRows(items) {
-  const selectedPicks = items.filter(item => item.isOurPick === true);
-  renderProductRow(document.getElementById("our-picks-grid"), selectedPicks.length ? selectedPicks : items, items.length);
-  renderSeasonProducts(items, window.activeSeason || "summer");
+  const rows = buildProductRows(items);
+  renderProductRow(document.getElementById("our-picks-grid"), rows.picks, items.length);
+  window.activeSeason = window.activeSeason || "summer";
+  document.querySelectorAll(".season-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.season === window.activeSeason));
+  renderProductRow(document.getElementById("season-grid"), rows.seasons[window.activeSeason] || items);
 }
 
 function renderHomeProducts(items) {
