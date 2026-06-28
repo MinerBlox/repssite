@@ -38,9 +38,10 @@ const tutorialSteps = [
   },
   {
     number: 6,
-    title: "NEXT STEPS COMING SOON",
-    subtext: "Waiting for items to arrive at warehouse to finish tutorial...",
-    comingSoon: true
+    title: "Ship items",
+    subtext: "Rehearse haul to save on shipping. Pick cheapest air-freight line.",
+    image: "https://github.com/MinerBlox/repssite/blob/main/systemimages/tutorial/step6.png?raw=true",
+    alt: "Ship items tutorial step"
   }
 ];
 
@@ -123,7 +124,7 @@ function injectHomepageModalPolish() {
     }
     .tutorial-step-sub,
     .tutorial-step2-sub {
-      margin: -6px 0 16px;
+      margin: -12px 0 14px;
       color: var(--muted);
       font-size: 13px;
       line-height: 1.45;
