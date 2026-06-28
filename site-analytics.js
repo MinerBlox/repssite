@@ -1,5 +1,5 @@
 import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getFirestore, doc, setDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, doc, setDoc, serverTimestamp, increment, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA",
@@ -75,7 +75,8 @@ async function heartbeat() {
     pageId: page.id,
     pageName: page.name,
     path: window.location.pathname,
-    lastSeen: serverTimestamp()
+    lastSeen: serverTimestamp(),
+    expiresAt: Timestamp.fromMillis(Date.now() + 5 * 60 * 1000)
   }, { merge: true });
 }
 
