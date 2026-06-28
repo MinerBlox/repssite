@@ -77,9 +77,10 @@ match /analyticsPresence/{visitorId} {
 
   allow create, update: if validPresence()
     && request.resource.data.keys().hasOnly([
-      "pageId", "pageName", "path", "lastSeen"
+      "pageId", "pageName", "path", "lastSeen", "expiresAt"
     ])
-    && request.resource.data.lastSeen == request.time;
+    && request.resource.data.lastSeen == request.time
+    && request.resource.data.expiresAt is timestamp;
 }
 
 match /analyticsProducts/{productId} {
