@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <meta name="robots" content="noindex, nofollow, noarchive">
   <title>Admin - repscentral</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -294,7 +294,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-    import { getFirestore, collection, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+    import { getFirestore, collection, doc, onSnapshot, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA",
@@ -378,7 +378,12 @@
         pageVisits = new Map(snapshot.docs.map(pageDoc => [pageDoc.id, pageDoc.data()]));
         renderAnalytics();
       }));
-      analyticsUnsubscribers.push(onSnapshot(collection(db, "analyticsPresence"), snapshot => {
+      const activeSince = Timestamp.fromMillis(Date.now() - 65000);
+      const activePresenceQuery = query(
+        collection(db, "analyticsPresence"),
+        where("lastSeen", ">=", activeSince)
+      );
+      analyticsUnsubscribers.push(onSnapshot(activePresenceQuery, snapshot => {
         presenceDocs = snapshot.docs.map(presenceDoc => presenceDoc.data());
         renderAnalytics();
       }));
