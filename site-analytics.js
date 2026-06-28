@@ -55,7 +55,12 @@ window.rcTrackProductInteraction = (productId, interactionType) => {
   trackProductInteraction(productId, interactionType).catch(error => console.warn("Product interaction tracking unavailable:", error));
 };
 
+function dailyVisitId() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 async function recordVisit() {
+  const dayId = dailyVisitId();
   await Promise.all([
     setDoc(doc(db, "analyticsTotals", "summary"), {
       totalVisits: increment(1),
@@ -64,6 +69,11 @@ async function recordVisit() {
     setDoc(doc(db, "analyticsPages", page.id), {
       name: page.name,
       path: window.location.pathname,
+      totalVisits: increment(1),
+      updatedAt: serverTimestamp()
+    }, { merge: true }),
+    setDoc(doc(db, "analyticsDaily", dayId), {
+      date: dayId,
       totalVisits: increment(1),
       updatedAt: serverTimestamp()
     }, { merge: true })
