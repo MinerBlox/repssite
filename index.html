@@ -359,6 +359,35 @@
     .tool-card:hover { transform: translateY(-2px); }
     .tool-icon { font-size: 24px; margin-bottom: 10px; }
     .tool-featured .tool-icon { animation: rc-float 3s ease-in-out infinite; }
+    @keyframes rc-question-pop {
+      0%, 100% { opacity: 0.08; transform: translateY(7px) scale(0.72); }
+      45% { opacity: 0.52; transform: translateY(-7px) scale(1.08); }
+    }
+    .tool-coming {
+      position: relative; isolation: isolate; min-height: 184px; overflow: hidden;
+      display: grid; place-items: center; text-align: center;
+      border: 1px solid var(--border); background: var(--surface);
+    }
+    .tool-coming::before {
+      content: ""; position: absolute; z-index: -2; inset: -22px;
+      background: radial-gradient(circle at 50% 45%, rgba(77,166,255,0.14), transparent 58%), var(--surface2);
+      filter: blur(15px); opacity: 0.88;
+    }
+    .tool-coming::after {
+      content: ""; position: absolute; z-index: -1; inset: 0;
+      background: rgba(10,10,11,0.42); backdrop-filter: blur(5px);
+    }
+    body.light .tool-coming::after { background: rgba(255,255,255,0.34); }
+    .tool-coming-label {
+      position: relative; z-index: 2; font-family: 'Syne', sans-serif;
+      color: var(--text); font-size: 18px; font-weight: 800;
+    }
+    .tool-question {
+      position: absolute; z-index: 1; left: var(--x); top: var(--y);
+      color: #4da6ff; font-family: 'Syne', sans-serif; font-size: var(--size);
+      font-weight: 800; pointer-events: none;
+      animation: rc-question-pop var(--duration) ease-in-out var(--delay) infinite;
+    }
     .tool-rec-badge { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; padding: 2px 8px; border-radius: 5px; margin-bottom: 14px; background: rgba(77,166,255,0.12); color: #4da6ff; }
     .tool-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; margin-bottom: 6px; color: var(--text); }
     .tool-desc { font-size: 13px; margin-bottom: 14px; line-height: 1.5; color: var(--muted); }
@@ -838,10 +867,10 @@ const sellers = [
 
 const tools = [
   { id: "t1", icon: "🛒", name: "HipoBuy Agent", desc: "Register on HipoBuy and get up to 40% off your shipping fee.", featured: true, badge: "Recommended", cta: "Register Now", ctaPrimary: true, href: HIPOBUY_LINK },
-  { id: "t2", icon: "◎", name: "Quality Check", desc: "Find real pictures before you buy your favourite items!", featured: false, cta: "Browse", ctaPrimary: false, href: "spreadsheet.html" },
   { id: "t4", icon: "🔗", name: "Link Converter", desc: "Convert links from multiple platforms instantly.", featured: false, cta: "Open", ctaPrimary: false, href: "link-converter.html" },
   { id: "t5", icon: "◎", name: "QC Viewer", desc: "View real quality-check photos before buying.", featured: false, cta: "View QCs", ctaPrimary: false, href: "quality-checks.html" },
   { id: "t6", icon: "▶", name: "Full Tutorial", desc: "Open the complete step-by-step guide to buying and shipping your haul.", featured: false, cta: "Open Tutorial", ctaPrimary: false, href: "#", onclick: "openTutorial(); return false;" },
+  { id: "coming", comingSoon: true },
 ];
 
 /* ── THEME ── */
@@ -972,6 +1001,21 @@ function sellerCard(s) {
 
 /* ── TOOLS ── */
 function toolCard(t) {
+  if (t.comingSoon) {
+    const questions = [
+      ["9%", "18%", "18px", "3.1s", "-0.4s"],
+      ["27%", "64%", "24px", "3.8s", "-1.7s"],
+      ["48%", "13%", "16px", "3.5s", "-2.2s"],
+      ["68%", "67%", "21px", "4.1s", "-0.9s"],
+      ["86%", "25%", "27px", "3.6s", "-2.8s"],
+      ["13%", "82%", "14px", "3.3s", "-1.2s"],
+      ["80%", "86%", "17px", "4s", "-2s"]
+    ].map(([x, y, size, duration, delay]) =>
+      `<span class="tool-question" style="--x:${x};--y:${y};--size:${size};--duration:${duration};--delay:${delay}">?</span>`
+    ).join("");
+    return `<div class="tool-card tool-coming">${questions}<div class="tool-coming-label">Coming soon</div></div>`;
+  }
+
   const featuredBorder = "1px solid rgba(77,166,255,0.3)";
   const normalBorder = "1px solid var(--border)";
   const featuredBg = "rgba(77,166,255,0.04)";
