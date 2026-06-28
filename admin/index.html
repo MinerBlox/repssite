@@ -306,6 +306,7 @@
       measurementId: "G-8T7F9F1FZ9"
     };
 
+    const ADMIN_UID = "3jC9pWkF5ZeHIDtd1LrPR1Ptvbz1";
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -398,6 +399,11 @@
     }
 
     function showAdmin(user) {
+      if (user.uid !== ADMIN_UID) {
+        loginError.textContent = "This account is not authorised for admin access.";
+        signOut(auth);
+        return;
+      }
       loginView.style.display = "none";
       adminView.style.display = "block";
       document.getElementById("user-email").textContent = user.email || "Signed in";
