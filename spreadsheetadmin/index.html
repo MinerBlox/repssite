@@ -167,6 +167,7 @@
     const defaultCategories = ["Shoes", "Hoodies", "T-Shirts", "Pants", "Jackets", "Hats", "Socks", "Accessories", "Bags", "Watches", "Jewellery", "Other"];
     const brandOptions = ["", "Mertra", "Ralph Lauren", "Nike"];
     const badgeOptions = ["", "best", "budget", "new", "popular"];
+    const ADMIN_UID = "3jC9pWkF5ZeHIDtd1LrPR1Ptvbz1";
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -343,6 +344,11 @@
     }
 
     async function unlock(user) {
+      if (user.uid !== ADMIN_UID) {
+        loginError.textContent = "This account is not authorised for admin access.";
+        await signOut(auth);
+        return;
+      }
       loginView.style.display = "none";
       adminView.style.display = "block";
       setStatus(`Signed in as ${user.email}`);
