@@ -1,12 +1,6 @@
 # Firebase Analytics Rules
 
-Add these match blocks inside your existing:
-
-```text
-match /databases/{database}/documents {
-  // Paste the blocks here.
-}
-```
+Add these match blocks inside your existing `match /databases/{database}/documents` block.
 
 Do not replace your existing product, category, or admin rules.
 
@@ -43,19 +37,25 @@ match /analyticsPages/{pageId} {
     ];
   }
 
-  allow create: if isKnownPage()\n    && request.resource.data.keys().hasOnly([
-      "name", "path", "totalVisits", "updatedAt"
-    ])
-    && request.resource.data.name is string\n    && request.resource.data.name.size() <= 40\n    && request.resource.data.name.size() <= 40
-    && request.resource.data.path is string\n    && request.resource.data.path.size() <= 200\n    && request.resource.data.path.size() <= 200
-    && request.resource.data.totalVisits == 1
-    && request.resource.data.updatedAt == request.time;
-
-  allow update: if isKnownPage()\n    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+  allow create: if isKnownPage()
+    && request.resource.data.keys().hasOnly([
       "name", "path", "totalVisits", "updatedAt"
     ])
     && request.resource.data.name is string
+    && request.resource.data.name.size() <= 40
     && request.resource.data.path is string
+    && request.resource.data.path.size() <= 200
+    && request.resource.data.totalVisits == 1
+    && request.resource.data.updatedAt == request.time;
+
+  allow update: if isKnownPage()
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      "name", "path", "totalVisits", "updatedAt"
+    ])
+    && request.resource.data.name is string
+    && request.resource.data.name.size() <= 40
+    && request.resource.data.path is string
+    && request.resource.data.path.size() <= 200
     && request.resource.data.totalVisits == resource.data.totalVisits + 1
     && request.resource.data.updatedAt == request.time;
 }
@@ -69,7 +69,9 @@ match /analyticsPresence/{visitorId} {
         "home", "spreadsheet", "quality-checks", "link-converter",
         "agents", "item-pages", "not-found"
       ]
+      && request.resource.data.pageName is string
       && request.resource.data.pageName.size() <= 40
+      && request.resource.data.path is string
       && request.resource.data.path.size() <= 200;
   }
 
@@ -77,9 +79,6 @@ match /analyticsPresence/{visitorId} {
     && request.resource.data.keys().hasOnly([
       "pageId", "pageName", "path", "lastSeen"
     ])
-    && request.resource.data.pageId is string
-    && request.resource.data.pageName is string
-    && request.resource.data.path is string
     && request.resource.data.lastSeen == request.time;
 }
 
@@ -90,7 +89,8 @@ match /analyticsProducts/{productId} {
     return exists(/databases/$(database)/documents/products/$(productId));
   }
 
-  allow create: if productExists()\n    && request.resource.data.keys().hasOnly([
+  allow create: if productExists()
+    && request.resource.data.keys().hasOnly([
       "totalInteractions", "viewClicks", "copyClicks",
       "detailViews", "outboundClicks", "updatedAt"
     ])
@@ -105,7 +105,8 @@ match /analyticsProducts/{productId} {
       + request.resource.data.outboundClicks == 1
     && request.resource.data.updatedAt == request.time;
 
-  allow update: if productExists()\n    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+  allow update: if productExists()
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
       "totalInteractions", "viewClicks", "copyClicks",
       "detailViews", "outboundClicks", "updatedAt"
     ])
