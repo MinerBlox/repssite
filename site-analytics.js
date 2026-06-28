@@ -71,13 +71,21 @@ async function recordVisit() {
 }
 
 async function heartbeat() {
-  await setDoc(presenceRef, {
+  const presence = {
     pageId: page.id,
     pageName: page.name,
     path: window.location.pathname,
-    lastSeen: serverTimestamp(),
-    expiresAt: Timestamp.fromMillis(Date.now() + 5 * 60 * 1000)
-  }, { merge: true });
+    lastSeen: serverTimestamp()
+  };
+  try {
+    await setDoc(presenceRef, {
+      ...presence,
+      expiresAt: Timestamp.fromMillis(Date.now() + 5 * 60 * 1000)
+    }, { merge: true });
+  } catch (error) {
+    if (error?.code !== "permission-denied") throw error;
+    await setDoc(presenceRef, presence, { merge: true });
+  }
 }
 
 recordVisit().catch(error => console.warn("Visit tracking unavailable:", error));
