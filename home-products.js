@@ -715,12 +715,10 @@ async function loadHomeProducts() {
       const popularitySnapshot = await getDocs(collection(db, "analyticsProducts"));
       popularity = new Map(popularitySnapshot.docs.map(statsDoc => [statsDoc.id, Number(statsDoc.data().totalInteractions || 0)]));
     } catch (analyticsError) {
-      console.warn("Could not load product popularity:", analyticsError);
     }
 
     renderHomeProducts(items, popularity);
   } catch (error) {
-    console.error("Could not load Firebase homepage products:", error);
   }
 }
 
