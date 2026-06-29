@@ -14,6 +14,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const root = document.getElementById("app");
+window.__rcQcData = { sources: [], entries: [] };
 function qcLog() {}
 function qcWarn() {}
 
@@ -194,6 +195,7 @@ function extractQcEntries(sources) {
     });
   });
   qcLog("Extracted attributed QC photos", { count: entries.length, providers: [...new Set(entries.map(entry => entry.provider))] });
+  window.__rcQcData.entries = entries;
   return entries;
 }
 
@@ -248,6 +250,7 @@ async function fetchQcPayload(urls) {
   }
 
   if (!sources.length) throw new Error("No QC provider returned data");
+  window.__rcQcData.sources = sources;
   return sources;
 }
 
