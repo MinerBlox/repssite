@@ -36,7 +36,6 @@ function ensureDefaultVisitorPreferences() {
       applyCurrencyToOpenPicker();
     }
   } catch (error) {
-    console.warn("Could not apply default preferences:", error);
   }
 }
 
@@ -83,7 +82,7 @@ async function trackProductInteraction(productId, interactionType) {
 }
 
 window.rcTrackProductInteraction = (productId, interactionType) => {
-  trackProductInteraction(productId, interactionType).catch(error => console.warn("Product interaction tracking unavailable:", error));
+  trackProductInteraction(productId, interactionType).catch(() => {});
 };
 
 function dailyVisitId() {
@@ -129,8 +128,8 @@ async function heartbeat() {
   }
 }
 
-recordVisit().catch(error => console.warn("Visit tracking unavailable:", error));
-heartbeat().catch(error => console.warn("Live tracking unavailable:", error));
+recordVisit().catch(() => {});
+heartbeat().catch(() => {});
 const heartbeatTimer = window.setInterval(() => {
   if (document.visibilityState === "visible") heartbeat().catch(() => {});
 }, HEARTBEAT_MS);
