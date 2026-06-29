@@ -14,23 +14,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const root = document.getElementById("app");
-const QC_DEBUG_PREFIX = "[RC QC]";
-window.__rcQcDebug = { logs: [] };
-
-function qcLog(label, data) {
-  const entry = { label, data, time: new Date().toISOString() };
-  window.__rcQcDebug.logs.push(entry);
-  window.__rcQcDebug.last = entry;
-  if (data === undefined) console.log(QC_DEBUG_PREFIX, label);
-  else console.log(QC_DEBUG_PREFIX, label, data);
-}
-
-function qcWarn(label, data) {
-  const entry = { label, data, time: new Date().toISOString(), level: "warn" };
-  window.__rcQcDebug.logs.push(entry);
-  window.__rcQcDebug.last = entry;
-  console.warn(QC_DEBUG_PREFIX, label, data);
-}
+function qcLog() {}
+function qcWarn() {}
 
 function basePath() {
   return window.location.pathname.startsWith("/repssite/") ? "/repssite/" : "/";
@@ -105,7 +90,6 @@ function originalProductLink(item) {
     itemUrl: item.itemUrl || "",
     chosen: link
   });
-  window.__rcQcDebug.productUrl = link;
   return link;
 }
 
@@ -150,8 +134,6 @@ function parseMarketplaceLink(rawUrl) {
   const goodsId = cleanItemId ? `${platform}${cleanItemId}` : "";
   const details = cleanItemId ? { host, platform, itemId: cleanItemId, goodsId } : null;
   qcLog("Parsed marketplace details", details || { host, platform, itemId, goodsId: null });
-  window.__rcQcDebug.marketplace = details;
-  window.__rcQcDebug.goodsId = goodsId;
   return details;
 }
 
@@ -165,9 +147,6 @@ function qcApiUrls(item) {
   const oopbuyDirectUrl = `https://webapi.oopbuy.com/orderProduct/getSpuPurchaseInfo?spuNo=${encodeURIComponent(details.itemId)}&channel=${encodeURIComponent(oopbuyChannel)}`;
   const urls = { ...details, proxyUrl, directUrl, oopbuyDirectUrl, oopbuyChannel };
   qcLog("Built QC API URLs", urls);
-  window.__rcQcDebug.apiUrl = proxyUrl;
-  window.__rcQcDebug.proxyUrl = proxyUrl;
-  window.__rcQcDebug.directUrl = directUrl;
   return urls;
 }
 
@@ -215,7 +194,6 @@ function extractQcEntries(sources) {
     });
   });
   qcLog("Extracted attributed QC photos", { count: entries.length, providers: [...new Set(entries.map(entry => entry.provider))] });
-  window.__rcQcDebug.entries = entries;
   return entries;
 }
 
@@ -231,10 +209,8 @@ async function fetchJsonWithDebug(url, label) {
     contentType: response.headers.get("content-type") || ""
   };
   qcLog(`${label} response`, responseInfo);
-  window.__rcQcDebug.response = responseInfo;
 
   const text = await response.text();
-  window.__rcQcDebug.rawText = text.slice(0, 5000);
   if (!response.ok) throw new Error(`${label} returned ${response.status}: ${text.slice(0, 200)}`);
 
   try {
@@ -249,18 +225,15 @@ async function fetchQcPayload(urls) {
 
   try {
     const proxyPayload = await fetchJsonWithDebug(urls.proxyUrl, "QC proxy API");
-    window.__rcQcDebug.proxyPayload = proxyPayload;
     const proxyData = proxyPayload.data || proxyPayload;
     if (proxyData.acbuy) sources.push({ provider: "ACBuy", payload: proxyData.acbuy });
     if (proxyData.oopbuy) sources.push({ provider: "OopBuy", payload: proxyData.oopbuy });
     if (!proxyData.acbuy && !proxyData.oopbuy) sources.push({ provider: "ACBuy", payload: proxyData });
   } catch (proxyError) {
     qcWarn("QC proxy failed, trying direct provider fallbacks", { message: proxyError.message });
-    window.__rcQcDebug.proxyError = proxyError.message;
 
     try {
       const directPayload = await fetchJsonWithDebug(urls.directUrl, "direct ACBuy API");
-      window.__rcQcDebug.directPayload = directPayload;
       sources.push({ provider: "ACBuy", payload: directPayload });
     } catch (acbuyError) {
       qcWarn("Direct ACBuy fallback failed", { message: acbuyError.message });
@@ -269,11 +242,9 @@ async function fetchQcPayload(urls) {
 
   try {
     const oopbuyPayload = await fetchJsonWithDebug(urls.oopbuyDirectUrl, "direct OopBuy API");
-    window.__rcQcDebug.oopbuyPayload = oopbuyPayload;
     sources.push({ provider: "OopBuy", payload: oopbuyPayload });
   } catch (oopbuyError) {
     qcWarn("Direct OopBuy fallback failed; the server proxy is required on static hosting", { message: oopbuyError.message });
-    window.__rcQcDebug.oopbuyError = oopbuyError.message;
   }
 
   if (!sources.length) throw new Error("No QC provider returned data");
