@@ -31,11 +31,7 @@ export async function onRequest(context) {
     ]);
 
     if (!acbuy.ok && !oopbuy.ok) {
-      return json({
-        error: "Both QC providers failed",
-        goodsId: acGoodsId,
-        providers: { acbuy, oopbuy }
-      }, 502);
+      return json({ error: "QC providers unavailable" }, 502);
     }
 
     return json({
@@ -47,12 +43,11 @@ export async function onRequest(context) {
         oopbuy: oopbuy.ok ? oopbuy.data : null
       },
       providers: {
-        acbuy: { ok: acbuy.ok, status: acbuy.status, api: acbuyApi, error: acbuy.error || null },
-        oopbuy: { ok: oopbuy.ok, status: oopbuy.status, api: oopbuyApi, error: oopbuy.error || null }
+        acbuy: { ok: acbuy.ok, status: acbuy.status },
+        oopbuy: { ok: oopbuy.ok, status: oopbuy.status }
       }
     });
-  } catch (error) {
-    console.error("QC proxy error", error);
+  } catch {
     return json({ error: "internal server error" }, 500);
   }
 }
@@ -68,11 +63,11 @@ async function fetchProvider(api, headers, name) {
       return { ok: false, status: response.status, error: `Invalid JSON from ${name}` };
     }
     if (!response.ok) {
-      return { ok: false, status: response.status, error: `${name} returned ${response.status}`, data };
+      return { ok: false, status: response.status, error: `${name} returned ${response.status}` };
     }
     return { ok: true, status: response.status, data };
-  } catch (error) {
-    return { ok: false, status: 0, error: error.message };
+  } catch {
+    return { ok: false, status: 0, error: "Provider request failed" };
   }
 }
 
