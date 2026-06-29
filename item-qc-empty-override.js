@@ -1,5 +1,4 @@
 const EMPTY_QC_MESSAGE = "We're still working on QC pictures for this item...";
-const QC_PAGE_SIZE = 10;
 const BAD_QC_TEXT = [
   "Add the original Weidian, 1688 or Taobao link in Product URL to load QC pictures.",
   "The QC providers replied, but there were no image links for this item.",
@@ -9,6 +8,7 @@ const BAD_QC_TEXT = [
 let lastQcSignature = "";
 let pagerScheduled = false;
 let observer = null;
+let lastKnownColumnCount = 0;
 
 function ensureEmptyQcStyles() {
   if (document.getElementById("rc-empty-qc-override-style")) return;
@@ -71,7 +71,7 @@ function ensureEmptyQcStyles() {
     }
     .qc-load-more-btn {
       min-height: 44px;
-      padding: 0 18px;
+      padding: 0 20px;
       border: 1px solid var(--border);
       border-radius: 999px;
       background: var(--surface2);
@@ -120,6 +120,12 @@ function shouldReplaceQcText() {
   return BAD_QC_TEXT.some(phrase => text.includes(phrase));
 }
 
+function getQcColumnCount(qcGrid) {
+  const template = getComputedStyle(qcGrid).gridTemplateColumns || "";
+  const columns = template.split(" ").filter(Boolean).length;
+  return Math.max(1, columns || 1);
+}
+
 function applyQcPagination() {
   const qcGrid = document.getElementById("qc-grid");
   if (!qcGrid || qcGrid.querySelector(".qc-empty-working")) return;
@@ -127,14 +133,17 @@ function applyQcPagination() {
   const buttons = Array.from(qcGrid.querySelectorAll(".qc-link[data-qc-index]"));
   if (!buttons.length) return;
 
+  const columnCount = getQcColumnCount(qcGrid);
   const signature = buttons.map(button => button.dataset.qcIndex).join("|");
-  if (signature !== lastQcSignature) {
+
+  if (signature !== lastQcSignature || columnCount !== lastKnownColumnCount) {
     lastQcSignature = signature;
-    qcGrid.dataset.visibleQcCount = String(QC_PAGE_SIZE);
+    lastKnownColumnCount = columnCount;
+    qcGrid.dataset.visibleQcCount = String(columnCount);
   }
 
-  let visibleCount = Number(qcGrid.dataset.visibleQcCount || QC_PAGE_SIZE);
-  visibleCount = Math.max(QC_PAGE_SIZE, Math.min(visibleCount, buttons.length));
+  let visibleCount = Number(qcGrid.dataset.visibleQcCount || columnCount);
+  visibleCount = Math.max(columnCount, Math.min(visibleCount, buttons.length));
 
   buttons.forEach((button, index) => {
     button.style.display = index < visibleCount ? "" : "none";
@@ -150,19 +159,19 @@ function applyQcPagination() {
   if (!wrap) {
     wrap = document.createElement("div");
     wrap.className = "qc-load-more-wrap";
-    wrap.innerHTML = `<button class="qc-load-more-btn" type="button"></button>`;
+    wrap.innerHTML = `<button class="qc-load-more-btn" type="button">Load more</button>`;
     qcGrid.appendChild(wrap);
     wrap.querySelector("button").addEventListener("click", event => {
       event.preventDefault();
       event.stopPropagation();
-      const current = Number(qcGrid.dataset.visibleQcCount || QC_PAGE_SIZE);
-      qcGrid.dataset.visibleQcCount = String(current + QC_PAGE_SIZE);
+      const current = Number(qcGrid.dataset.visibleQcCount || columnCount);
+      const latestColumns = getQcColumnCount(qcGrid);
+      qcGrid.dataset.visibleQcCount = String(current + latestColumns);
       scheduleCheck();
     });
   }
 
-  const remaining = buttons.length - visibleCount;
-  wrap.querySelector("button").textContent = `Load 10 more QCs (${remaining} left)`;
+  wrap.querySelector("button").textContent = "Load more";
 }
 
 function runCheck() {
@@ -186,6 +195,7 @@ observer = new MutationObserver(mutations => {
 });
 observer.observe(document.body, { childList: true, subtree: true, characterData: true });
 
+window.addEventListener("resize", scheduleCheck, { passive: true });
 scheduleCheck();
 setTimeout(scheduleCheck, 500);
 setTimeout(scheduleCheck, 1500);
