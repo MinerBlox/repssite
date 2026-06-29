@@ -582,7 +582,6 @@
         const password = document.getElementById("password-input").value;
         await signInWithEmailAndPassword(auth, email, password);
       } catch (error) {
-        console.error(error);
         loginError.textContent = "Login failed. Check the email and password.";
         loginButton.disabled = false;
         loginButton.textContent = "Sign In";
