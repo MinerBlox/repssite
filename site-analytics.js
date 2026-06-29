@@ -11,6 +11,37 @@ const firebaseConfig = {
   measurementId: "G-8T7F9F1FZ9"
 };
 
+function ensureDefaultVisitorPreferences() {
+  try {
+    if (!localStorage.getItem("rc-currency")) {
+      localStorage.setItem("rc-currency", "GBP");
+
+      let attempts = 0;
+      const applyCurrencyToOpenPicker = () => {
+        const option = document.querySelector('[data-currency="GBP"]');
+        if (option) {
+          option.click();
+          return;
+        }
+
+        const overlay = document.getElementById("currency-overlay");
+        const pill = document.getElementById("currency-pill");
+        if (overlay) overlay.classList.remove("open");
+        if (pill) pill.textContent = "Currency: GBP";
+
+        attempts += 1;
+        if (attempts < 20) window.setTimeout(applyCurrencyToOpenPicker, 50);
+      };
+
+      applyCurrencyToOpenPicker();
+    }
+  } catch (error) {
+    console.warn("Could not apply default preferences:", error);
+  }
+}
+
+ensureDefaultVisitorPreferences();
+
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const HEARTBEAT_MS = 20000;
