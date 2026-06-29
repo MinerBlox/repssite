@@ -1,9 +1,12 @@
 const EMPTY_QC_MESSAGE = "We're still working on QC pictures for this item...";
+const QC_PAGE_SIZE = 10;
 const BAD_QC_TEXT = [
   "Add the original Weidian, 1688 or Taobao link in Product URL to load QC pictures.",
   "The QC providers replied, but there were no image links for this item.",
   "Could not load QC pictures yet. Open the console and search [RC QC]."
 ];
+
+let qcPagerApplying = false;
 
 function ensureEmptyQcStyles() {
   if (document.getElementById("rc-empty-qc-override-style")) return;
@@ -58,8 +61,34 @@ function ensureEmptyQcStyles() {
     .qc-question-effect span:nth-child(4) { left: 61%; font-size: 22px; animation-delay: .18s; }
     .qc-question-effect span:nth-child(5) { left: 77%; font-size: 34px; animation-delay: .68s; }
     .qc-question-effect span:nth-child(6) { left: 90%; font-size: 20px; animation-delay: 1.05s; }
+    .qc-load-more-wrap {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: center;
+      padding-top: 8px;
+    }
+    .qc-load-more-btn {
+      min-height: 44px;
+      padding: 0 18px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface2);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform .18s, border-color .18s, background .18s;
+    }
+    .qc-load-more-btn:hover {
+      transform: translateY(-2px);
+      border-color: rgba(77,166,255,.65);
+      background: rgba(77,166,255,.12);
+    }
     @media (prefers-reduced-motion: reduce) {
       .qc-question-effect span { animation: none; opacity: .22; }
+      .qc-load-more-btn { transition: none; }
+      .qc-load-more-btn:hover { transform: none; }
     }
   `;
   document.head.appendChild(style);
@@ -89,12 +118,68 @@ function shouldReplaceQcText() {
   return BAD_QC_TEXT.some(phrase => text.includes(phrase));
 }
 
+function getQcButtons() {
+  const qcGrid = document.getElementById("qc-grid");
+  if (!qcGrid) return [];
+  return Array.from(qcGrid.querySelectorAll(".qc-link[data-qc-index]"));
+}
+
+function applyQcPagination() {
+  if (qcPagerApplying) return;
+  const qcGrid = document.getElementById("qc-grid");
+  if (!qcGrid || qcGrid.querySelector(".qc-empty-working")) return;
+
+  const buttons = getQcButtons();
+  if (buttons.length <= QC_PAGE_SIZE) {
+    const oldWrap = qcGrid.querySelector(".qc-load-more-wrap");
+    if (oldWrap) oldWrap.remove();
+    buttons.forEach(button => { button.hidden = false; });
+    return;
+  }
+
+  ensureEmptyQcStyles();
+  qcPagerApplying = true;
+
+  let visibleCount = Number(qcGrid.dataset.visibleQcCount || QC_PAGE_SIZE);
+  visibleCount = Math.max(QC_PAGE_SIZE, Math.min(visibleCount, buttons.length));
+
+  buttons.forEach((button, index) => {
+    button.hidden = index >= visibleCount;
+  });
+
+  let wrap = qcGrid.querySelector(".qc-load-more-wrap");
+  if (visibleCount >= buttons.length) {
+    if (wrap) wrap.remove();
+    qcGrid.dataset.visibleQcCount = String(buttons.length);
+    qcPagerApplying = false;
+    return;
+  }
+
+  if (!wrap) {
+    wrap = document.createElement("div");
+    wrap.className = "qc-load-more-wrap";
+    wrap.innerHTML = `<button class="qc-load-more-btn" type="button"></button>`;
+    qcGrid.appendChild(wrap);
+    wrap.querySelector("button").addEventListener("click", () => {
+      const current = Number(qcGrid.dataset.visibleQcCount || QC_PAGE_SIZE);
+      qcGrid.dataset.visibleQcCount = String(current + QC_PAGE_SIZE);
+      applyQcPagination();
+    });
+  }
+
+  const remaining = buttons.length - visibleCount;
+  wrap.querySelector("button").textContent = `Load 10 more QCs (${remaining} left)`;
+  qcGrid.dataset.visibleQcCount = String(visibleCount);
+  qcPagerApplying = false;
+}
+
 function checkEmptyQcState() {
   if (shouldReplaceQcText()) renderEmptyQcState();
+  applyQcPagination();
 }
 
 const observer = new MutationObserver(checkEmptyQcState);
-observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["hidden"] });
 checkEmptyQcState();
 setTimeout(checkEmptyQcState, 500);
 setTimeout(checkEmptyQcState, 1500);
