@@ -224,7 +224,6 @@ async function loadCurrencyData() {
       localStorage.setItem(RATE_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), rates: cnyRates }));
     }
   } catch (error) {
-    console.warn("Using cached currency rates:", error);
   }
 }
 
@@ -286,7 +285,6 @@ async function loadProducts() {
       .filter(item => item.isActive !== false)
       .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
   } catch (error) {
-    console.error("Could not load Firebase products:", error);
     firebaseItems = [];
   }
 
