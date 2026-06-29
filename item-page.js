@@ -434,7 +434,7 @@ function trackItemInteraction(productId, interactionType, retries = 10) {
 
 function renderProduct(item) {
   qcLog("Rendering product", { id: item.id, name: item.name, productUrl: item.productUrl });
-  document.title = `${item.name || "Item"} - repscentral`;
+  document.title = `RepsCentral - ${item.name || "Item"}`;
   const image = item.imageUrl
     ? `<img class="item-image" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name || "Item image")}">`
     : `<div class="image-empty">No image yet</div>`;
