@@ -96,15 +96,8 @@ function shouldReplaceBadText() {
   return BAD_QC_TEXT.some(phrase => text.includes(phrase));
 }
 
-function sourcePayloadsFromDebug() {
-  const debug = window.__rcQcDebug || {};
-  const sources = [];
-  const proxyData = debug.proxyPayload?.data || debug.proxyPayload;
-  if (proxyData?.acbuy) sources.push({ provider: "ACBuy", payload: proxyData.acbuy });
-  if (proxyData?.oopbuy) sources.push({ provider: "OopBuy", payload: proxyData.oopbuy });
-  if (debug.directPayload) sources.push({ provider: "ACBuy", payload: debug.directPayload });
-  if (debug.oopbuyPayload) sources.push({ provider: "OopBuy", payload: debug.oopbuyPayload });
-  return sources;
+function sourcePayloads() {
+  return (window.__rcQcData?.sources || []).filter(source => source?.payload);
 }
 
 function collectionLabelFromObject(obj, key, index) {
@@ -133,7 +126,7 @@ function findExplicitCollections(value, provider, out = [], path = "root") {
 }
 
 function buildFallbackCollections() {
-  const entries = window.__rcQcDebug?.entries || [];
+  const entries = window.__rcQcData?.entries || [];
   const byProvider = new Map();
   entries.forEach(entry => {
     const provider = entry.provider || "QC";
@@ -148,7 +141,7 @@ function buildCollections() {
   const seenUrls = new Set();
   const groups = [];
 
-  sourcePayloadsFromDebug().forEach(source => {
+  sourcePayloads().forEach(source => {
     findExplicitCollections(source.payload, source.provider).forEach(group => {
       const images = group.images.filter(url => {
         if (seenUrls.has(url)) return false;
