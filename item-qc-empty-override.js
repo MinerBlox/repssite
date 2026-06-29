@@ -6,7 +6,9 @@ const BAD_QC_TEXT = [
   "Could not load QC pictures yet. Open the console and search [RC QC]."
 ];
 
-let qcPagerApplying = false;
+let lastQcSignature = "";
+let pagerScheduled = false;
+let observer = null;
 
 function ensureEmptyQcStyles() {
   if (document.getElementById("rc-empty-qc-override-style")) return;
@@ -97,7 +99,7 @@ function ensureEmptyQcStyles() {
 function renderEmptyQcState() {
   const qcGrid = document.getElementById("qc-grid");
   const qcCopy = document.getElementById("qc-copy");
-  if (!qcGrid) return;
+  if (!qcGrid || qcGrid.querySelector(".qc-empty-working")) return;
   ensureEmptyQcStyles();
   if (qcCopy) {
     qcCopy.textContent = "";
@@ -118,69 +120,73 @@ function shouldReplaceQcText() {
   return BAD_QC_TEXT.some(phrase => text.includes(phrase));
 }
 
-function getQcButtons() {
-  const qcGrid = document.getElementById("qc-grid");
-  if (!qcGrid) return [];
-  return Array.from(qcGrid.querySelectorAll(".qc-link[data-qc-index]"));
-}
-
 function applyQcPagination() {
-  if (qcPagerApplying) return;
   const qcGrid = document.getElementById("qc-grid");
   if (!qcGrid || qcGrid.querySelector(".qc-empty-working")) return;
 
-  const buttons = getQcButtons();
-  if (buttons.length <= QC_PAGE_SIZE) {
-    const oldWrap = qcGrid.querySelector(".qc-load-more-wrap");
-    if (oldWrap) oldWrap.remove();
-    buttons.forEach(button => { button.hidden = false; });
-    return;
-  }
+  const buttons = Array.from(qcGrid.querySelectorAll(".qc-link[data-qc-index]"));
+  if (!buttons.length) return;
 
-  ensureEmptyQcStyles();
-  qcPagerApplying = true;
+  const signature = buttons.map(button => button.dataset.qcIndex).join("|");
+  if (signature !== lastQcSignature) {
+    lastQcSignature = signature;
+    qcGrid.dataset.visibleQcCount = String(QC_PAGE_SIZE);
+  }
 
   let visibleCount = Number(qcGrid.dataset.visibleQcCount || QC_PAGE_SIZE);
   visibleCount = Math.max(QC_PAGE_SIZE, Math.min(visibleCount, buttons.length));
 
   buttons.forEach((button, index) => {
-    button.hidden = index >= visibleCount;
+    button.style.display = index < visibleCount ? "" : "none";
   });
 
   let wrap = qcGrid.querySelector(".qc-load-more-wrap");
   if (visibleCount >= buttons.length) {
     if (wrap) wrap.remove();
-    qcGrid.dataset.visibleQcCount = String(buttons.length);
-    qcPagerApplying = false;
     return;
   }
 
+  ensureEmptyQcStyles();
   if (!wrap) {
     wrap = document.createElement("div");
     wrap.className = "qc-load-more-wrap";
     wrap.innerHTML = `<button class="qc-load-more-btn" type="button"></button>`;
     qcGrid.appendChild(wrap);
-    wrap.querySelector("button").addEventListener("click", () => {
+    wrap.querySelector("button").addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
       const current = Number(qcGrid.dataset.visibleQcCount || QC_PAGE_SIZE);
       qcGrid.dataset.visibleQcCount = String(current + QC_PAGE_SIZE);
-      applyQcPagination();
+      scheduleCheck();
     });
   }
 
   const remaining = buttons.length - visibleCount;
   wrap.querySelector("button").textContent = `Load 10 more QCs (${remaining} left)`;
-  qcGrid.dataset.visibleQcCount = String(visibleCount);
-  qcPagerApplying = false;
 }
 
-function checkEmptyQcState() {
+function runCheck() {
+  pagerScheduled = false;
   if (shouldReplaceQcText()) renderEmptyQcState();
   applyQcPagination();
 }
 
-const observer = new MutationObserver(checkEmptyQcState);
-observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ["hidden"] });
-checkEmptyQcState();
-setTimeout(checkEmptyQcState, 500);
-setTimeout(checkEmptyQcState, 1500);
-setTimeout(checkEmptyQcState, 3000);
+function scheduleCheck() {
+  if (pagerScheduled) return;
+  pagerScheduled = true;
+  requestAnimationFrame(runCheck);
+}
+
+observer = new MutationObserver(mutations => {
+  for (const mutation of mutations) {
+    if (mutation.target?.closest?.(".qc-load-more-wrap")) continue;
+    scheduleCheck();
+    break;
+  }
+});
+observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+scheduleCheck();
+setTimeout(scheduleCheck, 500);
+setTimeout(scheduleCheck, 1500);
+setTimeout(scheduleCheck, 3000);
