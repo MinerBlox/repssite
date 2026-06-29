@@ -370,7 +370,6 @@
           if (index >= 0) products[index] = { id, ...data };
           productStatus(id, "Saved", "saved");
         } catch (error) {
-          console.error(error);
           productStatus(id, "Error", "error");
           setStatus("Save failed - check Firestore rules");
         }
@@ -382,7 +381,6 @@
         const snapshot = await getDocs(collection(db, "categories"));
         categories = [...defaultCategories, ...snapshot.docs.map(categoryDoc => categoryDoc.data().name || categoryDoc.id)];
       } catch (error) {
-        console.warn("Could not load categories", error);
         categories = [...defaultCategories];
       }
       renderCategories();
@@ -435,7 +433,6 @@
         const password = document.getElementById("password-input").value;
         await signInWithEmailAndPassword(auth, email, password);
       } catch (error) {
-        console.error(error);
         loginError.textContent = "Login failed. Check the email and password.";
         loginButton.disabled = false;
         loginButton.textContent = "Sign In";
@@ -455,7 +452,6 @@
         await setDoc(doc(db, "categories", slugify(name)), { name, updatedAt: serverTimestamp() });
         setStatus("Category saved");
       } catch (error) {
-        console.error(error);
         setStatus("Category added locally - Firestore write failed");
       }
     });
@@ -492,7 +488,6 @@
         renderProducts();
         setStatus("Item created");
       } catch (error) {
-        console.error(error);
         setStatus("Create failed - check Firestore rules");
       }
     });
@@ -519,7 +514,6 @@
         renderProducts();
         setStatus("Item deleted");
       } catch (error) {
-        console.error(error);
         setStatus("Delete failed - check Firestore rules");
       }
     });
