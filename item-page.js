@@ -225,30 +225,14 @@ async function fetchJsonWithDebug(url, label) {
 }
 
 async function fetchQcPayload(urls) {
+  const proxyPayload = await fetchJsonWithDebug(urls.proxyUrl, "QC proxy API");
+  const proxyData = proxyPayload.data || proxyPayload;
   const sources = [];
 
-  try {
-    const proxyPayload = await fetchJsonWithDebug(urls.proxyUrl, "QC proxy API");
-    const proxyData = proxyPayload.data || proxyPayload;
-    if (proxyData.acbuy) sources.push({ provider: "ACBuy", payload: proxyData.acbuy });
-    if (proxyData.oopbuy) sources.push({ provider: "OopBuy", payload: proxyData.oopbuy });
-    if (!proxyData.acbuy && !proxyData.oopbuy) sources.push({ provider: "ACBuy", payload: proxyData });
-  } catch (proxyError) {
-    qcWarn("QC proxy failed, trying direct provider fallbacks", { message: proxyError.message });
-
-    try {
-      const directPayload = await fetchJsonWithDebug(urls.directUrl, "direct ACBuy API");
-      sources.push({ provider: "ACBuy", payload: directPayload });
-    } catch (acbuyError) {
-      qcWarn("Direct ACBuy fallback failed", { message: acbuyError.message });
-    }
-  }
-
-  try {
-    const oopbuyPayload = await fetchJsonWithDebug(urls.oopbuyDirectUrl, "direct OopBuy API");
-    sources.push({ provider: "OopBuy", payload: oopbuyPayload });
-  } catch (oopbuyError) {
-    qcWarn("Direct OopBuy fallback failed; the server proxy is required on static hosting", { message: oopbuyError.message });
+  if (proxyData.acbuy) sources.push({ provider: "ACBuy", payload: proxyData.acbuy });
+  if (proxyData.oopbuy) sources.push({ provider: "OopBuy", payload: proxyData.oopbuy });
+  if (!proxyData.acbuy && !proxyData.oopbuy) {
+    sources.push({ provider: "ACBuy", payload: proxyData });
   }
 
   if (!sources.length) throw new Error("No QC provider returned data");
