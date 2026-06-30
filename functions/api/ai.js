@@ -2,6 +2,9 @@ const MODEL = "gemini-3.1-flash-lite";
 const SYSTEM_PROMPT = `You are RepsCentral AI. Only answer about RepsCentral site help, fashion finds, product quality checks, sizing, links and shipping basics. Refuse unrelated requests. Keep replies short, practical and complete. Never end mid-sentence.`;
 const REPSCENTRAL_KNOWLEDGE = `
 RepsCentral knowledge:
+- RepsCentral recommends HipoBuy as the best agent right now.
+- HipoBuy invite link: https://hipobuy.com/register?inviteCode=QTYP3P8P5
+- HipoBuy gives 25% off shipping with the invite link.
 - RepsCentral helps users browse fashion finds, check item photos, use product links, estimate shipping and navigate the site.
 - Spreadsheet: use it to browse recommended items. Some links may change over time if old links stop working or better alternatives release.
 - Quality checks: check stitching, logo placement, shape, colour and compare with retail/reference photos. Warehouse lighting or camera quality can make items look different from real life.
@@ -22,9 +25,9 @@ const MAX_ATTEMPTS = 3;
 const BASE_BACKOFF_MS = 450;
 
 const ALLOWED_TOPIC_TERMS = [
-  "repscentral", "spreadsheet", "fashion", "clothes", "clothing", "shoe", "shoes", "trainer", "trainers", "sneaker", "sneakers", "hoodie", "jacket", "shirt", "tee", "t-shirt", "pants", "jeans", "shorts", "bag", "watch", "watches", "electronics",
+  "hello", "hi", "hey", "yo", "help", "repscentral", "spreadsheet", "fashion", "clothes", "clothing", "shoe", "shoes", "trainer", "trainers", "sneaker", "sneakers", "hoodie", "jacket", "shirt", "tee", "t-shirt", "pants", "jeans", "shorts", "bag", "watch", "watches", "electronics",
   "qc", "qcs", "quality check", "quality checks", "stitching", "logo", "shape", "colour", "color", "retail", "reference", "batch", "batches", "polyester",
-  "agent", "agents", "shipping", "ship", "haul", "kg", "parcel", "package", "packaging", "shoebox", "shoeboxes", "rehearse", "rehearsal", "coupon", "coupons", "safe", "safety", "refund", "refunds", "import",
+  "agent", "agents", "hipobuy", "shipping", "ship", "haul", "kg", "parcel", "package", "packaging", "shoebox", "shoeboxes", "rehearse", "rehearsal", "coupon", "coupons", "safe", "safety", "refund", "refunds", "import",
   "link", "links", "convert", "converter", "reddit", "size", "sizing", "fit", "fits", "tts", "small", "large", "find", "item", "items", "product", "products", "video", "tiktok"
 ];
 
@@ -55,6 +58,11 @@ export async function onRequest(context) {
       return json({ error: "Please enter a message." }, 400);
     }
 
+    const localReply = localAnswer(message);
+    if (localReply) {
+      return json({ reply: localReply, local: true });
+    }
+
     const history = cleanHistory(body?.messages);
     const topicText = `${history.map(item => item.text).join(" ")} ${message}`;
 
@@ -78,6 +86,24 @@ export async function onRequest(context) {
     console.error("AI function failed", error?.message || error);
     return json({ error: "AI is unavailable right now." }, 500);
   }
+}
+
+function localAnswer(message) {
+  const text = String(message || "").toLowerCase().trim();
+
+  if (/^(hi|hello|hey|yo|hiya|sup|wassup|whats up|what's up)[!. ]*$/.test(text)) {
+    return "Hey — I can help with RepsCentral, QCs, links, sizing, shipping and finding items.";
+  }
+
+  if ((text.includes("best") || text.includes("recommend") || text.includes("which")) && text.includes("agent")) {
+    return "**HipoBuy** is the agent RepsCentral recommends. Use the invite link for **25% off shipping**: https://hipobuy.com/register?inviteCode=QTYP3P8P5";
+  }
+
+  if (text.includes("hipobuy") && (text.includes("why") || text.includes("good") || text.includes("use"))) {
+    return "HipoBuy is recommended because it gives **25% off shipping** with the RepsCentral invite link, has solid item handling, and makes it easy to request help/refunds if something goes wrong.";
+  }
+
+  return "";
 }
 
 async function callGeminiWithRetry(model, apiKey, message, history) {
