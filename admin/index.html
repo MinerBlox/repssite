@@ -329,6 +329,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { enableAppCheck } from "../firebase-app-check.js?v=2026-06-30-app-check-1";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
     import { getFirestore, collection, doc, onSnapshot, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
@@ -344,6 +345,7 @@
 
     const ADMIN_UID = "3jC9pWkF5ZeHIDtd1LrPR1Ptvbz1";
     const app = initializeApp(firebaseConfig);
+enableAppCheck(app);
     const auth = getAuth(app);
     const db = getFirestore(app);
     let analyticsUnsubscribers = [];
