@@ -338,7 +338,7 @@
       background: rgba(10,10,11,0.32); backdrop-filter: blur(6px);
     }
     body.light .brand-card-coming::after { background: rgba(255,255,255,0.36); }
-    .brand-coming-label { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; color: var(--muted); }
+    .brand-coming-label { position: relative; z-index: 2; font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; color: var(--muted); }
 
     /* ── HIPOBUY CTA ── */
     #hipobuy-cta { padding: 64px 40px; max-width: 1300px; margin: 0 auto; }
@@ -870,6 +870,11 @@
         <span class="brand-name">Ralph Lauren</span>
       </a>
       <div class="brand-card brand-card-coming" aria-label="More brands coming soon">
+        <span class="loading-question" aria-hidden="true" style="--x:10%;--y:18%;--size:16px;--duration:3.2s;--delay:-.4s">?</span>
+        <span class="loading-question" aria-hidden="true" style="--x:72%;--y:12%;--size:25px;--duration:3.8s;--delay:-1.6s">?</span>
+        <span class="loading-question" aria-hidden="true" style="--x:38%;--y:62%;--size:20px;--duration:3.5s;--delay:-2.3s">?</span>
+        <span class="loading-question" aria-hidden="true" style="--x:82%;--y:70%;--size:14px;--duration:4s;--delay:-.9s">?</span>
+        <span class="loading-question" aria-hidden="true" style="--x:14%;--y:76%;--size:23px;--duration:3.6s;--delay:-2.7s">?</span>
         <span class="brand-coming-label">Coming soon...</span>
       </div>
     </div>
