@@ -1,4 +1,4 @@
-const MODEL = "gemini-1.5-flash-8b";
+const MODEL = "gemini-2.0-flash-lite";
 const MAX_INPUT_CHARS = 600;
 const MAX_OUTPUT_TOKENS = 100;
 
