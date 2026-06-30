@@ -20,6 +20,8 @@ RepsCentral knowledge:
 - If users ask if it is safe: explain that HipoBuy is RepsCentral's preferred agent and users can request refunds if there are item or haul issues. For customs, tell users to follow local laws, carrier rules and import requirements.
 `;
 const MAX_INPUT_CHARS = 600;
+const MAX_HISTORY_MESSAGES = 6;
+const MAX_HISTORY_CHARS = 260;
 const MAX_OUTPUT_TOKENS = 140;
 const MAX_ATTEMPTS = 3;
 const BASE_BACKOFF_MS = 450;
@@ -32,6 +34,7 @@ const ALLOWED_TOPIC_TERMS = [
   "size", "sizing", "fit", "fits", "tts", "small", "large", "find", "item", "items", "product", "products", "video", "tiktok"
 ];
 
+const FOLLOW_UP_TERMS = ["why", "why?", "how", "how?", "what", "what?", "which", "which?", "explain", "more", "expand", "again", "that", "this", "it", "them", "those", "they", "same", "ok", "okay"];
 const OFF_TOPIC_REPLY = "I can only help with RepsCentral-related questions: fashion finds, QCs, agents, shipping, sizing, links and site help.";
 
 export async function onRequest(context) {
@@ -53,16 +56,19 @@ export async function onRequest(context) {
       return json({ error: "Invalid request." }, 400);
     }
 
-    const message = cleanMessage(body?.message);
+    const message = cleanMessage(body?.message, MAX_INPUT_CHARS);
     if (!message) {
       return json({ error: "Please enter a message." }, 400);
     }
 
-    if (!isAllowedTopic(message)) {
+    const history = cleanHistory(body?.messages);
+    const topicText = `${history.map(item => item.text).join(" ")} ${message}`;
+
+    if (!isAllowedTopic(topicText, message)) {
       return json({ reply: OFF_TOPIC_REPLY, local: true });
     }
 
-    const result = await callGeminiWithRetry(MODEL, apiKey, message);
+    const result = await callGeminiWithRetry(MODEL, apiKey, message, history);
     if (result.ok && result.reply) {
       return json({ reply: limitReply(result.reply) });
     }
@@ -80,11 +86,11 @@ export async function onRequest(context) {
   }
 }
 
-async function callGeminiWithRetry(model, apiKey, message) {
+async function callGeminiWithRetry(model, apiKey, message, history) {
   let lastResult = null;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    lastResult = await callGemini(model, apiKey, message);
+    lastResult = await callGemini(model, apiKey, message, history);
     lastResult.attempts = attempt;
 
     if (lastResult.ok || lastResult.status !== 429 || attempt === MAX_ATTEMPTS) {
@@ -97,8 +103,10 @@ async function callGeminiWithRetry(model, apiKey, message) {
   return lastResult || { ok: false, status: 502, error: "no result", attempts: 0 };
 }
 
-async function callGemini(model, apiKey, message) {
+async function callGemini(model, apiKey, message, history) {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const contents = buildContents(message, history);
+
   const response = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -106,12 +114,7 @@ async function callGemini(model, apiKey, message) {
       systemInstruction: {
         parts: [{ text: `${SYSTEM_PROMPT}\n\n${REPSCENTRAL_KNOWLEDGE}` }]
       },
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: message }]
-        }
-      ],
+      contents,
       generationConfig: {
         temperature: 0.25,
         topP: 0.7,
@@ -142,9 +145,32 @@ async function callGemini(model, apiKey, message) {
   return { ok: Boolean(reply), status: response.status, reply, error: reply ? null : "empty reply" };
 }
 
-function isAllowedTopic(message) {
-  const text = ` ${String(message || "").toLowerCase()} `;
-  return ALLOWED_TOPIC_TERMS.some(term => text.includes(term));
+function buildContents(message, history) {
+  const contents = history.map(item => ({
+    role: item.role === "model" ? "model" : "user",
+    parts: [{ text: item.text }]
+  }));
+  contents.push({ role: "user", parts: [{ text: message }] });
+  return contents;
+}
+
+function cleanHistory(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .slice(-MAX_HISTORY_MESSAGES)
+    .map(item => ({
+      role: item?.role === "model" || item?.role === "assistant" ? "model" : "user",
+      text: cleanMessage(item?.text || item?.content || "", MAX_HISTORY_CHARS)
+    }))
+    .filter(item => item.text);
+}
+
+function isAllowedTopic(topicText, latestMessage) {
+  const combined = ` ${String(topicText || "").toLowerCase()} `;
+  if (ALLOWED_TOPIC_TERMS.some(term => combined.includes(term))) return true;
+
+  const latest = String(latestMessage || "").toLowerCase().trim().replace(/[!?.,]+$/g, "");
+  return FOLLOW_UP_TERMS.includes(latest) && ALLOWED_TOPIC_TERMS.some(term => combined.includes(term));
 }
 
 function backoffDelay(attempt) {
@@ -157,12 +183,12 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function cleanMessage(value) {
+function cleanMessage(value, maxChars) {
   return String(value || "")
     .replace(/[\u0000-\u001F\u007F]/g, " ")
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, MAX_INPUT_CHARS);
+    .slice(0, maxChars);
 }
 
 function extractReply(data) {
