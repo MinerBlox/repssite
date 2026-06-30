@@ -1,6 +1,9 @@
 const MODEL = "gemini-2.0-flash-lite";
+const SYSTEM_PROMPT = "RepsCentral AI: concise help for reps, QCs, links, agents, sizing and shipping.";
 const MAX_INPUT_CHARS = 600;
 const MAX_OUTPUT_TOKENS = 100;
+const MAX_ATTEMPTS = 3;
+const BASE_BACKOFF_MS = 450;
 
 export async function onRequest(context) {
   try {
@@ -26,12 +29,12 @@ export async function onRequest(context) {
       return json({ error: "Please enter a message." }, 400);
     }
 
-    const result = await callGemini(MODEL, apiKey, message);
+    const result = await callGeminiWithRetry(MODEL, apiKey, message);
     if (result.ok && result.reply) {
       return json({ reply: limitReply(result.reply) });
     }
 
-    console.error(`Gemini request failed: ${result.status || 502} ${result.error || "unknown"}`);
+    console.error(`Gemini request failed after ${result.attempts || 1} attempt(s): ${result.status || 502} ${result.error || "unknown"}`);
 
     if (result.status === 429) {
       return json({ error: "AI is busy right now. Please wait a minute and try again." }, 429);
@@ -44,6 +47,23 @@ export async function onRequest(context) {
   }
 }
 
+async function callGeminiWithRetry(model, apiKey, message) {
+  let lastResult = null;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    lastResult = await callGemini(model, apiKey, message);
+    lastResult.attempts = attempt;
+
+    if (lastResult.ok || lastResult.status !== 429 || attempt === MAX_ATTEMPTS) {
+      return lastResult;
+    }
+
+    await sleep(backoffDelay(attempt));
+  }
+
+  return lastResult || { ok: false, status: 502, error: "no result", attempts: 0 };
+}
+
 async function callGemini(model, apiKey, message) {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
   const response = await fetch(endpoint, {
@@ -51,7 +71,7 @@ async function callGemini(model, apiKey, message) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       systemInstruction: {
-        parts: [{ text: "You are RepsCentral AI. Help with fashion reps, QC checks, product links, agents, sizing, outfits and shipping. Keep replies very short and practical." }]
+        parts: [{ text: SYSTEM_PROMPT }]
       },
       contents: [
         {
@@ -87,6 +107,16 @@ async function callGemini(model, apiKey, message) {
 
   const reply = extractReply(data);
   return { ok: Boolean(reply), status: response.status, reply, error: reply ? null : "empty reply" };
+}
+
+function backoffDelay(attempt) {
+  const exponential = BASE_BACKOFF_MS * 2 ** (attempt - 1);
+  const jitter = Math.floor(Math.random() * BASE_BACKOFF_MS);
+  return exponential + jitter;
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function cleanMessage(value) {
