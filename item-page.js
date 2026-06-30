@@ -245,7 +245,7 @@ function renderNotFound(message = "This product could not be found in Firebase."
     <section class="not-found">
       <h1>Item not found</h1>
       <p class="status-copy">${escapeHtml(message)}</p>
-      <div class="actions" style="justify-content:center;"><a class="action-btn primary" href="${sitePath("spreadsheet.html")}">Back to spreadsheet</a></div>
+      <div class="actions" style="justify-content:center;"><a class="action-btn primary" href="${sitePath("spreadsheet.html")}">← Back to spreadsheet</a></div>
     </section>
   `;
 }
@@ -406,7 +406,7 @@ function renderProduct(item) {
   const productButton = safeProductUrl ? `<a class="action-btn" data-product-action="outboundClicks" href="${escapeHtml(safeProductUrl)}" target="_blank" rel="noopener noreferrer">Original Link</a>` : "";
 
   root.innerHTML = `
-    <a class="back-link" href="${sitePath("spreadsheet.html")}">Back to spreadsheet</a>
+    <a class="back-link" href="${sitePath("spreadsheet.html")}">← Back to spreadsheet</a>
     <section class="item-layout">
       <div class="image-panel">${image}</div>
       <aside class="details-panel">
