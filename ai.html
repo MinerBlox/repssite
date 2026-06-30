@@ -227,6 +227,7 @@
     let theme = localStorage.getItem('rc-theme') || 'dark';
     let isSending = false;
     let activeRequest = null;
+    let chatMemory = [];
 
     function applyTheme() {
       document.body.className = theme;
@@ -328,12 +329,28 @@
       updateButtons();
     }
 
+    function remember(role, text) {
+      const clean = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 600);
+      if (!clean) return;
+      chatMemory.push({ role, text: clean });
+      chatMemory = chatMemory.slice(-8);
+    }
+
+    function memoryForRequest() {
+      return chatMemory.slice(-6).map(item => ({
+        role: item.role === 'assistant' ? 'model' : 'user',
+        text: item.text.slice(0, 260)
+      }));
+    }
+
     async function submitPrompt(value) {
       if (isSending || activeRequest) return;
       const text = value.trim().slice(0, 600);
       if (!text) return;
 
+      const requestMemory = memoryForRequest();
       addMessage('user', escapeHtml(text));
+      remember('user', text);
       startInput.value = '';
       bottomInput.value = '';
       setSending(true);
@@ -346,16 +363,19 @@
         const response = await fetch('/api/ai', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text }),
+          body: JSON.stringify({ message: text, messages: requestMemory }),
           signal: controller.signal
         });
         const data = await response.json().catch(() => ({}));
         const reply = response.ok && data.reply ? data.reply : (data.error || 'I couldn’t answer that right now. Please try again.');
         loading.querySelector('.bubble').innerHTML = formatReply(reply);
+        remember('assistant', reply);
       } catch (error) {
-        loading.querySelector('.bubble').innerHTML = error?.name === 'AbortError'
+        const fallback = error?.name === 'AbortError'
           ? 'Request cancelled.'
           : 'I couldn’t answer that right now. Please try again.';
+        loading.querySelector('.bubble').innerHTML = fallback;
+        remember('assistant', fallback);
       } finally {
         activeRequest = null;
         setSending(false);
@@ -394,7 +414,7 @@
     updateButtons();
   </script>
   <script type="module">
-    import('./site-analytics.js?v=2026-06-30-ai-page-6');
+    import('./site-analytics.js?v=2026-06-30-ai-page-7');
   </script>
 </body>
 </html>
