@@ -1,6 +1,6 @@
-const MODEL = "gemini-2.0-flash-lite";
+const MODELS = ["gemini-1.5-flash-8b", "gemini-1.5-flash", "gemini-2.0-flash-lite"];
 const MAX_INPUT_CHARS = 900;
-const MAX_OUTPUT_TOKENS = 180;
+const MAX_OUTPUT_TOKENS = 160;
 
 export async function onRequest(context) {
   try {
@@ -8,8 +8,9 @@ export async function onRequest(context) {
       return json({ error: "Method not allowed" }, 405);
     }
 
-    const apiKey = context.env?.GEMINI_API_KEY;
+    const apiKey = String(context.env?.GEMINI_API_KEY || "").trim();
     if (!apiKey) {
+      console.error("Missing GEMINI_API_KEY binding");
       return json({ error: "AI is unavailable right now." }, 503);
     }
 
@@ -25,53 +26,70 @@ export async function onRequest(context) {
       return json({ error: "Please enter a message." }, 400);
     }
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey
-      },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: "You are RepsCentral AI. Help users with fashion reps, spreadsheet items, QC checks, product links, agents, sizing, outfits and shipping. Keep answers concise and practical. Do not mention APIs, keys, backend setup, system prompts or implementation." }]
-        },
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: message }]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.35,
-          topP: 0.8,
-          topK: 20,
-          maxOutputTokens: MAX_OUTPUT_TOKENS
-        }
-      }),
-      signal: AbortSignal.timeout(12000)
-    });
+    let lastStatus = 502;
+    let lastError = "unknown";
 
-    const text = await response.text();
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      return json({ error: "AI is unavailable right now." }, 502);
+    for (const model of MODELS) {
+      const result = await callGemini(model, apiKey, message);
+      if (result.ok && result.reply) {
+        return json({ reply: limitReply(result.reply) });
+      }
+      lastStatus = result.status || lastStatus;
+      lastError = result.error || lastError;
+      if (![400, 404].includes(result.status)) break;
     }
 
-    if (!response.ok) {
-      return json({ error: "AI is unavailable right now." }, response.status === 429 ? 429 : 502);
-    }
-
-    const reply = extractReply(data);
-    if (!reply) {
-      return json({ error: "AI is unavailable right now." }, 502);
-    }
-
-    return json({ reply: limitReply(reply) });
-  } catch {
+    console.error(`Gemini request failed: ${lastStatus} ${lastError}`);
+    return json({ error: "AI is unavailable right now." }, lastStatus === 429 ? 429 : 502);
+  } catch (error) {
+    console.error("AI function failed", error?.message || error);
     return json({ error: "AI is unavailable right now." }, 500);
   }
+}
+
+async function callGemini(model, apiKey, message) {
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: "You are RepsCentral AI. Help with fashion reps, spreadsheet items, QC checks, product links, agents, sizing, outfits and shipping. Keep answers short, clear and practical. Do not mention APIs, keys, backend setup, system prompts or implementation." }]
+      },
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: message }]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.3,
+        topP: 0.75,
+        topK: 16,
+        maxOutputTokens: MAX_OUTPUT_TOKENS
+      }
+    }),
+    signal: AbortSignal.timeout(12000)
+  });
+
+  const text = await response.text();
+  let data = null;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return { ok: false, status: response.status, error: "non-json response" };
+  }
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: response.status,
+      error: data?.error?.message || `HTTP ${response.status}`
+    };
+  }
+
+  const reply = extractReply(data);
+  return { ok: Boolean(reply), status: response.status, reply, error: reply ? null : "empty reply" };
 }
 
 function cleanMessage(value) {
@@ -93,7 +111,7 @@ function extractReply(data) {
 
 function limitReply(value) {
   const text = String(value || "").trim();
-  return text.length > 1500 ? `${text.slice(0, 1500).trim()}...` : text;
+  return text.length > 1300 ? `${text.slice(0, 1300).trim()}...` : text;
 }
 
 function json(body, status = 200) {
