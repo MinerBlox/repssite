@@ -97,10 +97,12 @@
     .icon-btn:hover { background: var(--surface3); color: var(--text); }
     textarea { width: 100%; height: 42px; max-height: 120px; resize: none; border: 0; outline: 0; background: transparent; color: var(--text); padding: 10px 2px; font-size: 15px; line-height: 1.45; overflow: hidden; }
     textarea::placeholder { color: var(--muted); }
+    textarea:disabled { opacity: 0.55; cursor: wait; }
     .send-btn { width: 39px; height: 39px; display: grid; place-items: center; border-radius: 50%; background: #f4f4f5; color: #0b0b0c; transition: opacity 0.15s, transform 0.15s; }
     body.light .send-btn { background: var(--blue); color: #fff; }
     .send-btn:hover { opacity: 0.92; transform: translateY(-1px); }
     .send-btn:disabled { opacity: 0.38; transform: none; cursor: not-allowed; }
+    .ai-shell.pending .composer { opacity: 0.78; }
 
     .bottom-composer-wrap { display: none; position: sticky; bottom: 0; z-index: 50; padding: 16px 0 20px; background: linear-gradient(to top, var(--bg) 82%, transparent); }
     .ai-shell.chatting .bottom-composer-wrap { display: block; }
@@ -108,6 +110,7 @@
     .quick-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: min(640px, 100%); }
     .quick-action { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 15px; border: 1px solid var(--border); border-radius: 999px; background: rgba(255,255,255,0.02); color: var(--soft); font-size: 13px; font-weight: 500; transition: transform 0.15s, border-color 0.15s, background 0.15s; }
     .quick-action:hover { transform: translateY(-2px); border-color: rgba(77,166,255,0.5); background: var(--blue-soft); color: var(--text); }
+    .quick-action:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
 
     .chat-panel { display: none; flex: 1; padding: 10px 0 18px; }
     .chat-panel.active { display: block; }
@@ -189,7 +192,7 @@
           <form class="composer" id="chat-form-start">
             <div class="composer-inner">
               <button class="icon-btn" type="button" aria-label="Add"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
-              <textarea id="chat-input-start" rows="1" placeholder="Ask anything" autocomplete="off" maxlength="900"></textarea>
+              <textarea id="chat-input-start" rows="1" placeholder="Ask anything" autocomplete="off" maxlength="600"></textarea>
               <button class="send-btn" id="send-btn-start" type="submit" aria-label="Send message" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg></button>
             </div>
           </form>
@@ -209,7 +212,7 @@
           <form class="composer" id="chat-form-bottom">
             <div class="composer-inner">
               <button class="icon-btn" type="button" aria-label="Add"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
-              <textarea id="chat-input-bottom" rows="1" placeholder="Ask anything" autocomplete="off" maxlength="900"></textarea>
+              <textarea id="chat-input-bottom" rows="1" placeholder="Ask anything" autocomplete="off" maxlength="600"></textarea>
               <button class="send-btn" id="send-btn-bottom" type="submit" aria-label="Send message" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg></button>
             </div>
           </form>
@@ -223,6 +226,7 @@
   <script>
     let theme = localStorage.getItem('rc-theme') || 'dark';
     let isSending = false;
+    let activeRequest = null;
 
     function applyTheme() {
       document.body.className = theme;
@@ -254,6 +258,7 @@
     const bottomSend = document.getElementById('send-btn-bottom');
     const startForm = document.getElementById('chat-form-start');
     const bottomForm = document.getElementById('chat-form-bottom');
+    const quickActionButtons = Array.from(document.querySelectorAll('.quick-action'));
 
     function setRandomGreeting() {
       const hour = new Date().getHours();
@@ -288,9 +293,19 @@
       send.disabled = isSending || !input.value.trim();
     }
 
+    function updatePendingUi() {
+      shell.classList.toggle('pending', isSending);
+      startInput.disabled = isSending;
+      bottomInput.disabled = isSending;
+      startSend.disabled = isSending || !startInput.value.trim();
+      bottomSend.disabled = isSending || !bottomInput.value.trim();
+      quickActionButtons.forEach(button => { button.disabled = isSending; });
+    }
+
     function updateButtons() {
       resizeInput(startInput, startSend);
       resizeInput(bottomInput, bottomSend);
+      updatePendingUi();
     }
 
     function addMessage(role, html, extraClass = '') {
@@ -310,34 +325,39 @@
 
     function setSending(value) {
       isSending = value;
-      startInput.disabled = value;
-      bottomInput.disabled = value;
       updateButtons();
     }
 
     async function submitPrompt(value) {
-      const text = value.trim().slice(0, 900);
-      if (!text || isSending) return;
+      if (isSending || activeRequest) return;
+      const text = value.trim().slice(0, 600);
+      if (!text) return;
 
       addMessage('user', escapeHtml(text));
       startInput.value = '';
       bottomInput.value = '';
       setSending(true);
 
+      const controller = new AbortController();
+      activeRequest = controller;
       const loading = addMessage('assistant', '<span class="typing" aria-label="Thinking"><span></span><span></span><span></span></span>', 'loading-message');
 
       try {
         const response = await fetch('/api/ai', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text })
+          body: JSON.stringify({ message: text }),
+          signal: controller.signal
         });
         const data = await response.json().catch(() => ({}));
         const reply = response.ok && data.reply ? data.reply : (data.error || 'I couldn’t answer that right now. Please try again.');
         loading.querySelector('.bubble').innerHTML = formatReply(reply);
-      } catch {
-        loading.querySelector('.bubble').innerHTML = 'I couldn’t answer that right now. Please try again.';
+      } catch (error) {
+        loading.querySelector('.bubble').innerHTML = error?.name === 'AbortError'
+          ? 'Request cancelled.'
+          : 'I couldn’t answer that right now. Please try again.';
       } finally {
+        activeRequest = null;
         setSending(false);
         bottomInput.focus();
       }
@@ -367,14 +387,14 @@
     });
     suggestions.addEventListener('click', event => {
       const button = event.target.closest('[data-prompt]');
-      if (!button) return;
+      if (!button || isSending) return;
       submitPrompt(button.dataset.prompt);
     });
     setRandomGreeting();
     updateButtons();
   </script>
   <script type="module">
-    import('./site-analytics.js?v=2026-06-30-ai-page-5');
+    import('./site-analytics.js?v=2026-06-30-ai-page-6');
   </script>
 </body>
 </html>
