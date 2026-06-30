@@ -82,18 +82,16 @@
 
     .ai-shell { position: relative; z-index: 1; width: min(1040px, 100%); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 20px; animation: rc-fadein 0.35s ease both; }
 
-    .hero { min-height: 330px; display: grid; place-items: center; text-align: center; transition: min-height 0.28s ease, opacity 0.2s ease; }
+    .hero { min-height: 292px; display: grid; place-items: center; text-align: center; transition: min-height 0.28s ease, opacity 0.2s ease; }
     .hero.compact { min-height: 78px; place-items: start center; }
     .hero-inner { width: min(760px, 100%); }
-    .eyebrow { display: inline-flex; align-items: center; gap: 8px; min-height: 28px; margin-bottom: 18px; padding: 0 12px; border: 1px solid rgba(77,166,255,0.28); border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; min-height: 28px; margin-bottom: 20px; padding: 0 12px; border: 1px solid rgba(77,166,255,0.28); border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; }
     .eyebrow-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--blue); box-shadow: 0 0 18px rgba(77,166,255,0.7); animation: rc-pulse 1.7s ease-in-out infinite; }
-    h1 { font-family: 'Syne', sans-serif; font-size: clamp(42px, 8vw, 76px); line-height: 0.96; font-weight: 800; letter-spacing: -1.8px; margin-bottom: 16px; }
-    .gradient-text { color: var(--blue); }
-    .hero-copy { max-width: 620px; margin: 0 auto; color: var(--muted); font-size: 16px; line-height: 1.7; }
-    .hero.compact h1 { font-size: clamp(28px, 4vw, 42px); margin-bottom: 8px; }
-    .hero.compact .hero-copy, .hero.compact .suggestions { display: none; }
+    h1 { font-family: 'Syne', sans-serif; font-size: clamp(30px, 5vw, 52px); line-height: 1; font-weight: 800; letter-spacing: -1.1px; margin-bottom: 0; }
+    .hero.compact h1 { font-size: clamp(24px, 3vw, 34px); margin-bottom: 0; }
+    .hero.compact .suggestions { display: none; }
 
-    .suggestions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 28px; }
+    .suggestions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 30px; }
     .suggestion { min-height: 96px; padding: 14px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--text); text-align: left; transition: transform 0.16s, border-color 0.16s, background 0.16s; }
     .suggestion:hover { transform: translateY(-3px); border-color: rgba(77,166,255,0.5); background: var(--surface2); }
     .suggestion span { display: block; margin-bottom: 10px; font-size: 18px; }
@@ -119,9 +117,6 @@
     .send-btn { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 15px; background: var(--blue); color: #fff; transition: opacity 0.15s, transform 0.15s; }
     .send-btn:hover { opacity: 0.92; transform: translateY(-1px); }
     .send-btn:disabled { opacity: 0.45; transform: none; cursor: not-allowed; }
-    .composer-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 16px 12px; color: var(--muted); font-size: 11px; }
-    .model-pill { display: inline-flex; align-items: center; gap: 7px; min-height: 26px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface2); color: var(--text); font-size: 11px; font-weight: 800; white-space: nowrap; }
-    .model-pill span { color: var(--blue); }
 
     footer { max-width: 1040px; width: 100%; margin: 0 auto; padding: 4px 22px 32px; color: var(--muted); font-size: 12px; text-align: center; }
 
@@ -133,7 +128,7 @@
       .nav-theme { width: 36px; height: 36px; padding: 0; justify-content: center; }
       main { padding: 42px 16px 24px; }
       .suggestions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .hero { min-height: 300px; }
+      .hero { min-height: 270px; }
     }
 
     @media (max-width: 520px) {
@@ -141,7 +136,7 @@
       nav { height: 56px; }
       .nav-logo { font-size: 16px; }
       main::before { top: 56px; }
-      h1 { letter-spacing: -1px; }
+      h1 { letter-spacing: -0.8px; }
       .suggestions { grid-template-columns: 1fr; }
       .suggestion { min-height: 74px; }
       .message { grid-template-columns: 30px minmax(0, 1fr); gap: 9px; }
@@ -149,7 +144,6 @@
       .bubble { padding: 12px 13px; font-size: 14px; }
       .composer { border-radius: 20px; }
       textarea { font-size: 15px; }
-      .composer-footer { align-items: flex-start; flex-direction: column; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -184,9 +178,8 @@
       <section class="ai-shell" aria-label="RepsCentral AI assistant">
         <div class="hero" id="hero">
           <div class="hero-inner">
-            <div class="eyebrow"><span class="eyebrow-dot"></span> AI assistant frontend</div>
-            <h1>What can <span class="gradient-text">RepsCentral AI</span> help with?</h1>
-            <p class="hero-copy">Ask about items, sizing, QC checks, agents, links, shipping prep, or anything you want the assistant to explain. API wiring is ready to be connected next.</p>
+            <div class="eyebrow"><span class="eyebrow-dot"></span> AI assistant</div>
+            <h1 id="greeting-title">How can I help?</h1>
             <div class="suggestions" id="suggestions">
               <button class="suggestion" type="button" data-prompt="Help me find the best summer outfit from the spreadsheet."><span>☀️</span><strong>Build an outfit</strong><small>Find items by vibe, season and budget.</small></button>
               <button class="suggestion" type="button" data-prompt="Explain how to check QCs before buying an item."><span>🔍</span><strong>Explain QCs</strong><small>Break down what to look for in photos.</small></button>
@@ -207,10 +200,6 @@
               <button class="send-btn" id="send-btn" type="submit" aria-label="Send message" disabled>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
               </button>
-            </div>
-            <div class="composer-footer">
-              <div class="model-pill"><span>●</span> API not connected yet</div>
-              <p>Frontend only. No messages are sent to a model until the backend endpoint is added.</p>
             </div>
           </div>
         </form>
@@ -247,6 +236,21 @@
     const chatPanel = document.getElementById('chat-panel');
     const hero = document.getElementById('hero');
     const suggestions = document.getElementById('suggestions');
+    const greetingTitle = document.getElementById('greeting-title');
+
+    function setRandomGreeting() {
+      const hour = new Date().getHours();
+      const greetings = [
+        'What are we doing today?',
+        'How can I help?',
+        'Need help? Chat below.',
+        'Hey, let me know what you need.'
+      ];
+      if (hour >= 5 && hour < 12) greetings.push('Good morning! What can we do today?');
+      else if (hour >= 12 && hour < 17) greetings.push('Good afternoon! What can we do today?');
+      else greetings.push('Good evening! What can we do today?');
+      greetingTitle.textContent = greetings[Math.floor(Math.random() * greetings.length)];
+    }
 
     function escapeHtml(value) {
       return String(value || '')
@@ -276,8 +280,8 @@
       messages.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
 
-    function frontendReply() {
-      addMessage('assistant', `<strong>Frontend ready.</strong><br><span class="muted">This is where the live AI response will appear once your API route is connected. Suggested backend shape: send the message to a serverless endpoint like <strong>/api/ai</strong>, keep the API key server-side, then stream or return the assistant response here.</span>`);
+    function fallbackReply() {
+      addMessage('assistant', `<span class="muted">I’m getting ready to help with that. Please try again shortly.</span>`);
     }
 
     function submitPrompt(value) {
@@ -286,7 +290,7 @@
       addMessage('user', escapeHtml(text));
       input.value = '';
       resizeInput();
-      window.setTimeout(frontendReply, 260);
+      window.setTimeout(fallbackReply, 260);
     }
 
     input.addEventListener('input', resizeInput);
@@ -307,9 +311,10 @@
       resizeInput();
       submitPrompt(input.value);
     });
+    setRandomGreeting();
   </script>
   <script type="module">
-    import('./site-analytics.js?v=2026-06-30-ai-page-1');
+    import('./site-analytics.js?v=2026-06-30-ai-page-2');
   </script>
 </body>
 </html>
