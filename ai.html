@@ -20,17 +20,17 @@
     body.dark {
       --bg: #0a0a0b;
       --surface: #111114;
-      --surface2: #18181c;
-      --surface3: #202027;
-      --border: #252529;
+      --surface2: #1f1f22;
+      --surface3: #2a2a2f;
+      --border: #2d2d31;
       --text: #f3f5f8;
-      --muted: #8c8f98;
-      --soft: #c9ccd4;
-      --nav-bg: rgba(10,10,11,0.88);
+      --muted: #a4a7ae;
+      --soft: #d6d8de;
+      --nav-bg: rgba(10,10,11,0.9);
       --blue: #4da6ff;
       --blue-soft: rgba(77,166,255,0.12);
       --shadow: rgba(0,0,0,0.34);
-      --composer: rgba(17,17,20,0.86);
+      --composer: rgba(35,35,38,0.96);
     }
 
     body.light {
@@ -46,7 +46,7 @@
       --blue: #248df2;
       --blue-soft: rgba(36,141,242,0.12);
       --shadow: rgba(15,23,42,0.12);
-      --composer: rgba(255,255,255,0.9);
+      --composer: rgba(255,255,255,0.96);
     }
 
     @keyframes rc-fadein { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -78,50 +78,47 @@
     .mobile-nav-menu a { min-height: 44px; padding: 11px 12px; border-radius: 8px; display: flex; align-items: center; color: var(--text); font-size: 14px; font-weight: 600; }
     .mobile-nav-menu a:hover { background: var(--surface2); }
 
-    main { position: relative; flex: 1; display: flex; justify-content: center; padding: 54px 22px 34px; }
-    main::before { content: ""; position: fixed; inset: 60px 0 auto; height: 420px; pointer-events: none; background: radial-gradient(ellipse 54% 50% at 50% 0%, rgba(77,166,255,0.14), transparent 70%); animation: rc-glow 7s ease-in-out infinite; }
+    main { position: relative; flex: 1; display: flex; justify-content: center; padding: 42px 20px 30px; }
+    main::before { content: ""; position: fixed; inset: 60px 0 auto; height: 360px; pointer-events: none; background: radial-gradient(ellipse 54% 50% at 50% 0%, rgba(77,166,255,0.13), transparent 70%); animation: rc-glow 7s ease-in-out infinite; }
 
-    .ai-shell { position: relative; z-index: 1; width: min(1040px, 100%); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 20px; animation: rc-fadein 0.35s ease both; }
+    .ai-shell { position: relative; z-index: 1; width: min(900px, 100%); display: flex; flex-direction: column; gap: 18px; animation: rc-fadein 0.35s ease both; }
 
-    .hero { min-height: 292px; display: grid; place-items: center; text-align: center; transition: min-height 0.28s ease, opacity 0.2s ease; }
-    .hero.compact { min-height: 78px; place-items: start center; }
-    .hero-inner { width: min(760px, 100%); }
-    .eyebrow { display: inline-flex; align-items: center; gap: 8px; min-height: 28px; margin-bottom: 20px; padding: 0 12px; border: 1px solid rgba(77,166,255,0.28); border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; }
+    .start-panel { min-height: 300px; display: grid; align-content: center; justify-items: center; gap: 26px; text-align: center; transition: min-height 0.25s ease; }
+    .start-panel.compact { min-height: 84px; gap: 14px; align-content: start; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 12px; border: 1px solid rgba(77,166,255,0.28); border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; }
     .eyebrow-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--blue); box-shadow: 0 0 18px rgba(77,166,255,0.7); animation: rc-pulse 1.7s ease-in-out infinite; }
-    h1 { font-family: 'Syne', sans-serif; font-size: clamp(30px, 5vw, 52px); line-height: 1; font-weight: 800; letter-spacing: -1.1px; margin-bottom: 0; }
-    .hero.compact h1 { font-size: clamp(24px, 3vw, 34px); margin-bottom: 0; }
-    .hero.compact .suggestions { display: none; }
+    h1 { font-family: 'DM Sans', sans-serif; font-size: clamp(22px, 3.2vw, 28px); line-height: 1.15; font-weight: 500; letter-spacing: -0.25px; color: var(--text); }
+    .start-panel.compact h1 { font-size: clamp(18px, 2.5vw, 22px); color: var(--muted); }
+    .start-panel.compact .quick-actions { display: none; }
 
-    .suggestions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 30px; }
-    .suggestion { min-height: 96px; padding: 14px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--text); text-align: left; transition: transform 0.16s, border-color 0.16s, background 0.16s; }
-    .suggestion:hover { transform: translateY(-3px); border-color: rgba(77,166,255,0.5); background: var(--surface2); }
-    .suggestion span { display: block; margin-bottom: 10px; font-size: 18px; }
-    .suggestion strong { display: block; font-size: 13px; line-height: 1.35; }
-    .suggestion small { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.35; }
+    .composer { width: min(780px, 100%); margin: 0 auto; border: 1px solid var(--border); border-radius: 999px; background: var(--composer); backdrop-filter: blur(18px); box-shadow: 0 18px 50px var(--shadow); }
+    .composer-inner { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 7px; }
+    .icon-btn { width: 39px; height: 39px; display: grid; place-items: center; border-radius: 50%; background: transparent; color: var(--soft); transition: background 0.15s, color 0.15s; }
+    .icon-btn:hover { background: var(--surface3); color: var(--text); }
+    textarea { width: 100%; height: 42px; max-height: 120px; resize: none; border: 0; outline: 0; background: transparent; color: var(--text); padding: 10px 2px; font-size: 15px; line-height: 1.45; overflow: hidden; }
+    textarea::placeholder { color: var(--muted); }
+    .model-select { display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 0 9px; border-radius: 999px; color: var(--muted); font-size: 14px; font-weight: 500; white-space: nowrap; }
+    .send-btn { width: 39px; height: 39px; display: grid; place-items: center; border-radius: 50%; background: #f4f4f5; color: #0b0b0c; transition: opacity 0.15s, transform 0.15s; }
+    body.light .send-btn { background: var(--blue); color: #fff; }
+    .send-btn:hover { opacity: 0.92; transform: translateY(-1px); }
+    .send-btn:disabled { opacity: 0.38; transform: none; cursor: not-allowed; }
 
-    .chat-panel { display: none; min-height: 340px; padding: 0 0 4px; }
+    .quick-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: min(640px, 100%); }
+    .quick-action { display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 15px; border: 1px solid var(--border); border-radius: 999px; background: rgba(255,255,255,0.02); color: var(--soft); font-size: 13px; font-weight: 500; transition: transform 0.15s, border-color 0.15s, background 0.15s; }
+    .quick-action:hover { transform: translateY(-2px); border-color: rgba(77,166,255,0.5); background: var(--blue-soft); color: var(--text); }
+
+    .chat-panel { display: none; min-height: 330px; padding: 0 0 4px; }
     .chat-panel.active { display: block; }
-    .messages { display: grid; gap: 16px; width: min(820px, 100%); margin: 0 auto; }
+    .messages { display: grid; gap: 16px; width: min(780px, 100%); margin: 0 auto; }
     .message { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; align-items: start; animation: rc-fadein 0.22s ease both; }
     .avatar { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 12px; background: var(--surface2); border: 1px solid var(--border); color: var(--blue); font-size: 15px; font-weight: 900; }
     .avatar.user { background: var(--blue); color: #fff; border-color: transparent; }
-    .bubble { min-width: 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--soft); font-size: 15px; line-height: 1.6; box-shadow: 0 12px 28px var(--shadow); white-space: pre-wrap; }
+    .bubble { min-width: 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--soft); font-size: 15px; line-height: 1.6; box-shadow: 0 12px 28px var(--shadow); white-space: pre-wrap; text-align: left; }
     .message.user-message .bubble { background: var(--surface2); color: var(--text); }
-    .bubble strong { color: var(--text); }
-    .bubble .muted { color: var(--muted); }
     .typing { display: inline-flex; gap: 5px; align-items: center; min-height: 20px; }
     .typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: rc-typing 1s infinite ease-in-out; }
     .typing span:nth-child(2) { animation-delay: 0.15s; }
     .typing span:nth-child(3) { animation-delay: 0.3s; }
-
-    .composer-wrap { position: sticky; bottom: 0; z-index: 10; padding: 10px 0 0; background: linear-gradient(to top, var(--bg) 72%, transparent); }
-    .composer { width: min(820px, 100%); margin: 0 auto; border: 1px solid var(--border); border-radius: 24px; background: var(--composer); backdrop-filter: blur(18px); box-shadow: 0 18px 50px var(--shadow); overflow: hidden; }
-    .composer-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; padding: 12px; }
-    textarea { width: 100%; min-height: 54px; max-height: 170px; resize: none; border: 0; outline: 0; background: transparent; color: var(--text); padding: 14px 12px; font-size: 16px; line-height: 1.45; }
-    textarea::placeholder { color: var(--muted); }
-    .send-btn { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 15px; background: var(--blue); color: #fff; transition: opacity 0.15s, transform 0.15s; }
-    .send-btn:hover { opacity: 0.92; transform: translateY(-1px); }
-    .send-btn:disabled { opacity: 0.45; transform: none; cursor: not-allowed; }
 
     footer { max-width: 1040px; width: 100%; margin: 0 auto; padding: 4px 22px 32px; color: var(--muted); font-size: 12px; text-align: center; }
 
@@ -131,9 +128,8 @@
       .mobile-nav { display: block; margin-left: auto; }
       .nav-theme span { display: none; }
       .nav-theme { width: 36px; height: 36px; padding: 0; justify-content: center; }
-      main { padding: 42px 16px 24px; }
-      .suggestions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .hero { min-height: 270px; }
+      main { padding: 34px 16px 24px; }
+      .start-panel { min-height: 270px; }
     }
 
     @media (max-width: 520px) {
@@ -141,14 +137,15 @@
       nav { height: 56px; }
       .nav-logo { font-size: 16px; }
       main::before { top: 56px; }
-      h1 { letter-spacing: -0.8px; }
-      .suggestions { grid-template-columns: 1fr; }
-      .suggestion { min-height: 74px; }
+      .composer { border-radius: 24px; }
+      .composer-inner { grid-template-columns: 34px minmax(0, 1fr) 34px; gap: 4px; padding: 7px; }
+      .model-select { display: none; }
+      .icon-btn, .send-btn { width: 34px; height: 34px; }
+      textarea { font-size: 14px; height: 38px; }
+      .quick-action { min-height: 36px; font-size: 12px; padding: 0 12px; }
       .message { grid-template-columns: 30px minmax(0, 1fr); gap: 9px; }
       .avatar { width: 30px; height: 30px; border-radius: 10px; font-size: 12px; }
       .bubble { padding: 12px 13px; font-size: 14px; }
-      .composer { border-radius: 20px; }
-      textarea { font-size: 15px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -181,33 +178,31 @@
 
     <main>
       <section class="ai-shell" aria-label="RepsCentral AI assistant">
-        <div class="hero" id="hero">
-          <div class="hero-inner">
-            <div class="eyebrow"><span class="eyebrow-dot"></span> AI assistant</div>
-            <h1 id="greeting-title">How can I help?</h1>
-            <div class="suggestions" id="suggestions">
-              <button class="suggestion" type="button" data-prompt="Help me find the best summer outfit from the spreadsheet."><span>☀️</span><strong>Build an outfit</strong><small>Find items by vibe, season and budget.</small></button>
-              <button class="suggestion" type="button" data-prompt="Explain how to check QCs before buying an item."><span>🔍</span><strong>Explain QCs</strong><small>Break down what to look for in photos.</small></button>
-              <button class="suggestion" type="button" data-prompt="Convert and explain a Weidian, Taobao or 1688 product link."><span>🔗</span><strong>Link help</strong><small>Guide users through product links.</small></button>
-              <button class="suggestion" type="button" data-prompt="Help me choose an agent and understand shipping costs."><span>📦</span><strong>Agent advice</strong><small>Answer buying and shipping questions.</small></button>
+        <div class="start-panel" id="start-panel">
+          <div class="eyebrow"><span class="eyebrow-dot"></span> AI assistant</div>
+          <h1 id="greeting-title">How can I help?</h1>
+
+          <form class="composer" id="chat-form">
+            <div class="composer-inner">
+              <button class="icon-btn" type="button" aria-label="Add"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+              <textarea id="chat-input" rows="1" placeholder="Ask anything" autocomplete="off" maxlength="900"></textarea>
+              <div class="model-select">Medium <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></div>
+              <button class="send-btn" id="send-btn" type="submit" aria-label="Send message" disabled>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+              </button>
             </div>
+          </form>
+
+          <div class="quick-actions" id="suggestions">
+            <button class="quick-action" type="button" data-prompt="Help me find the best summer outfit from the spreadsheet.">🖼️ Create an outfit</button>
+            <button class="quick-action" type="button" data-prompt="Explain how to check QCs before buying an item.">✏️ Check QCs</button>
+            <button class="quick-action" type="button" data-prompt="Convert and explain a Weidian, Taobao or 1688 product link.">🌐 Link help</button>
           </div>
         </div>
 
         <section class="chat-panel" id="chat-panel" aria-live="polite">
           <div class="messages" id="messages"></div>
         </section>
-
-        <form class="composer-wrap" id="chat-form">
-          <div class="composer">
-            <div class="composer-top">
-              <textarea id="chat-input" rows="1" placeholder="Message RepsCentral AI..." autocomplete="off" maxlength="900"></textarea>
-              <button class="send-btn" id="send-btn" type="submit" aria-label="Send message" disabled>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
-              </button>
-            </div>
-          </div>
-        </form>
       </section>
     </main>
 
@@ -241,7 +236,7 @@
     const send = document.getElementById('send-btn');
     const messages = document.getElementById('messages');
     const chatPanel = document.getElementById('chat-panel');
-    const hero = document.getElementById('hero');
+    const startPanel = document.getElementById('start-panel');
     const suggestions = document.getElementById('suggestions');
     const greetingTitle = document.getElementById('greeting-title');
 
@@ -273,14 +268,14 @@
     }
 
     function resizeInput() {
-      input.style.height = 'auto';
-      input.style.height = `${Math.min(input.scrollHeight, 170)}px`;
+      input.style.height = '42px';
+      input.style.height = `${Math.min(input.scrollHeight, 120)}px`;
       send.disabled = isSending || !input.value.trim();
     }
 
     function addMessage(role, html, extraClass = '') {
       chatPanel.classList.add('active');
-      hero.classList.add('compact');
+      startPanel.classList.add('compact');
       const isUser = role === 'user';
       messages.insertAdjacentHTML('beforeend', `
         <article class="message ${isUser ? 'user-message' : 'assistant-message'} ${extraClass}">
@@ -346,7 +341,7 @@
     setRandomGreeting();
   </script>
   <script type="module">
-    import('./site-analytics.js?v=2026-06-30-ai-page-3');
+    import('./site-analytics.js?v=2026-06-30-ai-page-4');
   </script>
 </body>
 </html>
