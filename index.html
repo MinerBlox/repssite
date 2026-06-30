@@ -591,18 +591,70 @@
     .done-close { font-size: 12px; color: var(--muted); cursor: pointer; background: none; border: none; font-family: inherit; transition: opacity 0.15s; width: 100%; text-align: center; padding: 8px; }
     .done-close:hover { opacity: 0.6; }
       .product-price, .podium-price, .counter-number, .progress-label, .intro-step-num, .podium-watermark span, .ticker-item span:nth-child(3) { font-family: Arial, Helvetica, sans-serif !important; font-variant-numeric: tabular-nums; letter-spacing: 0 !important; } 
-  .home-items-loading {
-    grid-column: 1 / -1;
-    min-height: 140px;
+  .loading-question-card {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    pointer-events: none;
+  }
+  .loading-question-card::before {
+    content: "";
+    position: absolute;
+    z-index: -2;
+    inset: -20px;
+    background: radial-gradient(circle at 50% 45%, rgba(77,166,255,0.13), transparent 60%), var(--surface2);
+    filter: blur(14px);
+  }
+  .loading-question-card::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    background: rgba(10,10,11,0.38);
+    backdrop-filter: blur(4px);
+  }
+  body.light .loading-question-card::after { background: rgba(255,255,255,0.38); }
+  .loading-question {
+    position: absolute;
+    z-index: 1;
+    left: var(--x);
+    top: var(--y);
+    color: #4da6ff;
+    font-family: 'Syne', sans-serif;
+    font-size: var(--size);
+    font-weight: 800;
+    animation: rc-question-pop var(--duration) ease-in-out var(--delay) infinite;
+  }
+  .loading-items-label {
+    position: relative;
+    z-index: 2;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .loading-product-card { min-height: 310px; }
+  .loading-ticker-label {
+    width: 100%;
+    min-height: 40px;
     display: grid;
     place-items: center;
     color: var(--muted);
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
+    animation: rc-loading-pulse 1.8s ease-in-out infinite;
   }
-  .home-ticker-loading {
-    min-height: 40px;
-    min-width: 100%;
+  @keyframes rc-loading-pulse {
+    0%, 100% { opacity: 0.48; }
+    50% { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .loading-question,
+    .loading-ticker-label { animation: none; }
   }
 </style>
 </head>
@@ -664,7 +716,7 @@
     <div class="ticker-live">
       <span class="live-badge"><span class="live-dot"></span>LIVE</span>
     </div>
-    <div class="ticker-inner" id="ticker-inner"><span class="home-items-loading home-ticker-loading">Loading items...</span></div>
+    <div class="ticker-inner" id="ticker-inner"><span class="loading-ticker-label">? &nbsp; Loading items... &nbsp; ?</span></div>
   </div>
 
   <!-- HERO -->
@@ -693,7 +745,22 @@
         <p class="section-sub">The three items people interact with most</p>
       </div>
     </div>
-    <div class="podium-grid" id="podium-grid"><div class="home-items-loading">Loading items...</div></div>
+    <div class="podium-grid" id="podium-grid"><div class="podium-card rank-1 loading-question-card loading-podium-card" role="status" aria-live="polite">
+  <span class="loading-question" style="--x:10%;--y:16%;--size:18px;--duration:3.2s;--delay:-.4s">?</span>
+  <span class="loading-question" style="--x:72%;--y:12%;--size:28px;--duration:3.8s;--delay:-1.6s">?</span>
+  <span class="loading-question" style="--x:38%;--y:60%;--size:22px;--duration:3.5s;--delay:-2.3s">?</span>
+  <span class="loading-question" style="--x:80%;--y:70%;--size:16px;--duration:4s;--delay:-.9s">?</span>
+  <span class="loading-question" style="--x:14%;--y:78%;--size:25px;--duration:3.6s;--delay:-2.7s">?</span><span class="loading-items-label">Loading items...</span></div><div class="podium-card rank-2 loading-question-card loading-podium-card" role="status" aria-live="polite">
+  <span class="loading-question" style="--x:10%;--y:16%;--size:18px;--duration:3.2s;--delay:-.4s">?</span>
+  <span class="loading-question" style="--x:72%;--y:12%;--size:28px;--duration:3.8s;--delay:-1.6s">?</span>
+  <span class="loading-question" style="--x:38%;--y:60%;--size:22px;--duration:3.5s;--delay:-2.3s">?</span>
+  <span class="loading-question" style="--x:80%;--y:70%;--size:16px;--duration:4s;--delay:-.9s">?</span>
+  <span class="loading-question" style="--x:14%;--y:78%;--size:25px;--duration:3.6s;--delay:-2.7s">?</span><span class="loading-items-label">Loading items...</span></div><div class="podium-card rank-3 loading-question-card loading-podium-card" role="status" aria-live="polite">
+  <span class="loading-question" style="--x:10%;--y:16%;--size:18px;--duration:3.2s;--delay:-.4s">?</span>
+  <span class="loading-question" style="--x:72%;--y:12%;--size:28px;--duration:3.8s;--delay:-1.6s">?</span>
+  <span class="loading-question" style="--x:38%;--y:60%;--size:22px;--duration:3.5s;--delay:-2.3s">?</span>
+  <span class="loading-question" style="--x:80%;--y:70%;--size:16px;--duration:4s;--delay:-.9s">?</span>
+  <span class="loading-question" style="--x:14%;--y:78%;--size:25px;--duration:3.6s;--delay:-2.7s">?</span><span class="loading-items-label">Loading items...</span></div></div>
   </div>
 
   <hr class="divider">
@@ -706,7 +773,27 @@
         <p class="section-sub">Hand-picked products by our team — the best quality and style in one place</p>
       </div>
     </div>
-    <div class="product-grid" id="our-picks-grid"><div class="home-items-loading">Loading items...</div></div>
+    <div class="product-grid" id="our-picks-grid"><div class="product-card loading-question-card loading-product-card" role="status" aria-live="polite">
+  <span class="loading-question" style="--x:10%;--y:16%;--size:18px;--duration:3.2s;--delay:-.4s">?</span>
+  <span class="loading-question" style="--x:72%;--y:12%;--size:28px;--duration:3.8s;--delay:-1.6s">?</span>
+  <span class="loading-question" style="--x:38%;--y:60%;--size:22px;--duration:3.5s;--delay:-2.3s">?</span>
+  <span class="loading-question" style="--x:80%;--y:70%;--size:16px;--duration:4s;--delay:-.9s">?</span>
+  <span class="loading-question" style="--x:14%;--y:78%;--size:25px;--duration:3.6s;--delay:-2.7s">?</span><span class="loading-items-label">Loading items...</span></div><div class="product-card loading-question-card loading-product-card" role="status" aria-live="polite">
+  <span class="loading-question" style="--x:10%;--y:16%;--size:18px;--duration:3.2s;--delay:-.4s">?</span>
+  <span class="loading-question" style="--x:72%;--y:12%;--size:28px;--duration:3.8s;--delay:-1.6s">?</span>
+  <span class="loading-question" style="--x:38%;--y:60%;--size:22px;--duration:3.5s;--delay:-2.3s">?</span>
+  <span class="loading-question" style="--x:80%;--y:70%;--size:16px;--duration:4s;--delay:-.9s">?</span>
+  <span class="loading-question" style="--x:14%;--y:78%;--size:25px;--duration:3.6s;--delay:-2.7s">?</span><span class="loading-items-label">Loading items...</span></div><div class="product-card loading-question-card loading-product-card" role="status" aria-live="polite">
+  <span class="loading-question" style="--x:10%;--y:16%;--size:18px;--duration:3.2s;--delay:-.4s">?</span>
+  <span class="loading-question" style="--x:72%;--y:12%;--size:28px;--duration:3.8s;--delay:-1.6s">?</span>
+  <span class="loading-question" style="--x:38%;--y:60%;--size:22px;--duration:3.5s;--delay:-2.3s">?</span>
+  <span class="loading-question" style="--x:80%;--y:70%;--size:16px;--duration:4s;--delay:-.9s">?</span>
+  <span class="loading-question" style="--x:14%;--y:78%;--size:25px;--duration:3.6s;--delay:-2.7s">?</span><span class="loading-items-label">Loading items...</span></div><div class="product-card loading-question-card loading-product-card" role="status" aria-live="polite">
+  <span class="loading-question" style="--x:10%;--y:16%;--size:18px;--duration:3.2s;--delay:-.4s">?</span>
+  <span class="loading-question" style="--x:72%;--y:12%;--size:28px;--duration:3.8s;--delay:-1.6s">?</span>
+  <span class="loading-question" style="--x:38%;--y:60%;--size:22px;--duration:3.5s;--delay:-2.3s">?</span>
+  <span class="loading-question" style="--x:80%;--y:70%;--size:16px;--duration:4s;--delay:-.9s">?</span>
+  <span class="loading-question" style="--x:14%;--y:78%;--size:25px;--duration:3.6s;--delay:-2.7s">?</span><span class="loading-items-label">Loading items...</span></div></div>
     <a href="spreadsheet.html" class="mobile-product-link">View all our picks <span aria-hidden="true">&rarr;</span></a>
   </div>
 
@@ -725,7 +812,27 @@
       <button class="season-tab" data-season="autumn" onclick="setSeason('autumn')">🍂 Autumn Finds</button>
       <button class="season-tab" data-season="winter" onclick="setSeason('winter')">❄️ Winter Finds</button>
     </div>
-    <div class="product-grid" id="season-grid"><div class="home-items-loading">Loading items...</div></div>
+    <div class="product-grid" id="season-grid"><div class="product-card loading-question-card loading-product-card" role="status" aria-live="polite">
+  <span class="loading-question" style="--x:10%;--y:16%;--size:18px;--duration:3.2s;--delay:-.4s">?</span>
+  <span class="loading-question" style="--x:72%;--y:12%;--size:28px;--duration:3.8s;--delay:-1.6s">?</span>
+  <span class="loading-question" style="--x:38%;--y:60%;--size:22px;--duration:3.5s;--delay:-2.3s">?</span>
+  <span class="loading-question" style="--x:80%;--y:70%;--size:16px;--duration:4s;--delay:-.9s">?</span>
+  <span class="loading-question" style="--x:14%;--y:78%;--size:25px;--duration:3.6s;--delay:-2.7s">?</span><span class="loading-items-label">Loading items...</span></div><div class="product-card loading-question-card loading-product-card" role="status" aria-live="polite">
+  <span class="loading-question" style="--x:10%;--y:16%;--size:18px;--duration:3.2s;--delay:-.4s">?</span>
+  <span class="loading-question" style="--x:72%;--y:12%;--size:28px;--duration:3.8s;--delay:-1.6s">?</span>
+  <span class="loading-question" style="--x:38%;--y:60%;--size:22px;--duration:3.5s;--delay:-2.3s">?</span>
+  <span class="loading-question" style="--x:80%;--y:70%;--size:16px;--duration:4s;--delay:-.9s">?</span>
+  <span class="loading-question" style="--x:14%;--y:78%;--size:25px;--duration:3.6s;--delay:-2.7s">?</span><span class="loading-items-label">Loading items...</span></div><div class="product-card loading-question-card loading-product-card" role="status" aria-live="polite">
+  <span class="loading-question" style="--x:10%;--y:16%;--size:18px;--duration:3.2s;--delay:-.4s">?</span>
+  <span class="loading-question" style="--x:72%;--y:12%;--size:28px;--duration:3.8s;--delay:-1.6s">?</span>
+  <span class="loading-question" style="--x:38%;--y:60%;--size:22px;--duration:3.5s;--delay:-2.3s">?</span>
+  <span class="loading-question" style="--x:80%;--y:70%;--size:16px;--duration:4s;--delay:-.9s">?</span>
+  <span class="loading-question" style="--x:14%;--y:78%;--size:25px;--duration:3.6s;--delay:-2.7s">?</span><span class="loading-items-label">Loading items...</span></div><div class="product-card loading-question-card loading-product-card" role="status" aria-live="polite">
+  <span class="loading-question" style="--x:10%;--y:16%;--size:18px;--duration:3.2s;--delay:-.4s">?</span>
+  <span class="loading-question" style="--x:72%;--y:12%;--size:28px;--duration:3.8s;--delay:-1.6s">?</span>
+  <span class="loading-question" style="--x:38%;--y:60%;--size:22px;--duration:3.5s;--delay:-2.3s">?</span>
+  <span class="loading-question" style="--x:80%;--y:70%;--size:16px;--duration:4s;--delay:-.9s">?</span>
+  <span class="loading-question" style="--x:14%;--y:78%;--size:25px;--duration:3.6s;--delay:-2.7s">?</span><span class="loading-items-label">Loading items...</span></div></div>
     <a href="spreadsheet.html" class="mobile-product-link">View all season finds <span aria-hidden="true">&rarr;</span></a>
   </div>
 
