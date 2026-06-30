@@ -1,4 +1,5 @@
 import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { enableAppCheck } from "./firebase-app-check.js?v=2026-06-30-app-check-1";
 import { getFirestore, doc, setDoc, serverTimestamp, increment, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -42,6 +43,7 @@ function ensureDefaultVisitorPreferences() {
 ensureDefaultVisitorPreferences();
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+enableAppCheck(app);
 const db = getFirestore(app);
 const HEARTBEAT_MS = 20000;
 
