@@ -1,4 +1,4 @@
-const MODEL = "gemini-2.0-flash-lite";
+const MODEL = "gemini-3.1-flash-lite";
 const SYSTEM_PROMPT = "RepsCentral AI: concise help for reps, QCs, links, agents, sizing and shipping.";
 const MAX_INPUT_CHARS = 600;
 const MAX_OUTPUT_TOKENS = 100;
