@@ -590,7 +590,21 @@
     .done-cta:hover { opacity: 0.9; transform: translateY(-2px); }
     .done-close { font-size: 12px; color: var(--muted); cursor: pointer; background: none; border: none; font-family: inherit; transition: opacity 0.15s; width: 100%; text-align: center; padding: 8px; }
     .done-close:hover { opacity: 0.6; }
-      .product-price, .podium-price, .counter-number, .progress-label, .intro-step-num, .podium-watermark span, .ticker-item span:nth-child(3) { font-family: Arial, Helvetica, sans-serif !important; font-variant-numeric: tabular-nums; letter-spacing: 0 !important; } </style>
+      .product-price, .podium-price, .counter-number, .progress-label, .intro-step-num, .podium-watermark span, .ticker-item span:nth-child(3) { font-family: Arial, Helvetica, sans-serif !important; font-variant-numeric: tabular-nums; letter-spacing: 0 !important; } 
+  .home-items-loading {
+    grid-column: 1 / -1;
+    min-height: 140px;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .home-ticker-loading {
+    min-height: 40px;
+    min-width: 100%;
+  }
+</style>
 </head>
 <body class="dark">
 
@@ -650,7 +664,7 @@
     <div class="ticker-live">
       <span class="live-badge"><span class="live-dot"></span>LIVE</span>
     </div>
-    <div class="ticker-inner" id="ticker-inner"></div>
+    <div class="ticker-inner" id="ticker-inner"><span class="home-items-loading home-ticker-loading">Loading items...</span></div>
   </div>
 
   <!-- HERO -->
@@ -679,7 +693,7 @@
         <p class="section-sub">The three items people interact with most</p>
       </div>
     </div>
-    <div class="podium-grid" id="podium-grid"></div>
+    <div class="podium-grid" id="podium-grid"><div class="home-items-loading">Loading items...</div></div>
   </div>
 
   <hr class="divider">
@@ -692,7 +706,7 @@
         <p class="section-sub">Hand-picked products by our team — the best quality and style in one place</p>
       </div>
     </div>
-    <div class="product-grid" id="our-picks-grid"></div>
+    <div class="product-grid" id="our-picks-grid"><div class="home-items-loading">Loading items...</div></div>
     <a href="spreadsheet.html" class="mobile-product-link">View all our picks <span aria-hidden="true">&rarr;</span></a>
   </div>
 
@@ -711,7 +725,7 @@
       <button class="season-tab" data-season="autumn" onclick="setSeason('autumn')">🍂 Autumn Finds</button>
       <button class="season-tab" data-season="winter" onclick="setSeason('winter')">❄️ Winter Finds</button>
     </div>
-    <div class="product-grid" id="season-grid"></div>
+    <div class="product-grid" id="season-grid"><div class="home-items-loading">Loading items...</div></div>
     <a href="spreadsheet.html" class="mobile-product-link">View all season finds <span aria-hidden="true">&rarr;</span></a>
   </div>
 
@@ -806,69 +820,6 @@
 const HIPOBUY_LINK = "https://hipobuy.com/register?inviteCode=QTYP3P8P5";
 const DISCORD_LINK = "https://discord.gg/3zzVWQcN36";
 
-const tickerItems = [
-  { label: "Ralph Lauren Slim Fit Tee", price: "$9.85", emoji: "🔥" },
-  { label: "Lanvin Curb Light Gray Blue", price: "$85.59", emoji: "💎" },
-  { label: "Corteiz Italy Shorts", price: "$25.54", emoji: "⚡" },
-  { label: "Broken Planet Hoodie", price: "$42.59", emoji: "🎯" },
-  { label: "Nike NOCTA Tech Fleece", price: "$20.10", emoji: "🏆" },
-  { label: "Chrome Hearts Trucker Cap", price: "$12.02", emoji: "🔥" },
-  { label: "Gallery Dept Souvenir Tee", price: "$10.22", emoji: "💡" },
-  { label: "Adidas Samba Wales Bonner", price: "$42.07", emoji: "⭐" },
-  { label: "Stone Island Hoodie", price: "$62.45", emoji: "🎖️" },
-  { label: "Peace in War Sweden Hoodie", price: "$35.42", emoji: "🌊" },
-];
-
-const medals = [
-  { rank: 1, label: "1st", borderColor: "#FFD700", glowColor: "rgba(255,215,0,0.18)", badgeColor: "#FFD700", badgeText: "#000", textColor: "#FFD700", emoji: "🥇" },
-  { rank: 2, label: "2nd", borderColor: "#C0C0C0", glowColor: "rgba(192,192,192,0.14)", badgeColor: "#C0C0C0", badgeText: "#000", textColor: "#C0C0C0", emoji: "🥈" },
-  { rank: 3, label: "3rd", borderColor: "#CD7F32", glowColor: "rgba(205,127,50,0.16)", badgeColor: "#CD7F32", badgeText: "#fff", textColor: "#CD7F32", emoji: "🥉" },
-];
-
-const bestSellers = [
-  { id: "bs1", name: "Lanvin Curb Light Gray Blue", price: "$85.59", category: "Shoes", desc: "Undisputed #1 rep find of the season — flawless quality." },
-  { id: "bs2", name: "Broken Planet Performance Hoodie", price: "$42.59", category: "Hoodies", desc: "Incredibly detailed, near-perfect construction." },
-  { id: "bs3", name: "Corteiz Italy Shorts", price: "$25.54", category: "Shorts", desc: "Best budget find right now — high quality, low price." },
-];
-
-const ourPicks = [
-  { id: "p1", name: "Lanvin Curb Light Gray Blue", price: "$85.59", category: "Shoes", badge: "best" },
-  { id: "p2", name: "Lanvin Curb White Black", price: "$84.54", category: "Shoes", badge: "best" },
-  { id: "p3", name: 'Broken Planet Gray "Performance" Hoodie', price: "$42.59", category: "Hoodies", badge: "best" },
-  { id: "p4", name: "Peace in War Sweden Hoodie", price: "$35.42", category: "Hoodies", badge: "best" },
-  { id: "p5", name: "Nike Nocta Tech Fleece Pants", price: "$20.10", category: "Pants", badge: "budget" },
-  { id: "p6", name: "Adidas Samba Wales Bonner Pony Tonal", price: "$42.07", category: "Shoes", badge: "random" },
-];
-
-const seasonFinds = {
-  summer: [
-    { id: "s1", name: "Ralph Lauren Slim Fit T-Shirt", price: "$9.85", category: "T-shirts", badge: "random" },
-    { id: "s2", name: "Denim Tears Shorts", price: "$28.89", category: "Shorts", badge: "random" },
-    { id: "s3", name: "Burberry Shorts", price: "$31.01", category: "Shorts", badge: "random" },
-    { id: "s4", name: "Chrome Hearts Trucker Cap", price: "$12.02", category: "Headwear", badge: "random" },
-    { id: "s5", name: "Nike Shorts", price: "$17.74", category: "Shorts", badge: "budget" },
-    { id: "s6", name: "Corteiz Italy Shorts", price: "$25.54", category: "Shorts", badge: "best" },
-    { id: "s7", name: "Broken Planet Button-Up Shirt", price: "$32.26", category: "T-shirts", badge: "random" },
-    { id: "s8", name: "Gallery Dept Souvenir Tee", price: "$10.22", category: "T-shirts", badge: "budget" },
-  ],
-  autumn: [
-    { id: "a1", name: "Stone Island Shadow Project Hoodie", price: "$62.45", category: "Hoodies", badge: "best" },
-    { id: "a2", name: "Carhartt WIP Detroit Jacket", price: "$48.30", category: "Jackets", badge: "budget" },
-    { id: "a3", name: "Needles Track Pants", price: "$38.90", category: "Pants", badge: "best" },
-    { id: "a4", name: "Our Legacy Balloon Jeans", price: "$44.20", category: "Pants", badge: "random" },
-    { id: "a5", name: "Stüssy 8 Ball Crewneck", price: "$28.50", category: "Sweatshirts", badge: "budget" },
-    { id: "a6", name: "Supreme Box Logo Tee", price: "$31.00", category: "T-shirts", badge: "best" },
-  ],
-  winter: [
-    { id: "w1", name: "Moncler Maya Short Down Jacket", price: "$120.00", category: "Jackets", badge: "best" },
-    { id: "w2", name: "Arcteryx Beta AR Jacket", price: "$95.50", category: "Jackets", badge: "budget" },
-    { id: "w3", name: "Canada Goose Parka", price: "$140.00", category: "Jackets", badge: "best" },
-    { id: "w4", name: "The North Face 700 Puffer", price: "$72.00", category: "Jackets", badge: "random" },
-    { id: "w5", name: "Bottega Veneta Intrecciato Beanie", price: "$22.00", category: "Headwear", badge: "best" },
-    { id: "w6", name: "Acne Studios Face Scarf", price: "$18.50", category: "Accessories", badge: "budget" },
-  ],
-};
-
 const sellers = [
   { id: "sel1", name: "fireSup", desc: "Top quality supreme clothing" },
   { id: "sel2", name: "Chrometop", desc: "Great seller for any Chrome Hearts hoodies, t-shirts etc." },
@@ -907,96 +858,6 @@ function toggleTheme() {
   applyTheme();
 }
 applyTheme();
-
-/* ── TICKER ── */
-function buildTicker() {
-  const items = [...tickerItems, ...tickerItems, ...tickerItems];
-  const inner = document.getElementById("ticker-inner");
-  inner.innerHTML = items.map(item => `
-    <span class="ticker-item">
-      <span style="font-size:13px;margin-right:6px">${item.emoji}</span>
-      <span style="font-size:12px;font-weight:500;color:var(--text)">${item.label}</span>
-      <span style="font-size:12px;font-weight:700;color:#4da6ff;margin-left:5px">${item.price}</span>
-      <span class="ticker-dot"></span>
-    </span>
-  `).join("");
-}
-buildTicker();
-
-/* ── PRODUCT CARD ── */
-function imgPlaceholder() {
-  return `<div class="product-img"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l4-4 4 4 4-4 4 4"/><path d="M3 15l4-4 4 4 4-4 4 4"/></svg></div>`;
-}
-
-function badgeEl(type) {
-  if (type === "best") return `<span class="badge badge-best">Best Batch</span>`;
-  if (type === "budget") return `<span class="badge badge-budget">Budget Batch</span>`;
-  return `<span class="badge badge-random">Random Batch</span>`;
-}
-
-function productCard(p) {
-  return `
-    <div class="product-card">
-      <div style="position:relative">
-        ${imgPlaceholder()}
-        ${badgeEl(p.badge)}
-      </div>
-      <div class="product-body">
-        <div class="product-name">${p.name}</div>
-        <div class="product-meta">
-          <span class="product-price">${p.price}</span>
-          <span class="product-cat">${p.category}</span>
-        </div>
-        <a href="#" class="product-btn">Check more →</a>
-      </div>
-    </div>
-  `;
-}
-
-function staticVisibleProductCount(target) {
-  if (window.matchMedia("(max-width: 720px)").matches) return 1;
-  const gap = 16;
-  const capacity = Math.max(1, Math.floor((target.clientWidth + gap) / 216));
-  return Math.max(1, capacity - 1);
-}
-
-function staticMoreProductCard(remaining) {
-  return `
-    <a href="spreadsheet.html" class="product-card product-more-card" aria-label="View ${remaining} more products">
-      <span class="product-more-overlay"></span>
-      <span class="product-more-content">+ ${remaining} more</span>
-    </a>
-  `;
-}
-
-function renderStaticProductRow(targetId, items) {
-  const target = document.getElementById(targetId);
-  if (!target) return;
-  const count = Math.min(items.length, staticVisibleProductCount(target));
-  target.innerHTML = items.slice(0, count).map(productCard).join("") + staticMoreProductCard(Math.max(0, items.length - count));
-}
-
-/* ── PODIUM ── */
-function podiumCard(product, medal, delay) {
-  return `
-    <div class="podium-card rank-${medal.rank}" style="border:2px solid ${medal.borderColor};box-shadow:0 0 28px ${medal.glowColor},0 4px 20px rgba(0,0,0,0.2);animation-delay:${delay}s">
-      <div class="podium-rank" style="background:${medal.badgeColor};color:${medal.badgeText}">${medal.emoji} ${medal.label}</div>
-      <div class="podium-img">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l4-4 4 4 4-4 4 4"/><path d="M3 15l4-4 4 4 4-4 4 4"/></svg>
-        <div class="podium-watermark"><span style="color:${medal.borderColor}">#${medal.rank}</span></div>
-      </div>
-      <div class="podium-body">
-        <div class="podium-name">${product.name}</div>
-        <p class="podium-desc">${product.desc}</p>
-        <div class="podium-footer">
-          <span class="podium-price" style="color:${medal.textColor}">${product.price}</span>
-          <span class="podium-cat">${product.category}</span>
-        </div>
-        <a href="#" class="podium-btn" style="background:${medal.badgeColor};color:${medal.badgeText}">View Find →</a>
-      </div>
-    </div>
-  `;
-}
 
 /* ── SELLERS ── */
 function sellerCard(s) {
@@ -1046,22 +907,10 @@ function toolCard(t) {
 
 /* ── RENDER ── */
 function render() {
-  document.getElementById("podium-grid").innerHTML = bestSellers.map((p, i) => podiumCard(p, medals[i], i * 0.1)).join("");
-  renderStaticProductRow("our-picks-grid", ourPicks);
   document.getElementById("tools-grid").innerHTML = tools.map(toolCard).join("");
-  renderSeason("summer");
 }
 
-let activeSeason = "summer";
-function setSeason(s) {
-  activeSeason = s;
-  document.querySelectorAll(".season-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.season === s));
-  renderSeason(s);
-}
-function renderSeason(s) {
-  renderStaticProductRow("season-grid", seasonFinds[s]);
-}
-
+window.activeSeason = "summer";
 
 function safeDecode(value) {
   let output = value || "";
