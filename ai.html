@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <title>RepsCentral - AI Assistant</title>
+  <link rel="icon" href="systemimages/repscentrallogo.png">
+  <link rel="shortcut icon" href="systemimages/repscentrallogo.png">
+  <link rel="apple-touch-icon" href="systemimages/repscentrallogo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; font-family: 'DM Sans', sans-serif; background: #0a0a0b; }
+    a { color: inherit; text-decoration: none; }
+    button, textarea { font: inherit; }
+    button { border: 0; cursor: pointer; }
+
+    body.dark {
+      --bg: #0a0a0b;
+      --surface: #111114;
+      --surface2: #18181c;
+      --surface3: #202027;
+      --border: #252529;
+      --text: #f3f5f8;
+      --muted: #8c8f98;
+      --soft: #c9ccd4;
+      --nav-bg: rgba(10,10,11,0.88);
+      --blue: #4da6ff;
+      --blue-soft: rgba(77,166,255,0.12);
+      --shadow: rgba(0,0,0,0.34);
+      --composer: rgba(17,17,20,0.86);
+    }
+
+    body.light {
+      --bg: #f5f8ff;
+      --surface: #ffffff;
+      --surface2: #e8eef8;
+      --surface3: #dfe8f5;
+      --border: #dde4f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --soft: #334155;
+      --nav-bg: rgba(245,248,255,0.92);
+      --blue: #248df2;
+      --blue-soft: rgba(36,141,242,0.12);
+      --shadow: rgba(15,23,42,0.12);
+      --composer: rgba(255,255,255,0.9);
+    }
+
+    @keyframes rc-fadein { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes rc-glow { 0%, 100% { opacity: 0.55; transform: scale(1); } 50% { opacity: 0.85; transform: scale(1.04); } }
+    @keyframes rc-pulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+
+    #root { min-height: 100dvh; display: flex; flex-direction: column; background: var(--bg); color: var(--text); transition: background 0.2s, color 0.2s; overflow-x: hidden; }
+
+    #banner { background: var(--blue); color: #fff; text-align: center; padding: 10px 20px; font-size: 13px; font-weight: 600; }
+    #banner a { color: #fff; font-weight: 800; text-decoration: underline; }
+
+    nav {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; align-items: center; gap: 8px; height: 60px; padding: 0 28px;
+      border-bottom: 1px solid var(--border); background: var(--nav-bg); backdrop-filter: blur(14px);
+    }
+    .nav-logo { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 800; color: var(--text); margin-right: 12px; }
+    .nav-links { display: flex; gap: 2px; flex: 1; overflow-x: auto; scrollbar-width: none; }
+    .nav-links::-webkit-scrollbar { display: none; }
+    .nav-link { padding: 6px 12px; border-radius: 8px; color: var(--muted); font-size: 13px; font-weight: 600; white-space: nowrap; transition: color 0.15s, background 0.15s; }
+    .nav-link:hover, .nav-link.active { color: var(--text); background: var(--surface2); }
+    .nav-theme { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-size: 13px; font-weight: 600; white-space: nowrap; }
+
+    .mobile-nav { display: none; position: relative; }
+    .mobile-nav summary { list-style: none; width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; color: var(--text); background: var(--surface2); border: 1px solid var(--border); cursor: pointer; }
+    .mobile-nav summary::-webkit-details-marker { display: none; }
+    .mobile-nav-menu { position: absolute; top: calc(100% + 10px); right: 0; z-index: 80; width: min(250px, calc(100vw - 28px)); padding: 8px; display: grid; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 16px 36px rgba(0,0,0,0.28); }
+    .mobile-nav-menu a { min-height: 44px; padding: 11px 12px; border-radius: 8px; display: flex; align-items: center; color: var(--text); font-size: 14px; font-weight: 600; }
+    .mobile-nav-menu a:hover { background: var(--surface2); }
+
+    main { position: relative; flex: 1; display: flex; justify-content: center; padding: 54px 22px 34px; }
+    main::before { content: ""; position: fixed; inset: 60px 0 auto; height: 420px; pointer-events: none; background: radial-gradient(ellipse 54% 50% at 50% 0%, rgba(77,166,255,0.14), transparent 70%); animation: rc-glow 7s ease-in-out infinite; }
+
+    .ai-shell { position: relative; z-index: 1; width: min(1040px, 100%); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 20px; animation: rc-fadein 0.35s ease both; }
+
+    .hero { min-height: 330px; display: grid; place-items: center; text-align: center; transition: min-height 0.28s ease, opacity 0.2s ease; }
+    .hero.compact { min-height: 78px; place-items: start center; }
+    .hero-inner { width: min(760px, 100%); }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; min-height: 28px; margin-bottom: 18px; padding: 0 12px; border: 1px solid rgba(77,166,255,0.28); border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; }
+    .eyebrow-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--blue); box-shadow: 0 0 18px rgba(77,166,255,0.7); animation: rc-pulse 1.7s ease-in-out infinite; }
+    h1 { font-family: 'Syne', sans-serif; font-size: clamp(42px, 8vw, 76px); line-height: 0.96; font-weight: 800; letter-spacing: -1.8px; margin-bottom: 16px; }
+    .gradient-text { color: var(--blue); }
+    .hero-copy { max-width: 620px; margin: 0 auto; color: var(--muted); font-size: 16px; line-height: 1.7; }
+    .hero.compact h1 { font-size: clamp(28px, 4vw, 42px); margin-bottom: 8px; }
+    .hero.compact .hero-copy, .hero.compact .suggestions { display: none; }
+
+    .suggestions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 28px; }
+    .suggestion { min-height: 96px; padding: 14px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--text); text-align: left; transition: transform 0.16s, border-color 0.16s, background 0.16s; }
+    .suggestion:hover { transform: translateY(-3px); border-color: rgba(77,166,255,0.5); background: var(--surface2); }
+    .suggestion span { display: block; margin-bottom: 10px; font-size: 18px; }
+    .suggestion strong { display: block; font-size: 13px; line-height: 1.35; }
+    .suggestion small { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.35; }
+
+    .chat-panel { display: none; min-height: 340px; padding: 0 0 4px; }
+    .chat-panel.active { display: block; }
+    .messages { display: grid; gap: 16px; width: min(820px, 100%); margin: 0 auto; }
+    .message { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; align-items: start; animation: rc-fadein 0.22s ease both; }
+    .avatar { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 12px; background: var(--surface2); border: 1px solid var(--border); color: var(--blue); font-size: 15px; font-weight: 900; }
+    .avatar.user { background: var(--blue); color: #fff; border-color: transparent; }
+    .bubble { min-width: 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--soft); font-size: 15px; line-height: 1.6; box-shadow: 0 12px 28px var(--shadow); }
+    .message.user-message .bubble { background: var(--surface2); color: var(--text); }
+    .bubble strong { color: var(--text); }
+    .bubble .muted { color: var(--muted); }
+
+    .composer-wrap { position: sticky; bottom: 0; z-index: 10; padding: 10px 0 0; background: linear-gradient(to top, var(--bg) 72%, transparent); }
+    .composer { width: min(820px, 100%); margin: 0 auto; border: 1px solid var(--border); border-radius: 24px; background: var(--composer); backdrop-filter: blur(18px); box-shadow: 0 18px 50px var(--shadow); overflow: hidden; }
+    .composer-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; padding: 12px; }
+    textarea { width: 100%; min-height: 54px; max-height: 170px; resize: none; border: 0; outline: 0; background: transparent; color: var(--text); padding: 14px 12px; font-size: 16px; line-height: 1.45; }
+    textarea::placeholder { color: var(--muted); }
+    .send-btn { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 15px; background: var(--blue); color: #fff; transition: opacity 0.15s, transform 0.15s; }
+    .send-btn:hover { opacity: 0.92; transform: translateY(-1px); }
+    .send-btn:disabled { opacity: 0.45; transform: none; cursor: not-allowed; }
+    .composer-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 16px 12px; color: var(--muted); font-size: 11px; }
+    .model-pill { display: inline-flex; align-items: center; gap: 7px; min-height: 26px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface2); color: var(--text); font-size: 11px; font-weight: 800; white-space: nowrap; }
+    .model-pill span { color: var(--blue); }
+
+    footer { max-width: 1040px; width: 100%; margin: 0 auto; padding: 4px 22px 32px; color: var(--muted); font-size: 12px; text-align: center; }
+
+    @media (max-width: 860px) {
+      nav { padding: 0 16px; }
+      .nav-links { display: none; }
+      .mobile-nav { display: block; margin-left: auto; }
+      .nav-theme span { display: none; }
+      .nav-theme { width: 36px; height: 36px; padding: 0; justify-content: center; }
+      main { padding: 42px 16px 24px; }
+      .suggestions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hero { min-height: 300px; }
+    }
+
+    @media (max-width: 520px) {
+      #banner { padding: 9px 14px; font-size: 12px; line-height: 1.35; }
+      nav { height: 56px; }
+      .nav-logo { font-size: 16px; }
+      main::before { top: 56px; }
+      h1 { letter-spacing: -1px; }
+      .suggestions { grid-template-columns: 1fr; }
+      .suggestion { min-height: 74px; }
+      .message { grid-template-columns: 30px minmax(0, 1fr); gap: 9px; }
+      .avatar { width: 30px; height: 30px; border-radius: 10px; font-size: 12px; }
+      .bubble { padding: 12px 13px; font-size: 14px; }
+      .composer { border-radius: 20px; }
+      textarea { font-size: 15px; }
+      .composer-footer { align-items: flex-start; flex-direction: column; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body class="dark">
+  <div id="root">
+    <div id="banner">HipoBuy - The cheapest, best and most reliable Chinese agent.&nbsp;<a href="https://hipobuy.com/register?inviteCode=QTYP3P8P5" target="_blank" rel="noopener noreferrer">Sign up today and get up to 40% off your shipping fee →</a></div>
+
+    <nav>
+      <a href="index.html?noPopup=1" class="nav-logo">repscentral</a>
+      <div class="nav-links">
+        <a href="spreadsheet.html" class="nav-link">Spreadsheet</a>
+        <a href="quality-checks.html" class="nav-link">Quality Checks</a>
+        <a href="link-converter.html" class="nav-link">Link Converter</a>
+        <a href="ai.html" class="nav-link active">AI Assistant</a>
+        <a href="index.html" class="nav-link">Tutorial</a>
+      </div>
+      <details class="mobile-nav">
+        <summary aria-label="Open navigation"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></summary>
+        <div class="mobile-nav-menu"><a href="spreadsheet.html">Spreadsheet</a><a href="quality-checks.html">Quality Checks</a><a href="link-converter.html">Link Converter</a><a href="ai.html">AI Assistant</a><a href="index.html">Tutorial</a></div>
+      </details>
+      <button class="nav-theme" id="theme-btn" type="button" onclick="toggleTheme()" aria-label="Toggle colour theme">
+        <svg id="theme-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <span id="theme-label">Light</span>
+      </button>
+    </nav>
+
+    <main>
+      <section class="ai-shell" aria-label="RepsCentral AI assistant">
+        <div class="hero" id="hero">
+          <div class="hero-inner">
+            <div class="eyebrow"><span class="eyebrow-dot"></span> AI assistant frontend</div>
+            <h1>What can <span class="gradient-text">RepsCentral AI</span> help with?</h1>
+            <p class="hero-copy">Ask about items, sizing, QC checks, agents, links, shipping prep, or anything you want the assistant to explain. API wiring is ready to be connected next.</p>
+            <div class="suggestions" id="suggestions">
+              <button class="suggestion" type="button" data-prompt="Help me find the best summer outfit from the spreadsheet."><span>☀️</span><strong>Build an outfit</strong><small>Find items by vibe, season and budget.</small></button>
+              <button class="suggestion" type="button" data-prompt="Explain how to check QCs before buying an item."><span>🔍</span><strong>Explain QCs</strong><small>Break down what to look for in photos.</small></button>
+              <button class="suggestion" type="button" data-prompt="Convert and explain a Weidian, Taobao or 1688 product link."><span>🔗</span><strong>Link help</strong><small>Guide users through product links.</small></button>
+              <button class="suggestion" type="button" data-prompt="Help me choose an agent and understand shipping costs."><span>📦</span><strong>Agent advice</strong><small>Answer buying and shipping questions.</small></button>
+            </div>
+          </div>
+        </div>
+
+        <section class="chat-panel" id="chat-panel" aria-live="polite">
+          <div class="messages" id="messages"></div>
+        </section>
+
+        <form class="composer-wrap" id="chat-form">
+          <div class="composer">
+            <div class="composer-top">
+              <textarea id="chat-input" rows="1" placeholder="Message RepsCentral AI..." autocomplete="off"></textarea>
+              <button class="send-btn" id="send-btn" type="submit" aria-label="Send message" disabled>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+              </button>
+            </div>
+            <div class="composer-footer">
+              <div class="model-pill"><span>●</span> API not connected yet</div>
+              <p>Frontend only. No messages are sent to a model until the backend endpoint is added.</p>
+            </div>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <footer>© 2026 repscentral. AI answers should be checked before buying or shipping.</footer>
+  </div>
+
+  <script>
+    let theme = localStorage.getItem('rc-theme') || 'dark';
+    function applyTheme() {
+      document.body.className = theme;
+      const label = document.getElementById('theme-label');
+      const icon = document.getElementById('theme-icon');
+      if (label) label.textContent = theme === 'dark' ? 'Light' : 'Dark';
+      if (icon) {
+        icon.innerHTML = theme === 'dark'
+          ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+          : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+      }
+    }
+    function toggleTheme() {
+      theme = theme === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('rc-theme', theme);
+      applyTheme();
+    }
+    applyTheme();
+
+    const form = document.getElementById('chat-form');
+    const input = document.getElementById('chat-input');
+    const send = document.getElementById('send-btn');
+    const messages = document.getElementById('messages');
+    const chatPanel = document.getElementById('chat-panel');
+    const hero = document.getElementById('hero');
+    const suggestions = document.getElementById('suggestions');
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function resizeInput() {
+      input.style.height = 'auto';
+      input.style.height = `${Math.min(input.scrollHeight, 170)}px`;
+      send.disabled = !input.value.trim();
+    }
+
+    function addMessage(role, html) {
+      chatPanel.classList.add('active');
+      hero.classList.add('compact');
+      const isUser = role === 'user';
+      messages.insertAdjacentHTML('beforeend', `
+        <article class="message ${isUser ? 'user-message' : 'assistant-message'}">
+          <div class="avatar ${isUser ? 'user' : ''}">${isUser ? 'You' : 'AI'}</div>
+          <div class="bubble">${html}</div>
+        </article>
+      `);
+      messages.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
+
+    function frontendReply() {
+      addMessage('assistant', `<strong>Frontend ready.</strong><br><span class="muted">This is where the live AI response will appear once your API route is connected. Suggested backend shape: send the message to a serverless endpoint like <strong>/api/ai</strong>, keep the API key server-side, then stream or return the assistant response here.</span>`);
+    }
+
+    function submitPrompt(value) {
+      const text = value.trim();
+      if (!text) return;
+      addMessage('user', escapeHtml(text));
+      input.value = '';
+      resizeInput();
+      window.setTimeout(frontendReply, 260);
+    }
+
+    input.addEventListener('input', resizeInput);
+    input.addEventListener('keydown', event => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        submitPrompt(input.value);
+      }
+    });
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      submitPrompt(input.value);
+    });
+    suggestions.addEventListener('click', event => {
+      const button = event.target.closest('[data-prompt]');
+      if (!button) return;
+      input.value = button.dataset.prompt;
+      resizeInput();
+      submitPrompt(input.value);
+    });
+  </script>
+  <script type="module">
+    import('./site-analytics.js?v=2026-06-30-ai-page-1');
+  </script>
+</body>
+</html>
