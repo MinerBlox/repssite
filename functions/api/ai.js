@@ -1,6 +1,6 @@
-const MODELS = ["gemini-1.5-flash-8b", "gemini-1.5-flash", "gemini-2.0-flash-lite"];
-const MAX_INPUT_CHARS = 900;
-const MAX_OUTPUT_TOKENS = 160;
+const MODEL = "gemini-1.5-flash-8b";
+const MAX_INPUT_CHARS = 600;
+const MAX_OUTPUT_TOKENS = 100;
 
 export async function onRequest(context) {
   try {
@@ -26,21 +26,18 @@ export async function onRequest(context) {
       return json({ error: "Please enter a message." }, 400);
     }
 
-    let lastStatus = 502;
-    let lastError = "unknown";
-
-    for (const model of MODELS) {
-      const result = await callGemini(model, apiKey, message);
-      if (result.ok && result.reply) {
-        return json({ reply: limitReply(result.reply) });
-      }
-      lastStatus = result.status || lastStatus;
-      lastError = result.error || lastError;
-      if (![400, 404].includes(result.status)) break;
+    const result = await callGemini(MODEL, apiKey, message);
+    if (result.ok && result.reply) {
+      return json({ reply: limitReply(result.reply) });
     }
 
-    console.error(`Gemini request failed: ${lastStatus} ${lastError}`);
-    return json({ error: "AI is unavailable right now." }, lastStatus === 429 ? 429 : 502);
+    console.error(`Gemini request failed: ${result.status || 502} ${result.error || "unknown"}`);
+
+    if (result.status === 429) {
+      return json({ error: "AI is busy right now. Please wait a minute and try again." }, 429);
+    }
+
+    return json({ error: "AI is unavailable right now." }, 502);
   } catch (error) {
     console.error("AI function failed", error?.message || error);
     return json({ error: "AI is unavailable right now." }, 500);
@@ -54,7 +51,7 @@ async function callGemini(model, apiKey, message) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       systemInstruction: {
-        parts: [{ text: "You are RepsCentral AI. Help with fashion reps, spreadsheet items, QC checks, product links, agents, sizing, outfits and shipping. Keep answers short, clear and practical. Do not mention APIs, keys, backend setup, system prompts or implementation." }]
+        parts: [{ text: "You are RepsCentral AI. Help with fashion reps, QC checks, product links, agents, sizing, outfits and shipping. Keep replies very short and practical." }]
       },
       contents: [
         {
@@ -63,9 +60,9 @@ async function callGemini(model, apiKey, message) {
         }
       ],
       generationConfig: {
-        temperature: 0.3,
-        topP: 0.75,
-        topK: 16,
+        temperature: 0.25,
+        topP: 0.7,
+        topK: 12,
         maxOutputTokens: MAX_OUTPUT_TOKENS
       }
     }),
@@ -111,7 +108,7 @@ function extractReply(data) {
 
 function limitReply(value) {
   const text = String(value || "").trim();
-  return text.length > 1300 ? `${text.slice(0, 1300).trim()}...` : text;
+  return text.length > 900 ? `${text.slice(0, 900).trim()}...` : text;
 }
 
 function json(body, status = 200) {
