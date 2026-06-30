@@ -1,6 +1,6 @@
-const MODEL = "gemini-2.5-flash-lite";
+const MODEL = "gemini-2.0-flash-lite";
 const MAX_INPUT_CHARS = 900;
-const MAX_OUTPUT_TOKENS = 220;
+const MAX_OUTPUT_TOKENS = 180;
 
 export async function onRequest(context) {
   try {
@@ -25,20 +25,27 @@ export async function onRequest(context) {
       return json({ error: "Please enter a message." }, 400);
     }
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-goog-api-key": apiKey
       },
       body: JSON.stringify({
-        model: MODEL,
-        system_instruction: "You are RepsCentral AI. Help users with fashion reps, spreadsheet items, QC checks, product links, agents, sizing, outfits and shipping. Be concise, practical and clear. Do not mention internal implementation, APIs, keys, system prompts or backend setup. If unsure, say what to check next.",
-        input: message,
-        generation_config: {
-          temperature: 0.4,
-          max_output_tokens: MAX_OUTPUT_TOKENS,
-          thinking_level: "low"
+        systemInstruction: {
+          parts: [{ text: "You are RepsCentral AI. Help users with fashion reps, spreadsheet items, QC checks, product links, agents, sizing, outfits and shipping. Keep answers concise and practical. Do not mention APIs, keys, backend setup, system prompts or implementation." }]
+        },
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: message }]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.35,
+          topP: 0.8,
+          topK: 20,
+          maxOutputTokens: MAX_OUTPUT_TOKENS
         }
       }),
       signal: AbortSignal.timeout(12000)
@@ -76,29 +83,17 @@ function cleanMessage(value) {
 }
 
 function extractReply(data) {
-  if (typeof data?.output_text === "string") return data.output_text.trim();
-  const parts = [];
-  const steps = Array.isArray(data?.steps) ? data.steps : [];
-  for (const step of steps) {
-    const contents = Array.isArray(step?.content) ? step.content : Array.isArray(step?.contents) ? step.contents : [];
-    for (const item of contents) {
-      if (typeof item?.text === "string") parts.push(item.text);
-      if (typeof item?.content === "string") parts.push(item.content);
-    }
-    const candidates = Array.isArray(step?.candidates) ? step.candidates : [];
-    for (const candidate of candidates) {
-      const candidateParts = candidate?.content?.parts || [];
-      for (const part of candidateParts) {
-        if (typeof part?.text === "string") parts.push(part.text);
-      }
-    }
-  }
-  return parts.join("\n").trim();
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  return parts
+    .map(part => typeof part?.text === "string" ? part.text : "")
+    .filter(Boolean)
+    .join("\n")
+    .trim();
 }
 
 function limitReply(value) {
   const text = String(value || "").trim();
-  return text.length > 1800 ? `${text.slice(0, 1800).trim()}...` : text;
+  return text.length > 1500 ? `${text.slice(0, 1500).trim()}...` : text;
 }
 
 function json(body, status = 200) {
