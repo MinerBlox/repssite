@@ -1,4 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { enableAppCheck } from "./firebase-app-check.js?v=2026-06-30-app-check-1";
 import { getFirestore, collection, doc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -12,6 +13,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+enableAppCheck(app);
 const db = getFirestore(app);
 const root = document.getElementById("app");
 window.__rcQcData = { sources: [], entries: [] };
