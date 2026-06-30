@@ -506,11 +506,11 @@ function visibleProductCount(target) {
   return Math.max(1, capacity - 1);
 }
 
-function renderProductRow(target, items, moreCount) {
+function renderProductRow(target, items, moreCount, backgroundOverride) {
   if (!target) return;
   const count = Math.min(items.length, visibleProductCount(target));
   const remaining = moreCount ?? Math.max(0, items.length - count);
-  const backgroundItem = items[count] || items[items.length - 1];
+  const backgroundItem = backgroundOverride || items[count] || items[items.length - 1];
   target.innerHTML = items.slice(0, count).map(productCard).join("") + moreProductCard(remaining, backgroundItem);
 }
 
@@ -545,19 +545,24 @@ function buildProductRows(items) {
   return { picks, seasons };
 }
 
+let sharedMoreCardBackground = null;
+
 function renderSeasonProducts(items, seasonName) {
   window.activeSeason = seasonName;
   document.querySelectorAll(".season-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.season === seasonName));
   const rows = buildProductRows(items);
-  renderProductRow(document.getElementById("season-grid"), rows.seasons[seasonName] || items);
+  renderProductRow(document.getElementById("season-grid"), rows.seasons[seasonName] || items, undefined, sharedMoreCardBackground);
 }
 
 function renderProductRows(items) {
   const rows = buildProductRows(items);
-  renderProductRow(document.getElementById("our-picks-grid"), rows.picks, items.length);
+  const picksTarget = document.getElementById("our-picks-grid");
+  const picksVisibleCount = picksTarget ? Math.min(rows.picks.length, visibleProductCount(picksTarget)) : 0;
+  sharedMoreCardBackground = rows.picks[picksVisibleCount] || rows.picks[rows.picks.length - 1] || null;
+  renderProductRow(picksTarget, rows.picks, items.length, sharedMoreCardBackground);
   window.activeSeason = window.activeSeason || "summer";
   document.querySelectorAll(".season-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.season === window.activeSeason));
-  renderProductRow(document.getElementById("season-grid"), rows.seasons[window.activeSeason] || items);
+  renderProductRow(document.getElementById("season-grid"), rows.seasons[window.activeSeason] || items, undefined, sharedMoreCardBackground);
 }
 
 function renderHomeProducts(items, popularity = new Map()) {
