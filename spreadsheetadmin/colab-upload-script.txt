@@ -1,0 +1,143 @@
+!pip install firebase-admin requests
+
+import base64
+import mimetypes
+import re
+import time
+import requests
+from getpass import getpass
+from google.colab import files
+import firebase_admin
+from firebase_admin import credentials, firestore
+
+# --- CONFIG ---
+
+GITHUB_REPO = "MinerBlox/repssite"
+GITHUB_BRANCH = "main"
+IMAGE_ROOT_FOLDER = "productimages"
+
+GITHUB_TOKEN = getpass("Paste your GitHub token: ")
+
+print("Upload your Firebase service account JSON file:")
+uploaded_service = files.upload()
+service_account_file = next(iter(uploaded_service.keys()))
+
+cred = credentials.Certificate(service_account_file)
+
+if not firebase_admin._apps:
+    firebase_admin.initialize_app(cred)
+
+db = firestore.client()
+
+
+def slugify(value):
+    value = value.strip().lower()
+    value = re.sub(r"[^a-z0-9\s-]", "", value)
+    value = re.sub(r"\s+", "-", value)
+    value = re.sub(r"-+", "-", value)
+    return value.strip("-")
+
+
+def upload_image_to_github(local_filename, repo_path):
+    with open(local_filename, "rb") as f:
+        encoded_content = base64.b64encode(f.read()).decode("utf-8")
+
+    url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{repo_path}"
+
+    headers = {
+        "Authorization": f"Bearer {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github+json"
+    }
+
+    payload = {
+        "message": f"Upload product image: {repo_path}",
+        "content": encoded_content,
+        "branch": GITHUB_BRANCH
+    }
+
+    response = requests.put(url, headers=headers, json=payload)
+
+    if response.status_code not in [200, 201]:
+        raise Exception(f"GitHub upload failed: {response.status_code}\n{response.text}")
+
+    return f"https://raw.githubusercontent.com/{GITHUB_REPO}/{GITHUB_BRANCH}/{repo_path}"
+
+
+# --- ENDLESS ITEM INPUT LOOP ---
+
+while True:
+    print("\n------------------------------")
+    print("Add a new product")
+    print("Type 'q', 'quit', or 'exit' as the item name to stop.")
+    print("------------------------------\n")
+
+    item_name = input("Item name: ").strip()
+
+    if item_name.lower() in ["q", "quit", "exit"]:
+        print("Stopped.")
+        break
+
+    agent_link = input("Agent link: ").strip()
+
+    while True:
+        try:
+            yuan_price = float(input("Price in yuan: ").strip())
+            break
+        except ValueError:
+            print("Please enter a valid number for the yuan price.")
+
+    item_slug = slugify(item_name)
+
+    if not item_slug:
+        print("Invalid item name. Try again.")
+        continue
+
+    print("Upload item image:")
+    uploaded_image = files.upload()
+
+    if not uploaded_image:
+        print("No image uploaded. Starting this item again.")
+        continue
+
+    image_filename = next(iter(uploaded_image.keys()))
+
+    mime_type, _ = mimetypes.guess_type(image_filename)
+    extension = mimetypes.guess_extension(mime_type or "") or ""
+
+    if not extension:
+        extension = "." + image_filename.split(".")[-1].lower()
+
+    github_image_filename = f"{item_slug}-image{extension}"
+    github_image_path = f"{IMAGE_ROOT_FOLDER}/{item_slug}/{github_image_filename}"
+
+    try:
+        image_url = upload_image_to_github(image_filename, github_image_path)
+
+        product_data = {
+            "name": item_name,
+            "price": yuan_price,
+            "currency": "CNY",
+            "category": "",
+            "badge": "",
+            "imageUrl": image_url,
+            "productUrl": "",
+            "agentUrl": agent_link,
+            "description": "",
+            "tags": [],
+            "isActive": True,
+            "sortOrder": int(time.time()),
+            "createdAt": firestore.SERVER_TIMESTAMP,
+            "updatedAt": firestore.SERVER_TIMESTAMP
+        }
+
+        db.collection("products").document(item_slug).set(product_data)
+
+        print("\nDone.")
+        print(f"Product document ID: {item_slug}")
+        print(f"Image URL: {image_url}")
+        print("\nReady for the next product.")
+
+    except Exception as e:
+        print("\nSomething went wrong with this item:")
+        print(e)
+        print("\nStarting again.")
