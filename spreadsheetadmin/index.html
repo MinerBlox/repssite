@@ -26,7 +26,7 @@
     .field { display: grid; gap: 7px; }
     label { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
     input, textarea, select { width: 100%; border: 1px solid var(--border); border-radius: 10px; background: #0e0e11; color: #f1f1f3; padding: 10px 11px; outline: none; }
-    textarea { min-height: 84px; resize: vertical; }
+    textarea { min-height: 96px; resize: vertical; white-space: pre-wrap; }
     input:focus, textarea:focus, select:focus { border-color: rgba(77,166,255,0.7); box-shadow: 0 0 0 3px rgba(77,166,255,0.12); }
     .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 14px; border-radius: 10px; background: var(--surface3); color: #fff; font-weight: 800; font-size: 13px; }
     .btn.primary { background: var(--blue); }
@@ -48,6 +48,8 @@
     .row .field { flex: 1; }
     .category-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
     .chip { display: inline-flex; align-items: center; min-height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface2); color: #d8d8dd; font-size: 12px; font-weight: 800; }
+    .script-actions { display: grid; gap: 10px; }
+    .script-actions .btn { width: 100%; }
     .tools { display: flex; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
     .list-controls { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; }
     .search { width: min(300px, 100%); }
@@ -76,12 +78,11 @@
     .span-3 { grid-column: span 3; }
     .span-4 { grid-column: span 4; }
     .span-6 { grid-column: span 6; }
-    .span-8 { grid-column: span 8; }
     .span-12 { grid-column: span 12; }
     .toggle-line { display: flex; align-items: center; gap: 10px; height: 42px; }
     .toggle-line input { width: 18px; height: 18px; }
     .empty { padding: 42px 18px; text-align: center; color: var(--muted); border: 1px dashed var(--border); border-radius: 14px; }
-    @media (max-width: 980px) { .admin-grid { grid-template-columns: 1fr; } .product-fields { grid-template-columns: 1fr; } .span-2, .span-3, .span-4, .span-6, .span-8, .span-12 { grid-column: span 1; } }
+    @media (max-width: 980px) { .admin-grid { grid-template-columns: 1fr; } .product-fields { grid-template-columns: 1fr; } .span-2, .span-3, .span-4, .span-6, .span-12 { grid-column: span 1; } }
     @media (max-width: 640px) { main { padding: 14px; } .topbar { padding: 10px 14px; } .status-pill { display: none; } .panel { padding: 12px; } .list-controls, .search, .sort { width: 100%; } .product-head { grid-template-columns: 42px minmax(0, 1fr) auto 14px; gap: 9px; padding: 7px 9px; } .thumb, .thumb-empty { width: 42px; height: 42px; } .interaction-count span { display: none; } }
   </style>
 </head>
@@ -92,14 +93,8 @@
       <h1>Admin</h1>
       <p class="muted" style="margin:10px 0 18px;">Sign in with the Firebase Authentication user you created.</p>
       <div class="stack">
-        <div class="field">
-          <label for="email-input">Email</label>
-          <input id="email-input" type="email" autocomplete="username" autofocus required>
-        </div>
-        <div class="field">
-          <label for="password-input">Password</label>
-          <input id="password-input" type="password" autocomplete="current-password" required>
-        </div>
+        <div class="field"><label for="email-input">Email</label><input id="email-input" type="email" autocomplete="username" autofocus required></div>
+        <div class="field"><label for="password-input">Password</label><input id="password-input" type="password" autocomplete="current-password" required></div>
       </div>
       <button class="btn primary" type="submit" id="login-btn">Sign In</button>
       <div class="login-error" id="login-error"></div>
@@ -108,69 +103,26 @@
 
   <section class="admin-shell" id="admin-view">
     <header class="topbar">
-      <div class="topbar-left">
-        <a class="brand" href="/spreadsheet.html">repscentral admin</a>
-        <div class="status-pill"><span class="dot"></span><span id="global-status">Checking login</span></div>
-      </div>
+      <div class="topbar-left"><a class="brand" href="/spreadsheet.html">repscentral admin</a><div class="status-pill"><span class="dot"></span><span id="global-status">Checking login</span></div></div>
       <button class="btn" type="button" id="lock-btn">Sign Out</button>
     </header>
 
     <main>
       <div class="admin-grid">
         <aside class="panel stack">
-          <div>
-            <h2>Categories</h2>
-            <p class="muted">Add category names here. They instantly appear in every product dropdown.</p>
-          </div>
-          <form class="row" id="category-form">
-            <div class="field">
-              <label for="category-input">New Category</label>
-              <input id="category-input" placeholder="e.g. Shoes">
-            </div>
-            <button class="btn primary" type="submit">Add</button>
-          </form>
+          <div><h2>Categories</h2><p class="muted">Add category names here. They instantly appear in every product dropdown.</p></div>
+          <form class="row" id="category-form"><div class="field"><label for="category-input">New Category</label><input id="category-input" placeholder="e.g. Shoes"></div><button class="btn primary" type="submit">Add</button></form>
           <div class="category-list" id="category-list"></div>
-
           <div style="height:1px;background:var(--border);margin:4px 0;"></div>
-
-          <div>
-            <h2>New Item</h2>
-            <p class="muted">Creates a Firebase product using the slug version of the name.</p>
+          <div><h2>Colab Uploader</h2><p class="muted">Use this to add new items through Google Colab instead of the old left-side item form.</p></div>
+          <div class="script-actions">
+            <button class="btn primary" type="button" id="copy-script-btn">COPY SCRIPT</button>
+            <a class="btn" href="https://colab.research.google.com/" target="_blank" rel="noopener noreferrer">OPEN GOOGLE COLAB</a>
           </div>
-          <form class="stack" id="create-form">
-            <div class="field"><label for="new-name">Name</label><input id="new-name" placeholder="Product name"></div>
-            <div class="row">
-              <div class="field"><label for="new-price">Yuan Price</label><input id="new-price" type="number" step="0.01" min="0" placeholder="0"></div>
-              <div class="field"><label for="new-category">Category</label><select id="new-category"></select></div>
-            </div>
-            <div class="field"><label for="new-brand">Brand</label><select id="new-brand"><option value="">Blank</option><option value="Mertra">Mertra</option><option value="Ralph Lauren">Ralph Lauren</option><option value="Nike">Nike</option></select></div>
-            <div class="field"><label for="new-image">Image URL</label><input id="new-image" placeholder="https://..."></div>
-            <div class="field"><label for="new-agent">Agent URL</label><input id="new-agent" placeholder="https://..."></div>
-            <button class="btn primary" type="submit">Create Item</button>
-          </form>
         </aside>
 
         <section class="panel">
-          <div class="tools">
-            <div>
-              <h2>Spreadsheet Items</h2>
-              <p class="muted">Changes autosave after you stop typing.</p>
-            </div>
-            <div class="list-controls">
-              <div class="field search"><label for="search-input">Search</label><input id="search-input" placeholder="Search item name or category"></div>
-              <div class="field sort">
-                <label for="sort-input">Sort</label>
-                <select id="sort-input">
-                  <option value="default">Spreadsheet order</option>
-                  <option value="alphabetical">Alphabetically</option>
-                  <option value="most-interacted">Most interacted</option>
-                  <option value="least-interacted">Least interacted</option>
-                  <option value="cheapest">Cheapest</option>
-                  <option value="most-expensive">Most expensive</option>
-                </select>
-              </div>
-            </div>
-          </div>
+          <div class="tools"><div><h2>Spreadsheet Items</h2><p class="muted">Changes autosave after you stop typing. Descriptions are saved exactly as typed.</p></div><div class="list-controls"><div class="field search"><label for="search-input">Search</label><input id="search-input" placeholder="Search item name or category"></div><div class="field sort"><label for="sort-input">Sort</label><select id="sort-input"><option value="default">Spreadsheet order</option><option value="alphabetical">Alphabetically</option><option value="most-interacted">Most interacted</option><option value="least-interacted">Least interacted</option><option value="cheapest">Cheapest</option><option value="most-expensive">Most expensive</option></select></div></div></div>
           <div class="products" id="products-list"></div>
         </section>
       </div>
@@ -179,26 +131,18 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { enableAppCheck } from "../firebase-app-check.js?v=2026-06-30-app-check-1";
+    import { enableAppCheck } from "../firebase-app-check.js?v=2026-06-30-app-check-1";
     import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-    import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+    import { getFirestore, collection, doc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA",
-      authDomain: "reps-central.firebaseapp.com",
-      projectId: "reps-central",
-      storageBucket: "reps-central.firebasestorage.app",
-      messagingSenderId: "812299387060",
-      appId: "1:812299387060:web:1c93d1e7bf30b05653d7e1",
-      measurementId: "G-8T7F9F1FZ9"
-    };
-
+    const firebaseConfig = { apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA", authDomain: "reps-central.firebaseapp.com", projectId: "reps-central", storageBucket: "reps-central.firebasestorage.app", messagingSenderId: "812299387060", appId: "1:812299387060:web:1c93d1e7bf30b05653d7e1", measurementId: "G-8T7F9F1FZ9" };
     const defaultCategories = ["Shoes", "Hoodies", "T-Shirts", "Pants", "Jackets", "Hats", "Socks", "Accessories", "Bags", "Watches", "Jewellery", "Other"];
     const brandOptions = ["", "Mertra", "Ralph Lauren", "Nike"];
     const badgeOptions = ["", "best", "budget", "new", "popular"];
     const ADMIN_UID = "3jC9pWkF5ZeHIDtd1LrPR1Ptvbz1";
+
     const app = initializeApp(firebaseConfig);
-enableAppCheck(app);
+    enableAppCheck(app);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
@@ -212,10 +156,9 @@ enableAppCheck(app);
     const categoryList = document.getElementById("category-list");
     const categoryForm = document.getElementById("category-form");
     const categoryInput = document.getElementById("category-input");
-    const createForm = document.getElementById("create-form");
     const searchInput = document.getElementById("search-input");
-    const newCategory = document.getElementById("new-category");
     const sortInput = document.getElementById("sort-input");
+    const copyScriptBtn = document.getElementById("copy-script-btn");
 
     let products = [];
     let categories = [...defaultCategories];
@@ -223,310 +166,46 @@ enableAppCheck(app);
     let hasLoaded = false;
     let productInteractions = new Map();
 
-    function slugify(value) {
-      return String(value || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    }
-
-    function escapeHtml(value) {
-      return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    }
-
-    function categoryOptions(selected) {
-      return [`<option value="">Blank</option>`, ...categories.map(category => `<option value="${escapeHtml(category)}" ${category === selected ? "selected" : ""}>${escapeHtml(category)}</option>`)].join("");
-    }
-
-    function badgeSelect(selected) {
-      return badgeOptions.map(badge => `<option value="${badge}" ${badge === (selected || "") ? "selected" : ""}>${badge || "Blank"}</option>`).join("");
-    }
-
-    function brandSelect(selected) {
-      return brandOptions.map(brand => `<option value="${escapeHtml(brand)}" ${brand === (selected || "") ? "selected" : ""}>${brand || "Blank"}</option>`).join("");
-    }
-
+    function slugify(value) { return String(value || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""); }
+    function escapeHtml(value) { return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+    function categoryOptions(selected) { return [`<option value="">Blank</option>`, ...categories.map(category => `<option value="${escapeHtml(category)}" ${category === selected ? "selected" : ""}>${escapeHtml(category)}</option>`)].join(""); }
+    function badgeSelect(selected) { return badgeOptions.map(badge => `<option value="${badge}" ${badge === (selected || "") ? "selected" : ""}>${badge || "Blank"}</option>`).join(""); }
+    function brandSelect(selected) { return brandOptions.map(brand => `<option value="${escapeHtml(brand)}" ${brand === (selected || "") ? "selected" : ""}>${brand || "Blank"}</option>`).join(""); }
     function setStatus(text) { globalStatus.textContent = text; }
-
-    function productStatus(id, text, className) {
-      const node = document.querySelector(`[data-save-state="${CSS.escape(id)}"]`);
-      if (!node) return;
-      node.textContent = text;
-      node.className = `save-state ${className || ""}`;
-    }
-
-    function normalizeProduct(raw) {
-      return {
-        name: raw.name || "",
-        price: Number(raw.price || 0),
-        category: raw.category || "",
-        brand: raw.brand || "",
-        badge: raw.badge || "",
-        imageUrl: raw.imageUrl || "",
-        productUrl: raw.productUrl || "",
-        agentUrl: raw.agentUrl || "",
-        description: raw.description || "",
-        tags: Array.isArray(raw.tags) ? raw.tags : String(raw.tags || "").split(",").map(tag => tag.trim()).filter(Boolean),
-        isActive: raw.isActive !== false,
-        isOurPick: raw.isOurPick === true,
-        sortOrder: Number(raw.sortOrder || 0)
-      };
-    }
-
-    function productFromCard(card) {
-      return normalizeProduct({
-        name: card.querySelector('[data-field="name"]').value,
-        price: card.querySelector('[data-field="price"]').value,
-        category: card.querySelector('[data-field="category"]').value,
-        brand: card.querySelector('[data-field="brand"]').value,
-        badge: card.querySelector('[data-field="badge"]').value,
-        imageUrl: card.querySelector('[data-field="imageUrl"]').value,
-        productUrl: card.querySelector('[data-field="productUrl"]').value,
-        agentUrl: card.querySelector('[data-field="agentUrl"]').value,
-        description: card.querySelector('[data-field="description"]').value,
-        tags: card.querySelector('[data-field="tags"]').value,
-        isActive: card.querySelector('[data-field="isActive"]').checked,
-        isOurPick: card.querySelector('[data-field="isOurPick"]').checked,
-        sortOrder: card.querySelector('[data-field="sortOrder"]').value
-      });
-    }
-
-    function renderCategories() {
-      categories = [...new Set(categories.filter(Boolean))].sort((a, b) => a.localeCompare(b));
-      categoryList.innerHTML = categories.map(category => `<span class="chip">${escapeHtml(category)}</span>`).join("");
-      newCategory.innerHTML = categoryOptions("");
-      document.querySelectorAll('[data-field="category"]').forEach(select => {
-        const value = select.value;
-        select.innerHTML = categoryOptions(value);
-        select.value = value;
-      });
-    }
-
-    function interactionCount(id) {
-      return Number(productInteractions.get(id) || 0);
-    }
-
-    function sortedProducts(items) {
-      const sorted = [...items];
-      const mode = sortInput.value;
-      if (mode === "alphabetical") sorted.sort((a, b) => a.name.localeCompare(b.name));
-      else if (mode === "most-interacted") sorted.sort((a, b) => interactionCount(b.id) - interactionCount(a.id) || a.name.localeCompare(b.name));
-      else if (mode === "least-interacted") sorted.sort((a, b) => interactionCount(a.id) - interactionCount(b.id) || a.name.localeCompare(b.name));
-      else if (mode === "cheapest") sorted.sort((a, b) => Number(a.price) - Number(b.price) || a.name.localeCompare(b.name));
-      else if (mode === "most-expensive") sorted.sort((a, b) => Number(b.price) - Number(a.price) || a.name.localeCompare(b.name));
-      else sorted.sort((a, b) => Number(a.sortOrder) - Number(b.sortOrder));
-      return sorted;
-    }
+    function productStatus(id, text, className) { const node = document.querySelector(`[data-save-state="${CSS.escape(id)}"]`); if (!node) return; node.textContent = text; node.className = `save-state ${className || ""}`; }
+    function normalizeProduct(raw) { return { name: raw.name || "", price: Number(raw.price || 0), category: raw.category || "", brand: raw.brand || "", badge: raw.badge || "", imageUrl: raw.imageUrl || "", productUrl: raw.productUrl || "", agentUrl: raw.agentUrl || "", description: raw.description || "", tags: Array.isArray(raw.tags) ? raw.tags : String(raw.tags || "").split(",").map(tag => tag.trim()).filter(Boolean), isActive: raw.isActive !== false, isOurPick: raw.isOurPick === true, sortOrder: Number(raw.sortOrder || 0) }; }
+    function productFromCard(card) { return normalizeProduct({ name: card.querySelector('[data-field="name"]').value, price: card.querySelector('[data-field="price"]').value, category: card.querySelector('[data-field="category"]').value, brand: card.querySelector('[data-field="brand"]').value, badge: card.querySelector('[data-field="badge"]').value, imageUrl: card.querySelector('[data-field="imageUrl"]').value, productUrl: card.querySelector('[data-field="productUrl"]').value, agentUrl: card.querySelector('[data-field="agentUrl"]').value, description: card.querySelector('[data-field="description"]').value, tags: card.querySelector('[data-field="tags"]').value, isActive: card.querySelector('[data-field="isActive"]').checked, isOurPick: card.querySelector('[data-field="isOurPick"]').checked, sortOrder: card.querySelector('[data-field="sortOrder"]').value }); }
+    function renderCategories() { categories = [...new Set(categories.filter(Boolean))].sort((a, b) => a.localeCompare(b)); categoryList.innerHTML = categories.map(category => `<span class="chip">${escapeHtml(category)}</span>`).join(""); document.querySelectorAll('[data-field="category"]').forEach(select => { const value = select.value; select.innerHTML = categoryOptions(value); select.value = value; }); }
+    function interactionCount(id) { return Number(productInteractions.get(id) || 0); }
+    function sortedProducts(items) { const sorted = [...items]; const mode = sortInput.value; if (mode === "alphabetical") sorted.sort((a, b) => a.name.localeCompare(b.name)); else if (mode === "most-interacted") sorted.sort((a, b) => interactionCount(b.id) - interactionCount(a.id) || a.name.localeCompare(b.name)); else if (mode === "least-interacted") sorted.sort((a, b) => interactionCount(a.id) - interactionCount(b.id) || a.name.localeCompare(b.name)); else if (mode === "cheapest") sorted.sort((a, b) => Number(a.price) - Number(b.price) || a.name.localeCompare(b.name)); else if (mode === "most-expensive") sorted.sort((a, b) => Number(b.price) - Number(a.price) || a.name.localeCompare(b.name)); else sorted.sort((a, b) => Number(a.sortOrder) - Number(b.sortOrder)); return sorted; }
 
     function renderProducts() {
       const openIds = new Set([...productsList.querySelectorAll("details[open][data-product-id]")].map(item => item.dataset.productId));
       const search = searchInput.value.trim().toLowerCase();
-      const filtered = products.filter(item => `${item.name} ${item.category} ${item.brand} ${item.id}`.toLowerCase().includes(search));
-      const sorted = sortedProducts(filtered);
-      if (!sorted.length) {
-        productsList.innerHTML = `<div class="empty">No products found.</div>`;
-        return;
-      }
-
+      const sorted = sortedProducts(products.filter(item => `${item.name} ${item.category} ${item.brand} ${item.id}`.toLowerCase().includes(search)));
+      if (!sorted.length) { productsList.innerHTML = `<div class="empty">No products found.</div>`; return; }
       productsList.innerHTML = sorted.map(item => {
         const thumb = item.imageUrl ? `<img class="thumb" src="${escapeHtml(item.imageUrl)}" alt="">` : `<div class="thumb-empty">No image</div>`;
-        return `
-          <details class="product-card" data-product-id="${escapeHtml(item.id)}" ${openIds.has(item.id) ? "open" : ""}>
-            <summary class="product-head">
-              ${thumb}
-              <div>
-                <div class="product-title">${escapeHtml(item.name || "Unnamed item")}</div>
-                <div class="product-meta">${escapeHtml(item.category || "Uncategorised")}</div>
-              </div>
-              <div class="interaction-count">${interactionCount(item.id).toLocaleString()}<span>Interactions</span></div>
-              <span class="expand-icon" aria-hidden="true">⌄</span>
-            </summary>
-            <div class="expanded-status"><div class="save-state saved" data-save-state="${escapeHtml(item.id)}">Saved</div></div>
-            <div class="product-fields">
-              <div class="field span-3"><label>Name</label><input data-field="name" value="${escapeHtml(item.name)}"></div>
-              <div class="field span-2"><label>Price</label><input data-field="price" type="number" step="0.01" min="0" value="${Number(item.price || 0)}"></div>
-              <div class="field span-2"><label>Category</label><select data-field="category">${categoryOptions(item.category)}</select></div>
-              <div class="field span-3"><label>Brand</label><select data-field="brand">${brandSelect(item.brand)}</select></div>
-              <div class="field span-2"><label>Badge</label><select data-field="badge">${badgeSelect(item.badge)}</select></div>
-              <div class="field span-6"><label>Image URL</label><input data-field="imageUrl" value="${escapeHtml(item.imageUrl)}"></div>
-              <div class="field span-6"><label>Agent URL</label><input data-field="agentUrl" value="${escapeHtml(item.agentUrl)}"></div>
-              <div class="field span-6"><label>Product URL</label><input data-field="productUrl" value="${escapeHtml(item.productUrl)}"></div>
-              <div class="field span-2"><label>Sort Order</label><input data-field="sortOrder" type="number" step="1" value="${Number(item.sortOrder || 0)}"></div>
-              <label class="toggle-line span-4"><input data-field="isActive" type="checkbox" ${item.isActive !== false ? "checked" : ""}> Active on site</label>
-              <label class="toggle-line span-4"><input data-field="isOurPick" type="checkbox" ${item.isOurPick === true ? "checked" : ""}> Show in Our Picks</label>
-              <div class="field span-4"><label>Tags, comma separated</label><input data-field="tags" value="${escapeHtml((item.tags || []).join(", "))}"></div>
-              <div class="field span-12"><label>Description</label><textarea data-field="description">${escapeHtml(item.description)}</textarea></div>
-              <div class="span-12"><button class="btn danger" type="button" data-delete>Delete item</button></div>
-            </div>
-          </details>
-        `;
+        return `<details class="product-card" data-product-id="${escapeHtml(item.id)}" ${openIds.has(item.id) ? "open" : ""}><summary class="product-head">${thumb}<div><div class="product-title">${escapeHtml(item.name || "Unnamed item")}</div><div class="product-meta">${escapeHtml(item.category || "Uncategorised")}</div></div><div class="interaction-count">${interactionCount(item.id).toLocaleString()}<span>Interactions</span></div><span class="expand-icon" aria-hidden="true">⌄</span></summary><div class="expanded-status"><div class="save-state saved" data-save-state="${escapeHtml(item.id)}">Saved</div></div><div class="product-fields"><div class="field span-3"><label>Name</label><input data-field="name" value="${escapeHtml(item.name)}"></div><div class="field span-2"><label>Price</label><input data-field="price" type="number" step="0.01" min="0" value="${Number(item.price || 0)}"></div><div class="field span-2"><label>Category</label><select data-field="category">${categoryOptions(item.category)}</select></div><div class="field span-3"><label>Brand</label><select data-field="brand">${brandSelect(item.brand)}</select></div><div class="field span-2"><label>Badge</label><select data-field="badge">${badgeSelect(item.badge)}</select></div><div class="field span-6"><label>Image URL</label><input data-field="imageUrl" value="${escapeHtml(item.imageUrl)}"></div><div class="field span-6"><label>Agent URL</label><input data-field="agentUrl" value="${escapeHtml(item.agentUrl)}"></div><div class="field span-6"><label>Product URL</label><input data-field="productUrl" value="${escapeHtml(item.productUrl)}"></div><div class="field span-2"><label>Sort Order</label><input data-field="sortOrder" type="number" step="1" value="${Number(item.sortOrder || 0)}"></div><label class="toggle-line span-4"><input data-field="isActive" type="checkbox" ${item.isActive !== false ? "checked" : ""}> Active on site</label><label class="toggle-line span-4"><input data-field="isOurPick" type="checkbox" ${item.isOurPick === true ? "checked" : ""}> Show in Our Picks</label><div class="field span-4"><label>Tags, comma separated</label><input data-field="tags" value="${escapeHtml((item.tags || []).join(", "))}"></div><div class="field span-12"><label>Description</label><textarea data-field="description">${escapeHtml(item.description)}</textarea></div><div class="span-12"><button class="btn danger" type="button" data-delete>Delete item</button></div></div></details>`;
       }).join("");
     }
 
-    function queueSave(card) {
-      const id = card.dataset.productId;
-      productStatus(id, "Saving...", "saving");
-      clearTimeout(saveTimers.get(id));
-      saveTimers.set(id, setTimeout(async () => {
-        try {
-          const data = productFromCard(card);
-          await updateDoc(doc(db, "products", id), { ...data, updatedAt: serverTimestamp() });
-          const index = products.findIndex(item => item.id === id);
-          if (index >= 0) products[index] = { id, ...data };
-          productStatus(id, "Saved", "saved");
-        } catch (error) {
-          productStatus(id, "Error", "error");
-          setStatus("Save failed - check Firestore rules");
-        }
-      }, 550));
-    }
+    function queueSave(card) { const id = card.dataset.productId; productStatus(id, "Saving...", "saving"); clearTimeout(saveTimers.get(id)); saveTimers.set(id, setTimeout(async () => { try { const data = productFromCard(card); await updateDoc(doc(db, "products", id), { ...data, updatedAt: serverTimestamp() }); const index = products.findIndex(item => item.id === id); if (index >= 0) products[index] = { id, ...data }; productStatus(id, "Saved", "saved"); } catch { productStatus(id, "Error", "error"); setStatus("Save failed - check Firestore rules"); } }, 550)); }
+    async function loadCategories() { try { const snapshot = await getDocs(collection(db, "categories")); categories = [...defaultCategories, ...snapshot.docs.map(categoryDoc => categoryDoc.data().name || categoryDoc.id)]; } catch { categories = [...defaultCategories]; } renderCategories(); }
+    async function loadProducts() { setStatus("Loading products"); const [snapshot, interactionsSnapshot] = await Promise.all([getDocs(collection(db, "products")), getDocs(collection(db, "analyticsProducts"))]); productInteractions = new Map(interactionsSnapshot.docs.map(statsDoc => [statsDoc.id, Number(statsDoc.data().totalInteractions || 0)])); products = snapshot.docs.map(productDoc => ({ id: productDoc.id, ...normalizeProduct(productDoc.data()) })); renderProducts(); setStatus(`${products.length} products loaded`); }
+    async function unlock(user) { if (user.uid !== ADMIN_UID) { loginError.textContent = "This account is not authorised for admin access."; await signOut(auth); return; } loginView.style.display = "none"; adminView.style.display = "block"; setStatus(`Signed in as ${user.email}`); if (!hasLoaded) { hasLoaded = true; await loadCategories(); await loadProducts(); } }
+    function lock() { adminView.style.display = "none"; loginView.style.display = "grid"; loginButton.disabled = false; loginButton.textContent = "Sign In"; productsList.innerHTML = ""; hasLoaded = false; }
 
-    async function loadCategories() {
-      try {
-        const snapshot = await getDocs(collection(db, "categories"));
-        categories = [...defaultCategories, ...snapshot.docs.map(categoryDoc => categoryDoc.data().name || categoryDoc.id)];
-      } catch (error) {
-        categories = [...defaultCategories];
-      }
-      renderCategories();
-    }
-
-    async function loadProducts() {
-      setStatus("Loading products");
-      const [snapshot, interactionsSnapshot] = await Promise.all([
-        getDocs(collection(db, "products")),
-        getDocs(collection(db, "analyticsProducts"))
-      ]);
-      productInteractions = new Map(interactionsSnapshot.docs.map(statsDoc => [statsDoc.id, Number(statsDoc.data().totalInteractions || 0)]));
-      products = snapshot.docs.map(productDoc => ({ id: productDoc.id, ...normalizeProduct(productDoc.data()) }));
-      renderProducts();
-      setStatus(`${products.length} products loaded`);
-    }
-
-    async function unlock(user) {
-      if (user.uid !== ADMIN_UID) {
-        loginError.textContent = "This account is not authorised for admin access.";
-        await signOut(auth);
-        return;
-      }
-      loginView.style.display = "none";
-      adminView.style.display = "block";
-      setStatus(`Signed in as ${user.email}`);
-      if (!hasLoaded) {
-        hasLoaded = true;
-        await loadCategories();
-        await loadProducts();
-      }
-    }
-
-    function lock() {
-      adminView.style.display = "none";
-      loginView.style.display = "grid";
-      loginButton.disabled = false;
-      loginButton.textContent = "Sign In";
-      productsList.innerHTML = "";
-      hasLoaded = false;
-    }
-
-    loginForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      loginError.textContent = "";
-      loginButton.disabled = true;
-      loginButton.textContent = "Signing in...";
-      try {
-        const email = document.getElementById("email-input").value.trim();
-        const password = document.getElementById("password-input").value;
-        await signInWithEmailAndPassword(auth, email, password);
-      } catch (error) {
-        loginError.textContent = "Login failed. Check the email and password.";
-        loginButton.disabled = false;
-        loginButton.textContent = "Sign In";
-      }
-    });
-
+    loginForm.addEventListener("submit", async event => { event.preventDefault(); loginError.textContent = ""; loginButton.disabled = true; loginButton.textContent = "Signing in..."; try { await signInWithEmailAndPassword(auth, document.getElementById("email-input").value.trim(), document.getElementById("password-input").value); } catch { loginError.textContent = "Login failed. Check the email and password."; loginButton.disabled = false; loginButton.textContent = "Sign In"; } });
     document.getElementById("lock-btn").addEventListener("click", () => signOut(auth));
-
-    categoryForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      const name = categoryInput.value.trim();
-      if (!name) return;
-      categories.push(name);
-      renderCategories();
-      categoryInput.value = "";
-      try {
-        await setDoc(doc(db, "categories", slugify(name)), { name, updatedAt: serverTimestamp() });
-        setStatus("Category saved");
-      } catch (error) {
-        setStatus("Category added locally - Firestore write failed");
-      }
-    });
-
-    createForm.addEventListener("submit", async event => {
-      event.preventDefault();
-      const name = document.getElementById("new-name").value.trim();
-      if (!name) return;
-      const id = slugify(name);
-      if (!id) {
-        setStatus("Create failed - use a name containing letters or numbers");
-        return;
-      }
-      try {
-        const existingProduct = await getDoc(doc(db, "products", id));
-        if (existingProduct.exists()) {
-          setStatus("Create stopped - an item with this slug already exists");
-          return;
-        }
-        const data = normalizeProduct({
-          name,
-          price: document.getElementById("new-price").value,
-          category: document.getElementById("new-category").value,
-          brand: document.getElementById("new-brand").value,
-          imageUrl: document.getElementById("new-image").value.trim(),
-          agentUrl: document.getElementById("new-agent").value.trim(),
-          isActive: true,
-          sortOrder: products.length + 1
-        });
-        await setDoc(doc(db, "products", id), { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-        products.push({ id, ...data });
-        products.sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
-        createForm.reset();
-        renderProducts();
-        setStatus("Item created");
-      } catch (error) {
-        setStatus("Create failed - check Firestore rules");
-      }
-    });
-
-    productsList.addEventListener("input", event => {
-      const card = event.target.closest("[data-product-id]");
-      if (card) queueSave(card);
-    });
-
-    productsList.addEventListener("change", event => {
-      const card = event.target.closest("[data-product-id]");
-      if (card) queueSave(card);
-    });
-
-    productsList.addEventListener("click", async event => {
-      const button = event.target.closest("[data-delete]");
-      if (!button) return;
-      const card = button.closest("[data-product-id]");
-      const id = card.dataset.productId;
-      if (!window.confirm(`Delete ${id}?`)) return;
-      try {
-        await deleteDoc(doc(db, "products", id));
-        products = products.filter(item => item.id !== id);
-        renderProducts();
-        setStatus("Item deleted");
-      } catch (error) {
-        setStatus("Delete failed - check Firestore rules");
-      }
-    });
-
+    categoryForm.addEventListener("submit", async event => { event.preventDefault(); const name = categoryInput.value.trim(); if (!name) return; categories.push(name); renderCategories(); categoryInput.value = ""; try { await setDoc(doc(db, "categories", slugify(name)), { name, updatedAt: serverTimestamp() }); setStatus("Category saved"); } catch { setStatus("Category added locally - Firestore write failed"); } });
+    copyScriptBtn.addEventListener("click", async () => { try { const response = await fetch("./colab-upload-script.txt", { cache: "no-store" }); if (!response.ok) throw new Error("Could not load script"); const script = await response.text(); await navigator.clipboard.writeText(script); copyScriptBtn.textContent = "COPIED"; setStatus("Colab script copied"); setTimeout(() => { copyScriptBtn.textContent = "COPY SCRIPT"; }, 1400); } catch { setStatus("Copy failed - open colab-upload-script.txt manually"); } });
+    productsList.addEventListener("input", event => { const card = event.target.closest("[data-product-id]"); if (card) queueSave(card); });
+    productsList.addEventListener("change", event => { const card = event.target.closest("[data-product-id]"); if (card) queueSave(card); });
+    productsList.addEventListener("click", async event => { const button = event.target.closest("[data-delete]"); if (!button) return; const card = button.closest("[data-product-id]"); const id = card.dataset.productId; if (!window.confirm(`Delete ${id}?`)) return; try { await deleteDoc(doc(db, "products", id)); products = products.filter(item => item.id !== id); renderProducts(); setStatus("Item deleted"); } catch { setStatus("Delete failed - check Firestore rules"); } });
     searchInput.addEventListener("input", renderProducts);
     sortInput.addEventListener("change", renderProducts);
-
-    onAuthStateChanged(auth, user => {
-      if (user) unlock(user);
-      else lock();
-    });
+    onAuthStateChanged(auth, user => { if (user) unlock(user); else lock(); });
   </script>
 </body>
 </html>
