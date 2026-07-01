@@ -98,9 +98,6 @@
   </div>
   <script>
     window.rcBasePath = window.location.pathname.startsWith('/repssite/') ? '/repssite/' : '/';
-    document.querySelectorAll('[data-base-link]').forEach(function(link) { link.href = window.rcBasePath + link.datasetBaseLink; });
-  </script>
-  <script>
     document.querySelectorAll('[data-base-link]').forEach(function(link) { link.href = window.rcBasePath + link.dataset.baseLink; });
     var theme = localStorage.getItem('rc-theme') || 'dark';
     function applyTheme() { document.body.className = theme; var label = document.getElementById('theme-label'); if (label) label.textContent = theme === 'dark' ? 'Light' : 'Dark'; }
