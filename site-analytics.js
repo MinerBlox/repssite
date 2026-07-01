@@ -1,5 +1,5 @@
 import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { enableAppCheck } from "./firebase-app-check.js?v=2026-06-30-app-check-1";
+import { enableAppCheck } from "./firebase-app-check.js?v=2026-07-01-preview-skip";
 import {
   getFirestore,
   collection,
@@ -24,6 +24,7 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 enableAppCheck(app);
+
 const db = getFirestore(app);
 
 const HEARTBEAT_MS = 20000;
@@ -35,8 +36,10 @@ function ensureDefaultVisitorPreferences() {
       localStorage.setItem("rc-currency", "GBP");
 
       let attempts = 0;
+
       const applyCurrencyToOpenPicker = () => {
         const option = document.querySelector('[data-currency="GBP"]');
+
         if (option) {
           option.click();
           return;
@@ -49,7 +52,10 @@ function ensureDefaultVisitorPreferences() {
         if (pill) pill.textContent = "Currency: GBP";
 
         attempts += 1;
-        if (attempts < 20) window.setTimeout(applyCurrencyToOpenPicker, 50);
+
+        if (attempts < 20) {
+          window.setTimeout(applyCurrencyToOpenPicker, 50);
+        }
       };
 
       applyCurrencyToOpenPicker();
@@ -65,14 +71,37 @@ function basePath() {
 function pageDetails() {
   const path = window.location.pathname.replace(/\/+$/, "") || "/";
 
-  if (path === "/" || path.endsWith("/index.html")) return { id: "home", name: "Homepage" };
-  if (path.endsWith("/spreadsheet.html")) return { id: "spreadsheet", name: "Spreadsheet" };
-  if (path.endsWith("/quality-checks.html")) return { id: "quality-checks", name: "QC Viewer" };
-  if (path.endsWith("/link-converter.html")) return { id: "link-converter", name: "Link Converter" };
-  if (path.endsWith("/ai.html") || path.endsWith("/ai")) return { id: "ai", name: "AI Assistant" };
-  if (path.endsWith("/agents.html")) return { id: "agents", name: "Agents" };
-  if (path.includes("/items/")) return { id: "item-pages", name: "Item Pages" };
-  if (path.endsWith("/404.html")) return { id: "not-found", name: "404 Page" };
+  if (path === "/" || path.endsWith("/index.html")) {
+    return { id: "home", name: "Homepage" };
+  }
+
+  if (path.endsWith("/spreadsheet.html")) {
+    return { id: "spreadsheet", name: "Spreadsheet" };
+  }
+
+  if (path.endsWith("/quality-checks.html")) {
+    return { id: "quality-checks", name: "QC Viewer" };
+  }
+
+  if (path.endsWith("/link-converter.html")) {
+    return { id: "link-converter", name: "Link Converter" };
+  }
+
+  if (path.endsWith("/ai.html") || path.endsWith("/ai")) {
+    return { id: "ai", name: "AI Assistant" };
+  }
+
+  if (path.endsWith("/agents.html")) {
+    return { id: "agents", name: "Agents" };
+  }
+
+  if (path.includes("/items/")) {
+    return { id: "item-pages", name: "Item Pages" };
+  }
+
+  if (path.endsWith("/404.html")) {
+    return { id: "not-found", name: "404 Page" };
+  }
 
   return {
     id: path.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "other",
@@ -85,7 +114,10 @@ function visitorId() {
   let id = localStorage.getItem(key);
 
   if (!id) {
-    id = crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(36).slice(2);
+    id = crypto.randomUUID
+      ? crypto.randomUUID()
+      : Date.now() + "-" + Math.random().toString(36).slice(2);
+
     localStorage.setItem(key, id);
   }
 
@@ -117,18 +149,28 @@ function formatPrice(item) {
   const price = Number(item.price || 0);
   const currency = item.currency || "CNY";
   const symbol = currency === "CNY" ? "¥" : "$";
+
   return `${symbol}${price.toFixed(2)}`;
 }
 
 const page = pageDetails();
 const presenceRef = doc(db, "analyticsPresence", visitorId());
-const interactionFields = ["viewClicks", "copyClicks", "detailViews", "outboundClicks"];
+
+const interactionFields = [
+  "viewClicks",
+  "copyClicks",
+  "detailViews",
+  "outboundClicks"
+];
 
 async function trackProductInteraction(productId, interactionType) {
   if (!productId || !interactionFields.includes(interactionType)) return;
 
   const counters = Object.fromEntries(
-    interactionFields.map(field => [field, increment(field === interactionType ? 1 : 0)])
+    interactionFields.map(field => [
+      field,
+      increment(field === interactionType ? 1 : 0)
+    ])
   );
 
   await setDoc(doc(db, "analyticsProducts", String(productId)), {
@@ -176,19 +218,17 @@ async function recordVisit() {
 async function updateAllTimeHigh(currentLive) {
   try {
     const totalsRef = doc(db, "analyticsTotals", "summary");
-    const snapshot = await getDocs(collection(db, "analyticsPresence"));
-    const existingLive = snapshot.docs
-      .map(item => item.data())
-      .filter(item => {
-        const lastSeen = item.lastSeen?.toMillis?.() || 0;
-        return lastSeen >= Date.now() - PRESENCE_WINDOW_MS;
-      }).length;
+    const presenceSnapshot = await getDocs(collection(db, "analyticsPresence"));
 
-    const live = Math.max(currentLive, existingLive);
-    await setDoc(totalsRef, {
-      allTimeHighLiveCandidate: live,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
+    const live = Math.max(
+      currentLive,
+      presenceSnapshot.docs
+        .map(item => item.data())
+        .filter(item => {
+          const lastSeen = item.lastSeen?.toMillis?.() || 0;
+          return lastSeen >= Date.now() - PRESENCE_WINDOW_MS;
+        }).length
+    );
 
     const totalsSnapshot = await getDocs(collection(db, "analyticsTotals"));
     const summary = totalsSnapshot.docs.find(item => item.id === "summary")?.data() || {};
@@ -220,6 +260,7 @@ async function heartbeat() {
     }, { merge: true });
   } catch (error) {
     if (error?.code !== "permission-denied") throw error;
+
     await setDoc(presenceRef, presence, { merge: true });
   }
 
@@ -231,6 +272,7 @@ function installGlobalSearchStyles() {
 
   const style = document.createElement("style");
   style.id = "rc-global-search-style";
+
   style.textContent = `
     .rc-global-search-shell {
       position: relative;
@@ -245,6 +287,7 @@ function installGlobalSearchStyles() {
       background: var(--surface2, #18181c);
       color: var(--muted, #92929c);
     }
+
     .rc-global-search-shell input {
       width: 100%;
       min-width: 0;
@@ -255,9 +298,11 @@ function installGlobalSearchStyles() {
       font: inherit;
       font-size: 13px;
     }
+
     .rc-global-search-shell input::placeholder {
       color: var(--muted, #92929c);
     }
+
     .rc-global-search-shell kbd {
       flex: 0 0 auto;
       padding: 0 4px;
@@ -267,6 +312,7 @@ function installGlobalSearchStyles() {
       color: var(--muted, #92929c);
       font-size: 11px;
     }
+
     .nav-search-results {
       position: absolute;
       top: calc(100% + 9px);
@@ -279,14 +325,17 @@ function installGlobalSearchStyles() {
       background: var(--surface, #111114);
       box-shadow: 0 18px 42px rgba(0,0,0,0.34);
     }
+
     .nav-search-results[hidden] {
       display: none;
     }
+
     .nav-search-empty {
       padding: 14px;
       color: var(--muted, #92929c);
       font-size: 13px;
     }
+
     .nav-search-result {
       min-height: 58px;
       padding: 8px 10px;
@@ -297,13 +346,16 @@ function installGlobalSearchStyles() {
       border-bottom: 1px solid var(--border, #29292f);
       color: var(--text, #f1f1f3);
     }
+
     .nav-search-result:last-child {
       border-bottom: 0;
     }
+
     .nav-search-result:hover,
     .nav-search-result.active {
       background: var(--surface2, #18181c);
     }
+
     .nav-search-result img,
     .nav-search-thumb-empty {
       width: 42px;
@@ -312,11 +364,13 @@ function installGlobalSearchStyles() {
       object-fit: contain;
       background: var(--surface2, #18181c);
     }
+
     .nav-search-thumb-empty {
       display: grid;
       place-items: center;
       color: var(--muted, #92929c);
     }
+
     .nav-search-result-name {
       display: block;
       overflow: hidden;
@@ -325,12 +379,14 @@ function installGlobalSearchStyles() {
       font-size: 13px;
       font-weight: 800;
     }
+
     .nav-search-result-category {
       display: block;
       margin-top: 2px;
       color: var(--muted, #92929c);
       font-size: 11px;
     }
+
     .nav-search-result-price {
       color: #4da6ff;
       font-family: Arial, Helvetica, sans-serif;
@@ -338,6 +394,7 @@ function installGlobalSearchStyles() {
       font-weight: 800;
       font-variant-numeric: tabular-nums;
     }
+
     @media (max-width: 820px) {
       .rc-global-search-shell {
         display: none !important;
@@ -355,10 +412,12 @@ let globalSearchActiveIndex = -1;
 
 async function loadGlobalSearchItems() {
   if (globalSearchLoaded) return globalSearchItems;
+
   globalSearchLoaded = true;
 
   try {
     const snapshot = await getDocs(collection(db, "products"));
+
     globalSearchItems = snapshot.docs
       .map(productDoc => ({ id: productDoc.id, ...productDoc.data() }))
       .filter(item => item.isActive !== false)
@@ -384,6 +443,7 @@ function closeGlobalSearch(form) {
 function updateGlobalSearchActive(form) {
   form.querySelectorAll(".nav-search-result").forEach((result, index) => {
     const active = index === globalSearchActiveIndex;
+
     result.classList.toggle("active", active);
     result.setAttribute("aria-selected", String(active));
   });
@@ -408,6 +468,7 @@ async function renderGlobalSearch(form, query) {
   globalSearchMatches = items.filter(item => {
     const tags = Array.isArray(item.tags) ? item.tags.join(" ") : "";
     const searchable = `${item.name || ""} ${item.category || ""} ${tags}`.toLowerCase();
+
     return searchable.includes(normalized);
   }).slice(0, 7);
 
@@ -452,6 +513,7 @@ function setupSingleGlobalSearch(node) {
 
   form.dataset.rcGlobalSearchReady = "true";
   form.classList.add("rc-global-search-shell");
+
   form.innerHTML = `
     <input type="search" placeholder="Search..." autocomplete="off" aria-label="Search spreadsheet items" aria-expanded="false">
     <kbd>⌘K</kbd>
@@ -472,7 +534,11 @@ function setupSingleGlobalSearch(node) {
       }
 
       const query = input.value.trim();
-      if (query) window.location.href = `${basePath()}spreadsheet.html?search=${encodeURIComponent(query)}`;
+
+      if (query) {
+        window.location.href = `${basePath()}spreadsheet.html?search=${encodeURIComponent(query)}`;
+      }
+
       return;
     }
 
@@ -500,6 +566,10 @@ function setupSingleGlobalSearch(node) {
 }
 
 function installGlobalSearch() {
+  // Homepage already has its own search from home-products.js.
+  // Do not replace it here or both scripts fight over the same nav element.
+  if (page.id === "home") return;
+
   installGlobalSearchStyles();
 
   document.querySelectorAll(".nav-search").forEach(setupSingleGlobalSearch);
@@ -507,6 +577,7 @@ function installGlobalSearch() {
   document.addEventListener("keydown", event => {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
       const input = document.querySelector(".rc-global-search-shell input, #product-search-input");
+
       if (input) {
         event.preventDefault();
         input.focus();
@@ -522,57 +593,52 @@ function installGlobalSearch() {
 }
 
 function forceLeaderboardDescriptions() {
+  if (page.id !== "home") return;
+
   const apply = () => {
-    const selectors = [
-      ".podium-card .podium-desc",
-      ".podium-card .product-description",
-      ".podium-card p",
-      ".leaderboard-card .podium-desc",
-      ".leaderboard-card .product-description"
+    const cards = [
+      ...document.querySelectorAll(".podium-card"),
+      ...document.querySelectorAll(".leaderboard-card")
     ];
 
-    selectors.forEach(selector => {
-      document.querySelectorAll(selector).forEach((node, index) => {
-        const card = node.closest("[data-rank], .podium-card, .leaderboard-card");
-        let rank = Number(card?.dataset?.rank || 0);
+    cards.forEach((card, index) => {
+      const rank = Number(card.dataset?.rank || 0) || index + 1;
+      const description = card.querySelector(".podium-desc, .product-description");
 
-        if (!rank) {
-          const siblings = [...(card?.parentElement?.children || [])].filter(child =>
-            child.matches?.("[data-rank], .podium-card, .leaderboard-card")
-          );
-          rank = Math.max(1, siblings.indexOf(card) + 1 || index + 1);
-        }
+      if (!description) return;
 
-        node.textContent = `#${rank} most popular this week`;
-      });
+      const wanted = `#${rank} most popular this week`;
+
+      if (description.textContent.trim() !== wanted) {
+        description.textContent = wanted;
+      }
     });
   };
 
+  // Safe: no MutationObserver watching body. Just run a few times while products render.
   apply();
-
-  const targets = [
-    document.getElementById("podium-grid"),
-    document.getElementById("leaderboard"),
-    document.body
-  ].filter(Boolean);
-
-  targets.forEach(target => {
-    new MutationObserver(apply).observe(target, { childList: true, subtree: true });
-  });
+  window.setTimeout(apply, 250);
+  window.setTimeout(apply, 1000);
+  window.setTimeout(apply, 2500);
 }
 
 ensureDefaultVisitorPreferences();
+
 recordVisit().catch(() => {});
 heartbeat().catch(() => {});
 installGlobalSearch();
 forceLeaderboardDescriptions();
 
 const heartbeatTimer = window.setInterval(() => {
-  if (document.visibilityState === "visible") heartbeat().catch(() => {});
+  if (document.visibilityState === "visible") {
+    heartbeat().catch(() => {});
+  }
 }, HEARTBEAT_MS);
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") heartbeat().catch(() => {});
+  if (document.visibilityState === "visible") {
+    heartbeat().catch(() => {});
+  }
 });
 
 window.addEventListener("pagehide", () => {
