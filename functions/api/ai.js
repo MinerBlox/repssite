@@ -1,6 +1,12 @@
 const MODEL = "gemini-3.1-flash-lite";
 
-const SYSTEM_PROMPT = `You are RepsCentral AI. Only answer about RepsCentral site help, fashion finds, product quality checks, sizing, links, agents and shipping basics. Refuse unrelated requests. Keep replies short, practical and complete. Never end mid-sentence.`;
+const SYSTEM_PROMPT = `You are RepsCentral AI, a hyped and helpful rep community expert! 🐼 
+Keep replies short, actionable, and complete. Use emojis naturally (like 🔥, 📦, 👟) to stay lively.
+
+CRITICAL RULES:
+1. Only answer questions directly about RepsCentral site help, fashion finds, product quality checks, sizing, links, agents, and shipping basics. 
+2. If the user asks general tech questions, unrelated questions, or asks about your own AI model/architecture (e.g., "Is Gemini good?"), you MUST politely decline and pivot back to the site. Example: "I'm just an expert on reps and RepsCentral navigation! 🐼 Ask me about sizing, shipping, or QC checks! 🔥"
+3. Never end a response mid-sentence!`;
 
 const REPSCENTRAL_KNOWLEDGE = `
 RepsCentral knowledge:
@@ -68,7 +74,7 @@ const FOLLOW_UP_TERMS = [
   "them", "those", "they", "same", "ok", "okay"
 ];
 
-const OFF_TOPIC_REPLY = "I can only help with RepsCentral-related questions: fashion finds, QCs, agents, shipping, sizing, links and site help.";
+const OFF_TOPIC_REPLY = "I can only help with RepsCentral-related questions: fashion finds, QCs, agents, shipping, sizing, links and site help. 🐼🔥";
 
 export async function onRequest(context) {
   try {
@@ -128,22 +134,22 @@ function localAnswer(message) {
   const text = String(message || "").toLowerCase().trim();
 
   if (/^(hi|hello|hey|yo|hiya|sup|wassup|whats up|what's up)[!. ]*$/.test(text)) {
-    return "Hey — I can help with RepsCentral, QCs, links, sizing, shipping, agents and finding items.";
+    return "Hey! 👋 Welcome to RepsCentral! I can help with finds, QCs, links, sizing, shipping, agents, and navigation. What's on your mind? 🔥";
   }
 
   if ((text.includes("best") || text.includes("recommend") || text.includes("which")) && text.includes("agent")) {
-    return "**HipoBuy** is the agent RepsCentral recommends. Use the invite link for **25% off shipping**: https://hipobuy.com/register?inviteCode=QTYP3P8P5";
+    return "**HipoBuy** is the agent RepsCentral recommends right now! 🐼 Use our link for **25% off shipping** standard: https://hipobuy.com/register?inviteCode=QTYP3P8P5 📦✨";
   }
 
   if (text.includes("hipobuy") && (text.includes("why") || text.includes("good") || text.includes("use"))) {
-    return "HipoBuy is recommended because it gives **25% off shipping** with the RepsCentral invite link, has solid item handling, and makes it easy to request help/refunds if something goes wrong.";
+    return "HipoBuy is the go-to because you get **25% off shipping** using our invite link, their item handling is super clean, and refunds/support are seamless if a seller sends a bad batch! 🛡️✈️";
   }
 
   if (
     (text.includes("quality checks") || text.includes("quality check") || text.includes("qc") || text.includes("qcs")) &&
     (text.includes("upload") || text.includes("image") || text.includes("photo") || text.includes("put"))
   ) {
-    return "The **Quality Checks** page is for searching/viewing available QC photos. You do **not** upload images there. If a QC is missing, check again later while RepsCentral works on adding more.";
+    return "The **Quality Checks** page is for searching and viewing available QC photos. 📸 You do **not** upload images here! If a photo check is missing, stay patient while we work on updating more. 🐼⏳";
   }
 
   if (
@@ -151,7 +157,7 @@ function localAnswer(message) {
     (text.includes("quality checks") || text.includes("quality check") || text.includes("qc") || text.includes("qcs")) &&
     text.includes("page")
   ) {
-    return "The **Quality Checks** page lets you search and view available QC/item photos. It is not an upload page.";
+    return "The **Quality Checks** page lets you search and view available QC/item photos! 🔍👕 It is strictly for viewing available assets, not for uploads.";
   }
 
   if (
@@ -159,7 +165,7 @@ function localAnswer(message) {
     text.includes("spreadsheet") &&
     text.includes("page")
   ) {
-    return "The **Spreadsheet** page is where you browse RepsCentral's recommended items and open product links.";
+    return "The **Spreadsheet** page is where you browse RepsCentral's recommended items and open product links! 📈👟";
   }
 
   if (
@@ -167,7 +173,7 @@ function localAnswer(message) {
     (text.includes("link converter") || text.includes("converter")) &&
     text.includes("page")
   ) {
-    return "The **Link Converter** page converts supported product links into usable agent/platform links.";
+    return "The **Link Converter** page instantly converts supported product links into usable agent links! 🛠️🔗";
   }
 
   if (
@@ -175,7 +181,7 @@ function localAnswer(message) {
     (text.includes("ai") || text.includes("assistant")) &&
     text.includes("page")
   ) {
-    return "The **AI Assistant** page is this chat. It helps with RepsCentral, QCs, links, sizing, shipping, agents and finding items.";
+    return "The **AI Assistant** page is this exact chat! 🐼 I'm here to help with sizing, navigation, shipping, links, and agent setups! 🔥";
   }
 
   if (
@@ -183,7 +189,7 @@ function localAnswer(message) {
     (text.includes("tutorial") || text.includes("home")) &&
     text.includes("page")
   ) {
-    return "The **Home/Tutorial** page explains how to use RepsCentral and the basic buying process.";
+    return "The **Home/Tutorial** page walks you step-by-step through the entire process of how to buy reps securely! 📖🚀";
   }
 
   if (
@@ -191,11 +197,12 @@ function localAnswer(message) {
     (text.includes("pages") || text.includes("site"))
   ) {
     return [
-      "**Spreadsheet**: browse recommended items and product links.",
-      "**Quality Checks**: search/view available QC photos. No uploads.",
-      "**Link Converter**: convert supported product links.",
-      "**AI Assistant**: ask questions about RepsCentral, QCs, links, sizing, agents and shipping.",
-      "**Home/Tutorial**: learn how to use the site."
+      "Here is the layout! 🗺️✨",
+      "**Spreadsheet**: browse recommended items and product links. 📈",
+      "**Quality Checks**: search/view available QC photos. 📸",
+      "**Link Converter**: convert supported marketplace links. 🛠️",
+      "**AI Assistant**: ask your questions about sizing, agents, and shipping! 🐼",
+      "**Home/Tutorial**: learn the basic buying process step-by-step. 📖"
     ].join("\n");
   }
 
@@ -232,7 +239,7 @@ async function callGemini(model, apiKey, message, history) {
       },
       contents,
       generationConfig: {
-        temperature: 0.25,
+        temperature: 0.55,
         topP: 0.7,
         topK: 12,
         maxOutputTokens: MAX_OUTPUT_TOKENS
