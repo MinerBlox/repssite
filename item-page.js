@@ -41,7 +41,15 @@ function escapeHtml(value) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function formatDescriptionHtml(value) {
+  return escapeHtml(value || "No description has been added yet.")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\n/g, "<br>");
 }
 
 function safeHttpUrl(value) {
@@ -423,7 +431,7 @@ function renderProduct(item) {
         </div>
         <div class="detail-block">
           <div class="detail-label">Description</div>
-          <div class="description">${escapeHtml(description)}</div>
+          <div class="description">${formatDescriptionHtml(description)}</div>
         </div>
         <div class="actions">${agentButton}${productButton}</div>
       </aside>
