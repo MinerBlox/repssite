@@ -78,13 +78,17 @@ function escapeHtml(value) {
 
 const escapeAttr = escapeHtml;
 
-function safeImageUrl(value) {
+function safeUrl(value) {
   try {
     const url = new URL(String(value || ""), window.location.href);
     return url.protocol === "http:" || url.protocol === "https:" ? url.href : "";
   } catch {
     return "";
   }
+}
+
+function safeImageUrl(value) {
+  return safeUrl(value);
 }
 
 function productImage(item) {
@@ -102,6 +106,9 @@ function productHref(item) {
 
 function itemCard(item) {
   const href = productHref(item);
+  const agentUrl = safeUrl(item.agentUrl);
+  const agentHref = agentUrl || href;
+  const agentTarget = agentUrl ? ` target="_blank" rel="noopener noreferrer"` : "";
 
   return `
     <article class="product-card">
@@ -116,8 +123,8 @@ function itemCard(item) {
           <span class="product-category">${escapeHtml(item.category || "Unsorted")}</span>
         </div>
         <div class="product-actions">
-          <a href="${escapeAttr(href)}" class="product-btn primary" data-view-product="${escapeAttr(item.id)}">View Item</a>
-          <button class="product-btn" type="button" data-copy-url="${escapeAttr(href)}" data-copy-product="${escapeAttr(item.id)}">Copy Link</button>
+          <a href="${escapeAttr(agentHref)}" class="product-btn primary" data-agent-product="${escapeAttr(item.id)}"${agentTarget}>Agent Link</a>
+          <a href="${escapeAttr(href)}" class="product-btn" data-view-product="${escapeAttr(item.id)}">View Details →</a>
         </div>
       </div>
     </article>
@@ -305,11 +312,12 @@ document.getElementById("category-chips")?.addEventListener("click", event => {
 });
 
 document.getElementById("product-grid")?.addEventListener("click", event => {
-  const copyButton = event.target.closest("[data-copy-url]");
-  if (copyButton) {
-    copyProductLink(copyButton.dataset.copyUrl, copyButton.dataset.copyProduct);
+  const agentLink = event.target.closest("[data-agent-product]");
+  if (agentLink) {
+    window.rcTrackProductInteraction?.(agentLink.dataset.agentProduct, "outboundClicks");
     return;
   }
+
   const viewLink = event.target.closest("[data-view-product]");
   if (viewLink) window.rcTrackProductInteraction?.(viewLink.dataset.viewProduct, "viewClicks");
 });
@@ -326,4 +334,47 @@ spreadsheetSearchInput.addEventListener("input", event => {
   renderItems();
 });
 
+function installSpreadsheetActionPatchStyles() {
+  if (document.getElementById("spreadsheet-action-patch-styles")) return;
+
+  const style = document.createElement("style");
+  style.id = "spreadsheet-action-patch-styles";
+  style.textContent = `
+    .product-actions {
+      align-items: center !important;
+      gap: 14px !important;
+    }
+
+    .product-btn,
+    .product-btn.primary {
+      min-height: auto !important;
+      padding: 0 !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      justify-content: flex-start !important;
+      color: var(--muted) !important;
+      font-size: 12px !important;
+      font-weight: 800 !important;
+      line-height: 1.3 !important;
+      text-align: left !important;
+      transform: none !important;
+    }
+
+    .product-btn.primary {
+      color: var(--blue) !important;
+    }
+
+    .product-btn:hover,
+    .product-btn.primary:hover {
+      opacity: 0.72 !important;
+      transform: none !important;
+    }
+  `;
+
+  document.head.appendChild(style);
+}
+
+installSpreadsheetActionPatchStyles();
 loadProducts();
