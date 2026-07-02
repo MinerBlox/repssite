@@ -16,21 +16,18 @@ export async function onRequest(context) {
   const aiHref = aiHrefFromPath(new URL(context.request.url).pathname);
 
   return new HTMLRewriter()
-    .on('.nav-links', {
-      element(element) {
-        element.append(`<a href="${aiHref}" class="nav-link">AI Assistant</a>`, { html: true });
-      }
-    })
-    .on('.mobile-nav-menu', {
-      element(element) {
-        element.append(`<a href="${aiHref}">AI Assistant</a>`, { html: true });
-      }
-    })
     .on('body', {
       element(element) {
         element.append(`
 <style>
+  .product-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
   .product-actions .product-btn.primary {
+    width: 100% !important;
     min-height: 38px !important;
     padding: 0 13px !important;
     border: 1px solid transparent !important;
@@ -47,7 +44,8 @@ export async function onRequest(context) {
     text-align: center !important;
   }
   .product-actions .product-btn:not(.primary) {
-    min-height: auto !important;
+    width: 100% !important;
+    min-height: 38px !important;
     padding: 0 !important;
     border: 0 !important;
     border-radius: 0 !important;
@@ -56,22 +54,53 @@ export async function onRequest(context) {
     box-shadow: none !important;
     display: inline-flex !important;
     align-items: center !important;
-    justify-content: flex-start !important;
+    justify-content: center !important;
     font-size: 12px !important;
     font-weight: 800 !important;
     line-height: 1.3 !important;
+    text-align: center !important;
   }
 </style>
 <script>
 (function () {
   var aiHref = ${JSON.stringify(aiHref)};
 
+  function normalizeHref(value) {
+    try {
+      return new URL(value, window.location.href).pathname.replace(/\/+$/, '');
+    } catch (error) {
+      return String(value || '').replace(/\/+$/, '');
+    }
+  }
+
+  function removeDuplicateAiLinks(container) {
+    if (!container) return;
+
+    var aiLinks = Array.prototype.slice.call(container.querySelectorAll('a')).filter(function (link) {
+      var href = link.getAttribute('href') || '';
+      var text = (link.textContent || '').trim().toLowerCase();
+      return text === 'ai assistant' || normalizeHref(href).endsWith('/ai') || normalizeHref(href).endsWith('/ai.html');
+    });
+
+    aiLinks.forEach(function (link, index) {
+      if (index > 0) link.remove();
+    });
+  }
+
   function hasAiLink(container) {
-    return !!container.querySelector('a[href$="ai.html"], a[href$="/ai"], a[href="' + aiHref + '"]');
+    if (!container) return false;
+    return Array.prototype.slice.call(container.querySelectorAll('a')).some(function (link) {
+      var href = link.getAttribute('href') || '';
+      var text = (link.textContent || '').trim().toLowerCase();
+      return text === 'ai assistant' || normalizeHref(href).endsWith('/ai') || normalizeHref(href).endsWith('/ai.html');
+    });
   }
 
   function insertAiLink(container, mobile) {
-    if (!container || hasAiLink(container)) return;
+    if (!container) return;
+
+    removeDuplicateAiLinks(container);
+    if (hasAiLink(container)) return;
 
     var link = document.createElement('a');
     link.href = aiHref;
@@ -126,7 +155,10 @@ export async function onRequest(context) {
     }
 
     var grid = document.getElementById('tools-grid');
-    if (!grid || grid.querySelector('a[href$="ai.html"], a[href="' + aiHref + '"]')) return;
+    if (!grid) return;
+
+    var existingAi = grid.querySelector('a[href$="ai.html"], a[href="' + aiHref + '"]');
+    if (existingAi) return;
 
     var cards = Array.prototype.slice.call(grid.querySelectorAll('.tool-card'));
     var comingSoon = cards.find(function (card) {
@@ -154,6 +186,7 @@ export async function onRequest(context) {
   setTimeout(runPatch, 250);
   setTimeout(runPatch, 1000);
   setTimeout(runPatch, 2500);
+  setTimeout(runPatch, 5000);
 })();
 </script>
         `, { html: true });
