@@ -1,64 +1,108 @@
+function aiHrefFromPath(pathname) {
+  return pathname.startsWith('/repssite/') ? '/repssite/ai.html' : '/ai.html';
+}
+
+function isHtml(response) {
+  return (response.headers.get('content-type') || '').toLowerCase().includes('text/html');
+}
+
 export async function onRequest(context) {
   const response = await context.next();
-  const contentType = response.headers.get("content-type") || "";
 
-  if (!contentType.toLowerCase().includes("text/html")) {
+  if (!isHtml(response)) {
     return response;
   }
 
+  const aiHref = aiHrefFromPath(new URL(context.request.url).pathname);
+
   return new HTMLRewriter()
-    .on("body", {
+    .on('.nav-links', {
+      element(element) {
+        element.append(`<a href="${aiHref}" class="nav-link">AI Assistant</a>`, { html: true });
+      }
+    })
+    .on('.mobile-nav-menu', {
+      element(element) {
+        element.append(`<a href="${aiHref}">AI Assistant</a>`, { html: true });
+      }
+    })
+    .on('body', {
       element(element) {
         element.append(`
+<style>
+  .product-actions .product-btn.primary {
+    min-height: 38px !important;
+    padding: 0 13px !important;
+    border: 1px solid transparent !important;
+    border-radius: 9px !important;
+    background: var(--blue, #4da6ff) !important;
+    color: #fff !important;
+    box-shadow: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    text-align: center !important;
+  }
+  .product-actions .product-btn:not(.primary) {
+    min-height: auto !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: var(--muted, #888) !important;
+    box-shadow: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    line-height: 1.3 !important;
+  }
+</style>
 <script>
 (function () {
-  function basePath() {
-    return window.location.pathname.startsWith('/repssite/') ? '/repssite/' : '/';
-  }
-
-  function aiHref() {
-    return basePath() + 'ai.html';
-  }
+  var aiHref = ${JSON.stringify(aiHref)};
 
   function hasAiLink(container) {
-    return !!container.querySelector('a[href$="ai.html"], a[href$="/ai"], a[href="ai.html"]');
+    return !!container.querySelector('a[href$="ai.html"], a[href$="/ai"], a[href="' + aiHref + '"]');
   }
 
-  function makeAiLink(isMobile) {
-    var link = document.createElement('a');
-    link.href = aiHref();
-    link.textContent = 'AI Assistant';
-
-    if (!isMobile) {
-      link.className = 'nav-link' + (/\/ai(?:\.html)?\/?$/i.test(window.location.pathname) ? ' active' : '');
-    }
-
-    return link;
-  }
-
-  function insertAiLink(container, isMobile) {
+  function insertAiLink(container, mobile) {
     if (!container || hasAiLink(container)) return;
 
+    var link = document.createElement('a');
+    link.href = aiHref;
+    link.textContent = 'AI Assistant';
+    if (!mobile) link.className = 'nav-link';
+
     var links = Array.prototype.slice.call(container.querySelectorAll('a'));
-    var tutorial = links.find(function (link) {
-      var text = (link.textContent || '').toLowerCase();
-      var href = link.getAttribute('href') || '';
-      return text.includes('tutorial') || href.includes('index.html');
+    var tutorial = links.find(function (item) {
+      return /tutorial/i.test(item.textContent || '') || /index\.html/i.test(item.getAttribute('href') || '');
     });
 
-    var ai = makeAiLink(isMobile);
-
-    if (tutorial) container.insertBefore(ai, tutorial);
-    else container.appendChild(ai);
+    if (tutorial) container.insertBefore(link, tutorial);
+    else container.appendChild(link);
   }
 
   function patchNav() {
     document.querySelectorAll('.nav-links').forEach(function (nav) {
       insertAiLink(nav, false);
     });
-
     document.querySelectorAll('.mobile-nav-menu').forEach(function (menu) {
       insertAiLink(menu, true);
+    });
+  }
+
+  function patchSpreadsheetButtons() {
+    document.querySelectorAll('[data-agent-product]').forEach(function (link) {
+      link.textContent = 'Link';
+      link.classList.add('primary');
+    });
+    document.querySelectorAll('[data-view-product]').forEach(function (link) {
+      if (/view details/i.test(link.textContent || '')) link.textContent = 'View Details →';
     });
   }
 
@@ -70,11 +114,11 @@ export async function onRequest(context) {
     var badge = document.querySelector('.hero-badge');
     if (badge) {
       if (badge.tagName === 'A') {
-        badge.href = aiHref();
+        badge.href = aiHref;
         badge.textContent = '✦ NEW AI FEATURE';
       } else {
         var replacement = document.createElement('a');
-        replacement.href = aiHref();
+        replacement.href = aiHref;
         replacement.className = badge.className;
         replacement.textContent = '✦ NEW AI FEATURE';
         badge.replaceWith(replacement);
@@ -82,7 +126,7 @@ export async function onRequest(context) {
     }
 
     var grid = document.getElementById('tools-grid');
-    if (!grid || grid.querySelector('a[href$="ai.html"]')) return;
+    if (!grid || grid.querySelector('a[href$="ai.html"], a[href="' + aiHref + '"]')) return;
 
     var cards = Array.prototype.slice.call(grid.querySelectorAll('.tool-card'));
     var comingSoon = cards.find(function (card) {
@@ -93,7 +137,7 @@ export async function onRequest(context) {
     aiCard.className = 'tool-card';
     aiCard.style.background = 'var(--surface)';
     aiCard.style.border = '1px solid var(--border)';
-    aiCard.innerHTML = '<div class="tool-icon">🤖</div><div class="tool-name">AI Assistant</div><p class="tool-desc">Ask questions about items, sizing, QCs, links, agents and shipping.</p><a href="' + aiHref() + '" class="tool-btn">Open AI</a>';
+    aiCard.innerHTML = '<div class="tool-icon">🤖</div><div class="tool-name">AI Assistant</div><p class="tool-desc">Ask questions about items, sizing, QCs, links, agents and shipping.</p><a href="' + aiHref + '" class="tool-btn">Open AI</a>';
 
     if (comingSoon) comingSoon.replaceWith(aiCard);
     else grid.appendChild(aiCard);
@@ -101,18 +145,15 @@ export async function onRequest(context) {
 
   function runPatch() {
     patchNav();
+    patchSpreadsheetButtons();
     patchHomepageAiFeature();
   }
 
   runPatch();
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', runPatch, { once: true });
-  }
-
-  window.setTimeout(runPatch, 250);
-  window.setTimeout(runPatch, 1000);
-  window.setTimeout(runPatch, 2500);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', runPatch, { once: true });
+  setTimeout(runPatch, 250);
+  setTimeout(runPatch, 1000);
+  setTimeout(runPatch, 2500);
 })();
 </script>
         `, { html: true });
