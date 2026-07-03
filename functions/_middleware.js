@@ -21,16 +21,6 @@ export async function onRequest(context) {
         element.replace(`<a href="${aiHref}" class="hero-badge">✦ New AI Assistant Feature</a>`, { html: true });
       }
     })
-    .on('.nav-links', {
-      element(element) {
-        element.append(`<a href="${aiHref}" class="nav-link rc-ai-nav-link">AI Assistant</a>`, { html: true });
-      }
-    })
-    .on('.mobile-nav-menu', {
-      element(element) {
-        element.append(`<a href="${aiHref}" class="rc-ai-nav-link">AI Assistant</a>`, { html: true });
-      }
-    })
     .on('body', {
       element(element) {
         element.append(`
