@@ -31,9 +31,11 @@ export async function onRequest(context) {
 <script>
 (function(){
   var aiHref=${JSON.stringify(aiHref)};
-  function pathOf(href){try{return new URL(href,location.href).pathname.replace(/\\/+$/,'')}catch(e){return String(href||'').replace(/\\/+$/,'')}}
-  function isAi(a){var text=(a.textContent||'').trim().toLowerCase();var path=pathOf(a.getAttribute('href')||'');return text==='ai assistant'||path.endsWith('/ai')||path.endsWith('/ai.html')}
-  function findTutorial(container){return [].slice.call(container.querySelectorAll('a')).find(function(a){return /tutorial/i.test(a.textContent||'')||/index\\.html/i.test(a.getAttribute('href')||'')})}
+  function cleanPath(v){return String(v||'').split('?')[0].split('#')[0].replace(/\/$/,'')}
+  function currentIsAi(){var p=cleanPath(location.pathname);return p.slice(-3)==='/ai'||p.slice(-8)==='/ai.html'}
+  function pathOf(href){try{return cleanPath(new URL(href,location.href).pathname)}catch(e){return cleanPath(href)}}
+  function isAi(a){var text=(a.textContent||'').trim().toLowerCase();var path=pathOf(a.getAttribute('href')||'');return text==='ai assistant'||path.slice(-3)==='/ai'||path.slice(-8)==='/ai.html'}
+  function findTutorial(container){return [].slice.call(container.querySelectorAll('a')).find(function(a){return /tutorial/i.test(a.textContent||'')||/index\.html/i.test(a.getAttribute('href')||'')})}
   function placeAfterTutorial(container,link){var tutorial=findTutorial(container);if(tutorial&&tutorial.nextSibling!==link){tutorial.after(link)}else if(!tutorial&&link.parentNode!==container){container.appendChild(link)}}
   function patchContainer(container,mobile){
     if(!container)return;
@@ -42,7 +44,7 @@ export async function onRequest(context) {
     ai.forEach(function(a){if(a!==keep)a.remove()});
     if(!keep){keep=document.createElement('a')}
     keep.href=aiHref;keep.textContent='AI Assistant';
-    if(!mobile)keep.className='nav-link';
+    if(!mobile){keep.className='nav-link'+(currentIsAi()?' active':'')}
     placeAfterTutorial(container,keep);
   }
   function run(){
