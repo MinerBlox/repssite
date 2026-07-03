@@ -112,8 +112,9 @@ export async function onRequest(context) {
   function dedupeAiLinks(container) {
     if (!container) return;
     var aiLinks = Array.prototype.slice.call(container.querySelectorAll('a')).filter(isAiLink);
+    var keepIndex = aiLinks.length - 1;
     aiLinks.forEach(function (link, index) {
-      if (index > 0) link.remove();
+      if (index !== keepIndex) link.remove();
     });
   }
 
