@@ -21,6 +21,16 @@ export async function onRequest(context) {
         element.replace(`<a href="${aiHref}" class="hero-badge">✦ New AI Assistant Feature</a>`, { html: true });
       }
     })
+    .on('.nav-links', {
+      element(element) {
+        element.append(`<a href="${aiHref}" class="nav-link rc-ai-nav-link">AI Assistant</a>`, { html: true });
+      }
+    })
+    .on('.mobile-nav-menu', {
+      element(element) {
+        element.append(`<a href="${aiHref}" class="rc-ai-nav-link">AI Assistant</a>`, { html: true });
+      }
+    })
     .on('body', {
       element(element) {
         element.append(`
@@ -78,34 +88,33 @@ export async function onRequest(context) {
     }
   }
 
-  function removeDuplicateAiLinks(container) {
+  function isAiLink(link) {
+    var href = link.getAttribute('href') || '';
+    var text = (link.textContent || '').trim().toLowerCase();
+    var path = normalizeHref(href);
+    return text === 'ai assistant' || path.endsWith('/ai') || path.endsWith('/ai.html');
+  }
+
+  function dedupeAiLinks(container) {
     if (!container) return;
-
-    var aiLinks = Array.prototype.slice.call(container.querySelectorAll('a')).filter(function (link) {
-      var href = link.getAttribute('href') || '';
-      var text = (link.textContent || '').trim().toLowerCase();
-      return text === 'ai assistant' || normalizeHref(href).endsWith('/ai') || normalizeHref(href).endsWith('/ai.html');
-    });
-
+    var aiLinks = Array.prototype.slice.call(container.querySelectorAll('a')).filter(isAiLink);
     aiLinks.forEach(function (link, index) {
       if (index > 0) link.remove();
     });
   }
 
-  function hasAiLink(container) {
-    if (!container) return false;
-    return Array.prototype.slice.call(container.querySelectorAll('a')).some(function (link) {
-      var href = link.getAttribute('href') || '';
-      var text = (link.textContent || '').trim().toLowerCase();
-      return text === 'ai assistant' || normalizeHref(href).endsWith('/ai') || normalizeHref(href).endsWith('/ai.html');
-    });
-  }
-
-  function insertAiLink(container, mobile) {
+  function ensureAiLink(container, mobile) {
     if (!container) return;
 
-    removeDuplicateAiLinks(container);
-    if (hasAiLink(container)) return;
+    dedupeAiLinks(container);
+
+    var existing = Array.prototype.slice.call(container.querySelectorAll('a')).find(isAiLink);
+    if (existing) {
+      existing.href = aiHref;
+      existing.textContent = 'AI Assistant';
+      if (!mobile) existing.classList.add('nav-link');
+      return;
+    }
 
     var link = document.createElement('a');
     link.href = aiHref;
@@ -123,10 +132,10 @@ export async function onRequest(context) {
 
   function patchNav() {
     document.querySelectorAll('.nav-links').forEach(function (nav) {
-      insertAiLink(nav, false);
+      ensureAiLink(nav, false);
     });
     document.querySelectorAll('.mobile-nav-menu').forEach(function (menu) {
-      insertAiLink(menu, true);
+      ensureAiLink(menu, true);
     });
   }
 
