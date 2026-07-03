@@ -2,11 +2,6 @@ function aiHrefFromPath(pathname) {
   return pathname.startsWith('/repssite/') ? '/repssite/ai.html' : '/ai.html';
 }
 
-function isAiPagePath(pathname) {
-  const normalized = String(pathname || '').replace(/\/+$/, '');
-  return normalized.endsWith('/ai') || normalized.endsWith('/ai.html');
-}
-
 function isHtml(response) {
   return (response.headers.get('content-type') || '').toLowerCase().includes('text/html');
 }
@@ -20,7 +15,6 @@ export async function onRequest(context) {
 
   const pathname = new URL(context.request.url).pathname;
   const aiHref = aiHrefFromPath(pathname);
-  const isAiPage = isAiPagePath(pathname);
 
   let rewriter = new HTMLRewriter()
     .on('.hero-badge', {
@@ -30,27 +24,23 @@ export async function onRequest(context) {
           { html: true }
         );
       }
+    })
+    .on('.nav-links', {
+      element(element) {
+        element.append(
+          `<a href="${aiHref}" class="nav-link rc-ai-nav-link">AI Assistant</a>`,
+          { html: true }
+        );
+      }
+    })
+    .on('.mobile-nav-menu', {
+      element(element) {
+        element.append(
+          `<a href="${aiHref}" class="rc-ai-nav-link">AI Assistant</a>`,
+          { html: true }
+        );
+      }
     });
-
-  if (!isAiPage) {
-    rewriter = rewriter
-      .on('.nav-links', {
-        element(element) {
-          element.append(
-            `<a href="${aiHref}" class="nav-link rc-ai-nav-link">AI Assistant</a>`,
-            { html: true }
-          );
-        }
-      })
-      .on('.mobile-nav-menu', {
-        element(element) {
-          element.append(
-            `<a href="${aiHref}" class="rc-ai-nav-link">AI Assistant</a>`,
-            { html: true }
-          );
-        }
-      });
-  }
 
   rewriter = rewriter.on('body', {
     element(element) {
@@ -106,15 +96,10 @@ export async function onRequest(context) {
 
   function normalizeHref(value) {
     try {
-      return new URL(value, window.location.href).pathname.replace(/\\/+$/, '');
+      return new URL(value, window.location.href).pathname.replace(/\/+$/, '');
     } catch (error) {
-      return String(value || '').replace(/\\/+$/, '');
+      return String(value || '').replace(/\/+$/, '');
     }
-  }
-
-  function isAiPageNow() {
-    var normalized = window.location.pathname.replace(/\\/+$/, '');
-    return normalized.endsWith('/ai') || normalized.endsWith('/ai.html');
   }
 
   function isAiLink(link) {
@@ -122,15 +107,6 @@ export async function onRequest(context) {
     var text = (link.textContent || '').trim().toLowerCase();
     var path = normalizeHref(href);
     return text === 'ai assistant' || path.endsWith('/ai') || path.endsWith('/ai.html');
-  }
-
-  function removeAiLinks(container) {
-    if (!container) return;
-    Array.prototype.slice.call(container.querySelectorAll('a'))
-      .filter(isAiLink)
-      .forEach(function (link) {
-        link.remove();
-      });
   }
 
   function dedupeAiLinks(container) {
@@ -161,7 +137,7 @@ export async function onRequest(context) {
 
     var links = Array.prototype.slice.call(container.querySelectorAll('a'));
     var tutorial = links.find(function (item) {
-      return /tutorial/i.test(item.textContent || '') || /index\\.html/i.test(item.getAttribute('href') || '');
+      return /tutorial/i.test(item.textContent || '') || /index\.html/i.test(item.getAttribute('href') || '');
     });
 
     if (tutorial) container.insertBefore(link, tutorial);
@@ -169,22 +145,12 @@ export async function onRequest(context) {
   }
 
   function patchNav() {
-    var onAiPage = isAiPageNow();
-
     document.querySelectorAll('.nav-links').forEach(function (nav) {
-      if (onAiPage) {
-        removeAiLinks(nav);
-      } else {
-        ensureAiLink(nav, false);
-      }
+      ensureAiLink(nav, false);
     });
 
     document.querySelectorAll('.mobile-nav-menu').forEach(function (menu) {
-      if (onAiPage) {
-        removeAiLinks(menu);
-      } else {
-        ensureAiLink(menu, true);
-      }
+      ensureAiLink(menu, true);
     });
   }
 
@@ -202,7 +168,7 @@ export async function onRequest(context) {
   }
 
   function patchHomepageAiFeature() {
-    var path = window.location.pathname.replace(/\\/+$/, '') || '/';
+    var path = window.location.pathname.replace(/\/+$/, '') || '/';
     var isHome = path === '/' || path.endsWith('/index.html') || path.endsWith('/repssite');
     if (!isHome) return;
 
