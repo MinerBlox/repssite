@@ -33,13 +33,17 @@ export async function onRequest(context) {
   var aiHref=${JSON.stringify(aiHref)};
   function pathOf(href){try{return new URL(href,location.href).pathname.replace(/\\/+$/,'')}catch(e){return String(href||'').replace(/\\/+$/,'')}}
   function isAi(a){var text=(a.textContent||'').trim().toLowerCase();var path=pathOf(a.getAttribute('href')||'');return text==='ai assistant'||path.endsWith('/ai')||path.endsWith('/ai.html')}
+  function findTutorial(container){return [].slice.call(container.querySelectorAll('a')).find(function(a){return /tutorial/i.test(a.textContent||'')||/index\\.html/i.test(a.getAttribute('href')||'')})}
+  function placeAfterTutorial(container,link){var tutorial=findTutorial(container);if(tutorial&&tutorial.nextSibling!==link){tutorial.after(link)}else if(!tutorial&&link.parentNode!==container){container.appendChild(link)}}
   function patchContainer(container,mobile){
     if(!container)return;
     var ai=[].slice.call(container.querySelectorAll('a')).filter(isAi);
     var keep=ai[ai.length-1];
     ai.forEach(function(a){if(a!==keep)a.remove()});
-    if(keep){keep.href=aiHref;keep.textContent='AI Assistant';if(!mobile)keep.classList.add('nav-link');return;}
-    var link=document.createElement('a');link.href=aiHref;link.textContent='AI Assistant';if(!mobile)link.className='nav-link';container.appendChild(link);
+    if(!keep){keep=document.createElement('a')}
+    keep.href=aiHref;keep.textContent='AI Assistant';
+    if(!mobile)keep.className='nav-link';
+    placeAfterTutorial(container,keep);
   }
   function run(){
     document.querySelectorAll('.nav-links').forEach(function(n){patchContainer(n,false)});
