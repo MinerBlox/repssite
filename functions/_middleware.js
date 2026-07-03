@@ -16,6 +16,11 @@ export async function onRequest(context) {
   const aiHref = aiHrefFromPath(new URL(context.request.url).pathname);
 
   return new HTMLRewriter()
+    .on('.hero-badge', {
+      element(element) {
+        element.replace(`<a href="${aiHref}" class="hero-badge">✦ New AI Assistant Feature</a>`, { html: true });
+      }
+    })
     .on('body', {
       element(element) {
         element.append(`
@@ -142,37 +147,9 @@ export async function onRequest(context) {
 
     var badge = document.querySelector('.hero-badge');
     if (badge) {
-      if (badge.tagName === 'A') {
-        badge.href = aiHref;
-        badge.textContent = '✦ NEW AI FEATURE';
-      } else {
-        var replacement = document.createElement('a');
-        replacement.href = aiHref;
-        replacement.className = badge.className;
-        replacement.textContent = '✦ NEW AI FEATURE';
-        badge.replaceWith(replacement);
-      }
+      badge.href = aiHref;
+      badge.textContent = '✦ New AI Assistant Feature';
     }
-
-    var grid = document.getElementById('tools-grid');
-    if (!grid) return;
-
-    var existingAi = grid.querySelector('a[href$="ai.html"], a[href="' + aiHref + '"]');
-    if (existingAi) return;
-
-    var cards = Array.prototype.slice.call(grid.querySelectorAll('.tool-card'));
-    var comingSoon = cards.find(function (card) {
-      return /coming soon/i.test(card.textContent || '');
-    });
-
-    var aiCard = document.createElement('div');
-    aiCard.className = 'tool-card';
-    aiCard.style.background = 'var(--surface)';
-    aiCard.style.border = '1px solid var(--border)';
-    aiCard.innerHTML = '<div class="tool-icon">🤖</div><div class="tool-name">AI Assistant</div><p class="tool-desc">Ask questions about items, sizing, QCs, links, agents and shipping.</p><a href="' + aiHref + '" class="tool-btn">Open AI</a>';
-
-    if (comingSoon) comingSoon.replaceWith(aiCard);
-    else grid.appendChild(aiCard);
   }
 
   function runPatch() {
