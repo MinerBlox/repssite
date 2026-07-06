@@ -123,7 +123,7 @@ function itemCard(item) {
           <span class="product-category">${escapeHtml(item.category || "Unsorted")}</span>
         </div>
         <div class="product-actions">
-          <a href="${escapeAttr(agentHref)}" class="product-btn primary" data-agent-product="${escapeAttr(item.id)}"${agentTarget}>Agent Link</a>
+          <a href="${escapeAttr(agentHref)}" class="product-btn primary" data-agent-product="${escapeAttr(item.id)}"${agentTarget}>Link</a>
           <a href="${escapeAttr(href)}" class="product-btn" data-view-product="${escapeAttr(item.id)}">View Details →</a>
         </div>
       </div>
@@ -334,47 +334,4 @@ spreadsheetSearchInput.addEventListener("input", event => {
   renderItems();
 });
 
-function installSpreadsheetActionPatchStyles() {
-  if (document.getElementById("spreadsheet-action-patch-styles")) return;
-
-  const style = document.createElement("style");
-  style.id = "spreadsheet-action-patch-styles";
-  style.textContent = `
-    .product-actions {
-      align-items: center !important;
-      gap: 14px !important;
-    }
-
-    .product-btn,
-    .product-btn.primary {
-      min-height: auto !important;
-      padding: 0 !important;
-      border: 0 !important;
-      border-radius: 0 !important;
-      background: transparent !important;
-      box-shadow: none !important;
-      justify-content: flex-start !important;
-      color: var(--muted) !important;
-      font-size: 12px !important;
-      font-weight: 800 !important;
-      line-height: 1.3 !important;
-      text-align: left !important;
-      transform: none !important;
-    }
-
-    .product-btn.primary {
-      color: var(--blue) !important;
-    }
-
-    .product-btn:hover,
-    .product-btn.primary:hover {
-      opacity: 0.72 !important;
-      transform: none !important;
-    }
-  `;
-
-  document.head.appendChild(style);
-}
-
-installSpreadsheetActionPatchStyles();
 loadProducts();
