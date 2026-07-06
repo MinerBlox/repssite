@@ -487,6 +487,163 @@
       background: var(--surface2);
     }
 
+
+    .transcripts-panel {
+      margin-bottom: 28px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .transcripts-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 17px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .transcripts-head h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 17px;
+    }
+
+    .transcripts-count {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .transcripts-list {
+      display: grid;
+    }
+
+    .transcript-row {
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      padding: 15px 18px;
+      border-bottom: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .transcript-row:last-child { border-bottom: 0; }
+    .transcript-row:hover { background: var(--surface2); }
+
+    .transcript-preview {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .transcript-meta {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .transcript-arrow {
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .transcripts-empty {
+      padding: 28px 18px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .transcript-dialog {
+      width: min(760px, calc(100% - 32px));
+      max-height: min(760px, calc(100dvh - 48px));
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--bg);
+      color: var(--text);
+      box-shadow: 0 26px 80px rgba(0,0,0,0.45);
+      overflow: hidden;
+    }
+
+    .transcript-dialog::backdrop {
+      background: rgba(0,0,0,0.72);
+      backdrop-filter: blur(7px);
+    }
+
+    .transcript-dialog-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 17px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .transcript-dialog-head h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 17px;
+    }
+
+    .transcript-close {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .transcript-messages {
+      display: grid;
+      gap: 12px;
+      max-height: calc(100dvh - 155px);
+      padding: 18px;
+      overflow-y: auto;
+    }
+
+    .transcript-message {
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+
+    .transcript-message.user { border-color: rgba(77,166,255,0.34); }
+
+    .transcript-role {
+      margin-bottom: 7px;
+      color: var(--blue);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .transcript-text {
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
     @media (max-width: 760px) {
       .topbar { padding: 10px 14px; }
       .topbar .status { display: none; }
@@ -619,6 +776,31 @@
           <p>Create, edit, order and remove products from the spreadsheet.</p>
           <span class="tool-arrow"><span>Open manager</span><span aria-hidden="true">&rarr;</span></span>
         </a>
+
+        <a class="tool-card" href="#ai-transcripts">
+          <span class="tool-icon">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M4 4h16v13H7l-3 3V4Z"/>
+              <path d="M8 8h8M8 12h5"/>
+            </svg>
+          </span>
+
+          <h2>AI Transcripts</h2>
+          <p>Review conversations that visitors marked as unhelpful.</p>
+          <span class="tool-arrow"><span>View transcripts</span><span aria-hidden="true">&darr;</span></span>
+        </a>
+      </section>
+
+      <div class="section-label" id="ai-transcripts">AI Transcripts</div>
+
+      <section class="transcripts-panel" aria-labelledby="ai-transcripts">
+        <div class="transcripts-head">
+          <h2>Conversations marked unhelpful</h2>
+          <span class="transcripts-count" id="transcripts-count">0 transcripts</span>
+        </div>
+        <div class="transcripts-list" id="transcripts-list">
+          <div class="transcripts-empty">Waiting for transcript data...</div>
+        </div>
       </section>
 
       <section class="quick-links">
@@ -634,6 +816,19 @@
       </section>
     </main>
   </section>
+
+  <dialog class="transcript-dialog" id="transcript-dialog">
+    <div class="transcript-dialog-head">
+      <div>
+        <h2>AI Transcript</h2>
+        <div class="stat-note" id="transcript-dialog-meta"></div>
+      </div>
+      <button class="transcript-close" id="transcript-close" type="button" aria-label="Close transcript">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <div class="transcript-messages" id="transcript-messages"></div>
+  </dialog>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
@@ -684,6 +879,13 @@
     let hourlyViews = [];
     let totalsSummary = {};
     let chartRange = "daily";
+    let transcriptDocs = [];
+
+    const transcriptsList = document.getElementById("transcripts-list");
+    const transcriptsCount = document.getElementById("transcripts-count");
+    const transcriptDialog = document.getElementById("transcript-dialog");
+    const transcriptDialogMeta = document.getElementById("transcript-dialog-meta");
+    const transcriptMessages = document.getElementById("transcript-messages");
 
     function escapeHtml(value) {
       return String(value || "")
@@ -957,6 +1159,43 @@
       renderViewsChart();
     }
 
+    function renderTranscripts() {
+      const ordered = [...transcriptDocs].sort((a, b) => {
+        const aTime = a.submittedAt?.toMillis?.() || 0;
+        const bTime = b.submittedAt?.toMillis?.() || 0;
+        return bTime - aTime;
+      });
+
+      transcriptsCount.textContent = `${ordered.length} transcript${ordered.length === 1 ? "" : "s"}`;
+      transcriptsList.innerHTML = ordered.length ? ordered.map(item => {
+        const firstUserMessage = (item.transcript || []).find(message => message.role === "user")?.text || "Conversation";
+        return `
+          <button class="transcript-row" type="button" data-transcript-id="${escapeHtml(item.id)}">
+            <span>
+              <span class="transcript-preview">${escapeHtml(firstUserMessage)}</span>
+              <span class="transcript-meta">${escapeHtml(formatDateTime(item.submittedAt))} · ${formatNumber(item.messageCount || item.transcript?.length || 0)} messages</span>
+            </span>
+            <span class="transcript-arrow" aria-hidden="true">&rarr;</span>
+          </button>
+        `;
+      }).join("") : '<div class="transcripts-empty">No conversations have been marked unhelpful.</div>';
+    }
+
+    function openTranscript(id) {
+      const item = transcriptDocs.find(transcript => transcript.id === id);
+      if (!item) return;
+
+      transcriptDialogMeta.textContent = `${formatDateTime(item.submittedAt)} · ${item.messageCount || item.transcript?.length || 0} messages`;
+      transcriptMessages.innerHTML = (item.transcript || []).map(message => `
+        <article class="transcript-message ${message.role === "user" ? "user" : "assistant"}">
+          <div class="transcript-role">${message.role === "user" ? "User" : "AI Assistant"}</div>
+          <div class="transcript-text">${escapeHtml(message.text)}</div>
+        </article>
+      `).join("") || '<div class="transcripts-empty">This transcript is empty.</div>';
+
+      transcriptDialog.showModal();
+    }
+
     function startAnalytics() {
       stopAnalytics();
 
@@ -983,6 +1222,11 @@
       analyticsUnsubscribers.push(onSnapshot(collection(db, "analyticsHourly"), snapshot => {
         hourlyViews = snapshot.docs.map(hourDoc => ({ id: hourDoc.id, ...hourDoc.data() }));
         renderAnalytics();
+      }));
+
+      analyticsUnsubscribers.push(onSnapshot(collection(db, "aiFeedbackTranscripts"), snapshot => {
+        transcriptDocs = snapshot.docs.map(transcriptDoc => ({ id: transcriptDoc.id, ...transcriptDoc.data() }));
+        renderTranscripts();
       }));
 
       analyticsRefreshTimer = window.setInterval(renderAnalytics, 15000);
@@ -1018,6 +1262,16 @@
       loginButton.disabled = false;
       loginButton.textContent = "Sign In";
     }
+
+    transcriptsList.addEventListener("click", event => {
+      const row = event.target.closest("[data-transcript-id]");
+      if (row) openTranscript(row.dataset.transcriptId);
+    });
+
+    document.getElementById("transcript-close").addEventListener("click", () => transcriptDialog.close());
+    transcriptDialog.addEventListener("click", event => {
+      if (event.target === transcriptDialog) transcriptDialog.close();
+    });
 
     loginForm.addEventListener("submit", async event => {
       event.preventDefault();

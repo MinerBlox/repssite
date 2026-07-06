@@ -230,6 +230,17 @@
       min-height: calc(100dvh - 98px);
     }
 
+    .ai-shell:not(.chatting) {
+      justify-content: center;
+    }
+
+    .ai-shell:not(.chatting) .start-panel {
+      flex: 0 0 auto;
+      width: 100%;
+      min-height: 0;
+      padding: 32px 0;
+    }
+
     .start-panel {
       flex: 1;
       min-height: 520px;
@@ -521,6 +532,77 @@
 
     .ai-shell.chatting + footer { display: none; }
 
+
+    .feedback-panel {
+      display: none;
+      width: min(780px, 100%);
+      margin: 0 auto 12px;
+      text-align: center;
+    }
+
+    .feedback-panel.visible { display: block; }
+
+    .feedback-prompt {
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .feedback-actions {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .feedback-btn {
+      min-height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 15px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      color: var(--soft);
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, opacity 0.18s ease;
+    }
+
+    .feedback-btn:hover {
+      border-color: rgba(77,166,255,0.48);
+      background: var(--blue-soft);
+      color: var(--text);
+    }
+
+    .feedback-btn:disabled {
+      cursor: default;
+      opacity: 0.55;
+    }
+
+    .feedback-btn.selected {
+      border-color: rgba(77,166,255,0.55);
+      background: var(--blue-soft);
+      color: var(--blue);
+      opacity: 1;
+    }
+
+    .feedback-btn svg {
+      width: 15px;
+      height: 15px;
+      flex: 0 0 auto;
+    }
+
+    .feedback-status {
+      min-height: 18px;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
     @media (max-width: 860px) {
       nav { padding: 0 16px; }
       .nav-links { display: none; }
@@ -613,6 +695,20 @@
         </section>
 
         <div class="bottom-composer-wrap" id="bottom-composer-wrap">
+          <div class="feedback-panel" id="feedback-panel">
+            <p class="feedback-prompt">Give feedback so we know what to add...</p>
+            <div class="feedback-actions">
+              <button class="feedback-btn" type="button" data-ai-feedback="helpful">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 10v12H3V10h4Zm0 10h10.4a2 2 0 0 0 1.9-1.4l2.4-7A2 2 0 0 0 19.8 9H15l.7-3.4A3 3 0 0 0 12.8 2L7 10Z"/></svg>
+                AI helped
+              </button>
+              <button class="feedback-btn" type="button" data-ai-feedback="unhelpful">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+                AI did not help
+              </button>
+            </div>
+            <div class="feedback-status" id="feedback-status" aria-live="polite"></div>
+          </div>
           <form class="composer" id="chat-form-bottom">
             <div class="composer-inner">
               <button class="icon-btn" type="button" aria-label="Add">+</button>
@@ -632,6 +728,8 @@
     let isSending = false;
     let activeRequest = null;
     let chatMemory = [];
+    let conversationTranscript = [];
+    let feedbackSubmitted = false;
 
     function applyTheme() {
       document.body.className = theme;
@@ -660,6 +758,9 @@
     const startForm = document.getElementById('chat-form-start');
     const bottomForm = document.getElementById('chat-form-bottom');
     const quickActionButtons = Array.from(document.querySelectorAll('.quick-action'));
+    const feedbackPanel = document.getElementById('feedback-panel');
+    const feedbackStatus = document.getElementById('feedback-status');
+    const feedbackButtons = Array.from(document.querySelectorAll('[data-ai-feedback]'));
 
     function setRandomGreeting() {
       const hour = new Date().getHours();
@@ -808,6 +909,61 @@
       updateButtons();
     }
 
+    function resetFeedback() {
+      feedbackSubmitted = false;
+      feedbackPanel.classList.remove('visible');
+      feedbackStatus.textContent = '';
+      feedbackButtons.forEach(button => {
+        button.disabled = false;
+        button.classList.remove('selected');
+      });
+    }
+
+    function showFeedback() {
+      feedbackPanel.classList.add('visible');
+    }
+
+    function recordTranscriptMessage(role, text) {
+      conversationTranscript.push({
+        role,
+        text: String(text || ''),
+        recordedAt: new Date().toISOString()
+      });
+    }
+
+    async function submitFeedback(type, button) {
+      if (feedbackSubmitted || !conversationTranscript.length) return;
+
+      feedbackSubmitted = true;
+      feedbackButtons.forEach(item => {
+        item.disabled = true;
+        item.classList.toggle('selected', item === button);
+      });
+
+      if (type === 'helpful') {
+        feedbackStatus.textContent = 'Thanks for the feedback.';
+        return;
+      }
+
+      feedbackStatus.textContent = 'Saving feedback...';
+
+      try {
+        if (typeof window.saveAiTranscript !== 'function') {
+          throw new Error('Feedback service is still loading.');
+        }
+
+        await window.saveAiTranscript(conversationTranscript);
+        feedbackStatus.textContent = 'Thanks. We’ll use this conversation to improve the AI.';
+      } catch (error) {
+        feedbackSubmitted = false;
+        feedbackButtons.forEach(item => {
+          item.disabled = false;
+          item.classList.remove('selected');
+        });
+        feedbackStatus.textContent = 'Could not save feedback. Please try again.';
+      }
+    }
+
     function remember(role, text) {
       const clean = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 600);
       if (!clean) return;
@@ -855,8 +1011,10 @@
 
       const requestMemory = memoryForRequest();
 
+      resetFeedback();
       addMessage('user', escapeHtml(text));
       remember('user', text);
+      recordTranscriptMessage('user', text);
 
       startInput.value = '';
       bottomInput.value = '';
@@ -896,6 +1054,7 @@
 
         loading.querySelector('.bubble').innerHTML = formatReply(combinedReply);
         remember('assistant', combinedReply);
+        recordTranscriptMessage('assistant', combinedReply);
       } catch (error) {
         const fallback = error?.name === 'AbortError'
           ? 'Request cancelled.'
@@ -903,9 +1062,11 @@
 
         loading.querySelector('.bubble').innerHTML = formatReply(fallback);
         remember('assistant', fallback);
+        recordTranscriptMessage('assistant', fallback);
       } finally {
         activeRequest = null;
         setSending(false);
+        showFeedback();
         bottomInput.focus();
       }
     }
@@ -937,6 +1098,12 @@
       submitPrompt(bottomInput.value);
     });
 
+    feedbackPanel.addEventListener('click', event => {
+      const button = event.target.closest('[data-ai-feedback]');
+      if (!button) return;
+      submitFeedback(button.dataset.aiFeedback, button);
+    });
+
     suggestions.addEventListener('click', event => {
       const button = event.target.closest('[data-prompt]');
       if (!button || isSending) return;
@@ -947,8 +1114,47 @@
     updateButtons();
   </script>
 
+
   <script type="module">
-    import('./site-analytics.js?v=2026-07-01-ai-markdown-links');
+    import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { enableAppCheck } from "./firebase-app-check.js?v=2026-07-06-ai-feedback";
+    import {
+      addDoc,
+      collection,
+      getFirestore,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA",
+      authDomain: "reps-central.firebaseapp.com",
+      projectId: "reps-central",
+      storageBucket: "reps-central.firebasestorage.app",
+      messagingSenderId: "812299387060",
+      appId: "1:812299387060:web:1c93d1e7bf30b05653d7e1",
+      measurementId: "G-8T7F9F1FZ9"
+    };
+
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    enableAppCheck(app);
+    const db = getFirestore(app);
+    const sessionId = crypto.randomUUID?.() || `session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    window.saveAiTranscript = transcript => addDoc(collection(db, "aiFeedbackTranscripts"), {
+      sessionId,
+      feedback: "unhelpful",
+      transcript: transcript.map(message => ({
+        role: message.role,
+        text: message.text,
+        recordedAt: message.recordedAt
+      })),
+      messageCount: transcript.length,
+      pageUrl: location.href,
+      submittedAt: serverTimestamp()
+    });
+  </script>
+  <script type="module">
+    import('./site-analytics.js?v=2026-07-06-ai-feedback');
   </script>
 </body>
 </html>
