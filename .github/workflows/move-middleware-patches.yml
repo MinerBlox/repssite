@@ -1,0 +1,244 @@
+name: Move middleware patches into source files
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - ".github/workflows/move-middleware-patches.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply-cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout dev
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Move middleware changes into source files
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          def read(path):
+              return Path(path).read_text(encoding="utf-8")
+
+          def write(path, text):
+              Path(path).write_text(text, encoding="utf-8")
+
+          def replace(text, old, new):
+              return text.replace(old, new) if old in text else text
+
+          def add_after_once(text, anchor, addition):
+              if addition in text:
+                  return text
+              if anchor in text:
+                  return text.replace(anchor, anchor + addition, 1)
+              return text
+
+          # index.html: homepage-owned changes
+          p = Path("index.html")
+          if p.exists():
+              text = read(p)
+              text = replace(
+                  text,
+                  '<div class="hero-badge">✦ Premium Rep Discoveries</div>',
+                  '<a href="ai.html" class="hero-badge">✦ New AI Assistant Feature</a>'
+              )
+              text = replace(
+                  text,
+                  '''<div class="nav-links">
+      <a href="spreadsheet.html" class="nav-link">Spreadsheet</a>
+      <a href="quality-checks.html" class="nav-link">Quality Checks</a>
+      <a href="link-converter.html" class="nav-link">Link Converter</a>
+      <a href="index.html" class="nav-link">Tutorial</a>
+    </div>''',
+                  '''<div class="nav-links">
+      <a href="spreadsheet.html" class="nav-link">Spreadsheet</a>
+      <a href="quality-checks.html" class="nav-link">Quality Checks</a>
+      <a href="link-converter.html" class="nav-link">Link Converter</a>
+      <a href="index.html" class="nav-link">Tutorial</a>
+      <a href="ai.html" class="nav-link">AI Assistant</a>
+    </div>'''
+              )
+              text = replace(
+                  text,
+                  '<div class="mobile-nav-menu"><a href="spreadsheet.html">Spreadsheet</a><a href="quality-checks.html">Quality Checks</a><a href="link-converter.html">Link Converter</a><a href="index.html">Tutorial</a></div>',
+                  '<div class="mobile-nav-menu"><a href="spreadsheet.html">Spreadsheet</a><a href="quality-checks.html">Quality Checks</a><a href="link-converter.html">Link Converter</a><a href="index.html">Tutorial</a><a href="ai.html">AI Assistant</a></div>'
+              )
+              text = replace(
+                  text,
+                  '{ id: "coming", comingSoon: true },',
+                  '{ id: "ai", icon: "AI", name: "AI Assistant", desc: "Ask questions about items, sizing, QCs, links, agents and shipping.", featured: false, cta: "Open AI", ctaPrimary: false, href: "ai.html" },'
+              )
+              write(p, text)
+
+          # ai.html: correct order + active state in source
+          p = Path("ai.html")
+          if p.exists():
+              text = read(p)
+              text = replace(
+                  text,
+                  '''        <a href="link-converter.html" class="nav-link">Link Converter</a>
+        <a href="ai.html" class="nav-link active">AI Assistant</a>
+        <a href="index.html" class="nav-link">Tutorial</a>''',
+                  '''        <a href="link-converter.html" class="nav-link">Link Converter</a>
+        <a href="index.html" class="nav-link">Tutorial</a>
+        <a href="ai.html" class="nav-link active">AI Assistant</a>'''
+              )
+              text = replace(
+                  text,
+                  '''          <a href="link-converter.html">Link Converter</a>
+          <a href="ai.html">AI Assistant</a>
+          <a href="index.html">Tutorial</a>''',
+                  '''          <a href="link-converter.html">Link Converter</a>
+          <a href="index.html">Tutorial</a>
+          <a href="ai.html">AI Assistant</a>'''
+              )
+              write(p, text)
+
+          # Root-level pages: add AI Assistant after Tutorial in navs
+          for filename in ["spreadsheet.html", "quality-checks.html", "link-converter.html", "404.html"]:
+              p = Path(filename)
+              if not p.exists():
+                  continue
+              text = read(p)
+              text = add_after_once(
+                  text,
+                  '<a href="index.html" class="nav-link">Tutorial</a>',
+                  '<a href="ai.html" class="nav-link">AI Assistant</a>'
+              )
+              text = add_after_once(
+                  text,
+                  '<a href="index.html">Tutorial</a>',
+                  '<a href="ai.html">AI Assistant</a>'
+              )
+              write(p, text)
+
+          # Item template: uses data-base-link conversion
+          p = Path("items/index.html")
+          if p.exists():
+              text = read(p)
+              text = add_after_once(
+                  text,
+                  'data-base-link="index.html" class="nav-link">Tutorial</a>',
+                  '<a href="#" data-base-link="ai.html" class="nav-link">AI Assistant</a>'
+              )
+              text = add_after_once(
+                  text,
+                  'data-base-link="index.html">Tutorial</a>',
+                  '<a href="#" data-base-link="ai.html">AI Assistant</a>'
+              )
+              write(p, text)
+
+          # Spreadsheet button styles move out of middleware into spreadsheet.css section
+          p = Path("spreadsheet.html")
+          if p.exists():
+              text = read(p)
+              old_css = '''    .product-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .product-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+
+    .product-btn:hover {
+      opacity: 0.85;
+      transform: translateY(-1px);
+    }
+
+    .product-btn.primary {
+      background: var(--blue);
+      border-color: transparent;
+      color: #fff;
+    }'''
+              new_css = '''    .product-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .product-btn {
+      width: 100%;
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 9px;
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.3;
+      text-align: center;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+
+    .product-btn:hover {
+      opacity: 0.85;
+      transform: translateY(-1px);
+    }
+
+    .product-btn.primary {
+      padding: 0 13px;
+      border: 1px solid transparent;
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .product-btn:not(.primary) {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+    }'''
+              text = replace(text, old_css, new_css)
+              write(p, text)
+
+          # Product card source button text
+          p = Path("firebase-products.js")
+          if p.exists():
+              text = read(p)
+              text = text.replace('>Agent Link</a>', '>Link</a>')
+              write(p, text)
+
+          # Remove middleware file and this one-use workflow
+          middleware = Path("functions/_middleware.js")
+          if middleware.exists():
+              middleware.unlink()
+
+          workflow = Path(".github/workflows/move-middleware-patches.yml")
+          if workflow.exists():
+              workflow.unlink()
+          PY
+
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No cleanup changes needed."
+          else
+            git commit -m "Move middleware patches into source files"
+            git push origin dev
+          fi
