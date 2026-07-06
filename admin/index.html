@@ -929,26 +929,28 @@
       let labelFor = key => key;
 
       if (chartRange === "hourly") {
-        rows = hourlyViews
+        hourlyViews
           .filter(item => /^\d{4}-\d{2}-\d{2}T\d{2}$/.test(item.id))
-          .sort((a, b) => a.id.localeCompare(b.id));
+          .forEach(item => {
+            groups.set(item.id, Number(item.totalVisits || 0));
+          });
 
-        cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        keyFor = item => item.id;
-        labelFor = key => dateFromHourId(key).toLocaleTimeString("en-GB", {
-          hour: "2-digit",
-          minute: "2-digit",
-          timeZone: "UTC"
+        const currentHour = new Date();
+        currentHour.setUTCMinutes(0, 0, 0);
+
+        return Array.from({ length: 24 }, (_, index) => {
+          const hour = new Date(currentHour.getTime() - (23 - index) * 60 * 60 * 1000);
+          const key = hour.toISOString().slice(0, 13);
+
+          return {
+            label: hour.toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZone: "UTC"
+            }),
+            value: groups.get(key) || 0
+          };
         });
-
-        rows.forEach(item => {
-          const date = dateFromHourId(item.id);
-          if (cutoff && date < cutoff) return;
-          const key = keyFor(item);
-          groups.set(key, (groups.get(key) || 0) + Number(item.totalVisits || 0));
-        });
-
-        return [...groups].map(([key, value]) => ({ label: labelFor(key), value }));
       }
 
       rows = dailyViews
