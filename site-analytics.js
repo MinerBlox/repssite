@@ -137,7 +137,7 @@ function escapeHtml(value) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
+    .replace(/\"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
 
@@ -151,6 +151,61 @@ function formatPrice(item) {
   const symbol = currency === "CNY" ? "¥" : "$";
 
   return `${symbol}${price.toFixed(2)}`;
+}
+
+const RATE_CACHE_KEY = "rc-cny-rates";
+const FALLBACK_CNY_RATES = { CNY:1, GBP:0.103, USD:0.139, EUR:0.119, AUD:0.212, CAD:0.190, JPY:21.8, HKD:1.09, SGD:0.178, CHF:0.111, NZD:0.232, KRW:191.5 };
+
+function selectedCurrency() {
+  return localStorage.getItem("rc-currency") || "";
+}
+
+function cnyRates() {
+  try {
+    return { ...FALLBACK_CNY_RATES, ...(JSON.parse(localStorage.getItem(RATE_CACHE_KEY) || "null")?.rates || {}) };
+  } catch {
+    return { ...FALLBACK_CNY_RATES };
+  }
+}
+
+function formatLocalMoney(yuan, currency) {
+  const rate = currency === "CNY" ? 1 : Number(cnyRates()[currency] || FALLBACK_CNY_RATES[currency] || 1);
+
+  try {
+    return new Intl.NumberFormat(undefined, { style: "currency", currency, currencyDisplay: "narrowSymbol" }).format(Number(yuan) * rate);
+  } catch {
+    return `${currency} ${(Number(yuan) * rate).toFixed(2)}`;
+  }
+}
+
+function installSitewideCurrencyPrices() {
+  const currency = selectedCurrency();
+  if (!currency) return;
+
+  const selector = ".product-price, .podium-price, .ticker-item span:nth-child(3), .nav-search-result-price, .price, .description";
+  const apply = () => {
+    document.querySelectorAll(selector).forEach(node => {
+      if (node.dataset.rcCurrencyDone === currency) return;
+      if (node.closest(".product-price-stack, .item-price-stack")) return;
+
+      const text = node.textContent.trim();
+      const match = text.match(/^¥\s*([0-9]+(?:\.[0-9]+)?)/);
+      if (!match) return;
+
+      const yuan = Number(match[1]);
+      if (!Number.isFinite(yuan)) return;
+
+      node.dataset.rcCurrencyDone = currency;
+      node.innerHTML = `<span class="rc-local-price">${escapeHtml(formatLocalMoney(yuan, currency))}</span><span class="rc-yuan-price">~ ¥${yuan.toFixed(2)}</span>`;
+    });
+  };
+
+  const style = document.createElement("style");
+  style.textContent = `.rc-local-price{display:block;color:#4da6ff}.rc-yuan-price{display:block;color:var(--muted,#888);font-family:Arial,Helvetica,sans-serif;font-size:.72em;font-weight:700;line-height:1.15}`;
+  document.head.appendChild(style);
+
+  apply();
+  new MutationObserver(apply).observe(document.body, { childList: true, subtree: true });
 }
 
 const page = pageDetails();
@@ -622,12 +677,11 @@ function forceLeaderboardDescriptions() {
   window.setTimeout(apply, 2500);
 }
 
-ensureDefaultVisitorPreferences();
-
 recordVisit().catch(() => {});
 heartbeat().catch(() => {});
 installGlobalSearch();
 forceLeaderboardDescriptions();
+installSitewideCurrencyPrices();
 
 const heartbeatTimer = window.setInterval(() => {
   if (document.visibilityState === "visible") {
