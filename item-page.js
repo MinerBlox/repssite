@@ -409,9 +409,7 @@ function renderProduct(item) {
   const description = item.description || "No description has been added yet.";
   const agentUrl = safeHttpUrl(item.agentUrl);
   const agentButton = agentUrl ? `<a class="action-btn primary" data-product-action="outboundClicks" href="${escapeHtml(agentUrl)}" target="_blank" rel="noopener noreferrer">Open Agent Link</a>` : "";
-  const productLink = originalProductLink(item);
-  const safeProductUrl = safeHttpUrl(productLink);
-  const productButton = safeProductUrl ? `<a class="action-btn" data-product-action="outboundClicks" href="${escapeHtml(safeProductUrl)}" target="_blank" rel="noopener noreferrer">Original Link</a>` : "";
+  const productButton = "";
 
   root.innerHTML = `
     <a class="back-link" href="${sitePath("spreadsheet.html")}">← Back to spreadsheet</a>
