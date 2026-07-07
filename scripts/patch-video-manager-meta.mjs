@@ -1,34 +1,35 @@
 import fs from "node:fs";
 
-const path = "admin/video-manager/index.html";
-let html = fs.readFileSync(path, "utf8");
+function patchAdmin() {
+  const path = "admin/video-manager/index.html";
+  let html = fs.readFileSync(path, "utf8");
 
-const cssNeedle = "    .split { display: grid; grid-template-columns: 1fr 140px; gap: 10px; }\n";
-const cssInsert = `    .split { display: grid; grid-template-columns: 1fr 140px; gap: 10px; }
+  const cssNeedle = "    .split { display: grid; grid-template-columns: 1fr 140px; gap: 10px; }\n";
+  const cssInsert = `    .split { display: grid; grid-template-columns: 1fr 140px; gap: 10px; }
     .url-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
     .metadata-grid { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; align-items: start; }
     .thumb-preview { width: 96px; aspect-ratio: 9 / 16; overflow: hidden; display: grid; place-items: center; border: 1px dashed rgba(128,128,128,.32); border-radius: 12px; background: var(--surface2); color: var(--muted); font-size: 11px; font-weight: 800; text-align: center; }
     .thumb-preview img { width: 100%; height: 100%; object-fit: cover; }
     .metadata-fields { display: grid; gap: 10px; }
 `;
-html = html.replace(cssNeedle, cssInsert);
-html = html.replace(
-  "@media (max-width: 900px) { .topbar { padding: 10px 16px; } main { padding: 38px 16px 56px; } .layout { grid-template-columns: 1fr; } .split { grid-template-columns: 1fr; } }",
-  "@media (max-width: 900px) { .topbar { padding: 10px 16px; } main { padding: 38px 16px 56px; } .layout { grid-template-columns: 1fr; } .split, .url-row, .metadata-grid { grid-template-columns: 1fr; } .thumb-preview { width: 120px; } }"
-);
+  html = html.replace(cssNeedle, cssInsert);
+  html = html.replace(
+    "@media (max-width: 900px) { .topbar { padding: 10px 16px; } main { padding: 38px 16px 56px; } .layout { grid-template-columns: 1fr; } .split { grid-template-columns: 1fr; } }",
+    "@media (max-width: 900px) { .topbar { padding: 10px 16px; } main { padding: 38px 16px 56px; } .layout { grid-template-columns: 1fr; } .split, .url-row, .metadata-grid { grid-template-columns: 1fr; } .thumb-preview { width: 120px; } }"
+  );
 
-html = html.replace(
-  `<p class="copy">Save TikTok video links, captions and the spreadsheet items featured in each video. No MP4 storage needed.</p>`,
-  `<p class="copy">Save TikTok video links, auto-fetch captions/thumbnails, and attach spreadsheet items featured in each video.</p>`
-);
+  html = html.replace(
+    `<p class="copy">Save TikTok video links, captions and the spreadsheet items featured in each video. No MP4 storage needed.</p>`,
+    `<p class="copy">Save TikTok video links, auto-fetch captions/thumbnails, and attach spreadsheet items featured in each video.</p>`
+  );
 
-html = html.replace(
-  `<p class="panel-sub">Paste the TikTok link, paste or type the caption, then tick every item shown in the video.</p>`,
-  `<p class="panel-sub">Paste the TikTok link, press Fetch from TikTok, then tick every item shown in the video.</p>`
-);
+  html = html.replace(
+    `<p class="panel-sub">Paste the TikTok link, paste or type the caption, then tick every item shown in the video.</p>`,
+    `<p class="panel-sub">Paste the TikTok link, press Fetch from TikTok, then tick every item shown in the video.</p>`
+  );
 
-html = html.replace(
-  `          <div class="field">
+  html = html.replace(
+    `          <div class="field">
             <label for="tiktok-url">TikTok Link</label>
             <input id="tiktok-url" type="url" placeholder="https://www.tiktok.com/@.../video/..." required>
           </div>
@@ -37,7 +38,7 @@ html = html.replace(
             <label for="caption">Caption</label>
             <textarea id="caption" placeholder="Paste the TikTok caption here..." required></textarea>
           </div>`,
-  `          <div class="field">
+    `          <div class="field">
             <label for="tiktok-url">TikTok Link</label>
             <div class="url-row">
               <input id="tiktok-url" type="url" placeholder="https://www.tiktok.com/@.../video/..." required>
@@ -60,29 +61,29 @@ html = html.replace(
               </div>
             </div>
           </div>`
-);
+  );
 
-html = html.replace(
-  `const saveBtn = document.getElementById("save-btn");
+  html = html.replace(
+    `const saveBtn = document.getElementById("save-btn");
     const resetBtn = document.getElementById("reset-btn");`,
-  `const saveBtn = document.getElementById("save-btn");
+    `const saveBtn = document.getElementById("save-btn");
     const resetBtn = document.getElementById("reset-btn");
     const fetchMetaBtn = document.getElementById("fetch-meta-btn");`
-);
-html = html.replace(
-  `const videoList = document.getElementById("video-list");`,
-  `const videoList = document.getElementById("video-list");
+  );
+  html = html.replace(
+    `const videoList = document.getElementById("video-list");`,
+    `const videoList = document.getElementById("video-list");
     const thumbnailUrlInput = document.getElementById("thumbnail-url");
     const authorNameInput = document.getElementById("author-name");
     const thumbnailPreview = document.getElementById("thumbnail-preview");`
-);
+  );
 
-html = html.replace(
-  `function setStatus(message, type = "") {
+  html = html.replace(
+    `function setStatus(message, type = "") {
       statusEl.textContent = message;
       statusEl.className = \`status \${type}\`.trim();
     }`,
-  `function setStatus(message, type = "") {
+    `function setStatus(message, type = "") {
       statusEl.textContent = message;
       statusEl.className = \`status \${type}\`.trim();
     }
@@ -93,17 +94,17 @@ html = html.replace(
         ? \`<img src="\${escapeHtml(url)}" alt="Fetched TikTok thumbnail">\`
         : "No thumbnail";
     }`
-);
+  );
 
-html = html.replace(
-  `function resetForm() {
+  html = html.replace(
+    `function resetForm() {
       form.reset();
       document.getElementById("sort-order").value = "0";
       selectedItemIds.clear();
       renderItems();
       setStatus("");
     }`,
-  `function resetForm() {
+    `function resetForm() {
       form.reset();
       document.getElementById("sort-order").value = "0";
       selectedItemIds.clear();
@@ -152,29 +153,60 @@ html = html.replace(
         fetchMetaBtn.textContent = "Fetch from TikTok";
       }
     }`
-);
+  );
 
-html = html.replace(
-  `resetBtn.addEventListener("click", resetForm);
+  html = html.replace(
+    `resetBtn.addEventListener("click", resetForm);
     signOutBtn.addEventListener("click", () => signOut(auth));`,
-  `resetBtn.addEventListener("click", resetForm);
+    `resetBtn.addEventListener("click", resetForm);
     fetchMetaBtn.addEventListener("click", fetchTikTokMetadata);
     signOutBtn.addEventListener("click", () => signOut(auth));`
-);
+  );
 
-html = html.replace(
-  `caption: document.getElementById("caption").value.trim(),
+  html = html.replace(
+    `caption: document.getElementById("caption").value.trim(),
           sortOrder: Number(document.getElementById("sort-order").value || 0),`,
-  `caption: document.getElementById("caption").value.trim(),
+    `caption: document.getElementById("caption").value.trim(),
           thumbnailUrl: thumbnailUrlInput.value.trim(),
           authorName: authorNameInput.value.trim(),
           sortOrder: Number(document.getElementById("sort-order").value || 0),`
-);
+  );
 
-html = html.replace(
-  `sort \${Number(video.sortOrder || 0)}</div>`,
-  `sort \${Number(video.sortOrder || 0)}\${video.thumbnailUrl ? " · thumbnail saved" : ""}</div>`
-);
+  html = html.replace(
+    `sort \${Number(video.sortOrder || 0)}</div>`,
+    `sort \${Number(video.sortOrder || 0)}\${video.thumbnailUrl ? " · thumbnail saved" : ""}</div>`
+  );
 
-fs.writeFileSync(path, html);
-console.log("Patched admin/video-manager/index.html");
+  fs.writeFileSync(path, html);
+  console.log("Patched admin/video-manager/index.html");
+}
+
+function patchVideosPage() {
+  const path = "videos.html";
+  let html = fs.readFileSync(path, "utf8");
+
+  html = html.replace(
+    `    .video-card-main { position: relative; z-index: 1; min-height: 0; padding: 22px; display: flex; flex-direction: column; justify-content: center; text-align: center; flex: 1; }`,
+    `    .video-thumbnail { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; object-fit: cover; opacity: .72; }
+    .video-card.has-thumbnail::after { content: ""; position: absolute; inset: 0; z-index: 0; background: linear-gradient(180deg, rgba(0,0,0,.18), rgba(0,0,0,.72)); }
+    .video-card-main { position: relative; z-index: 1; min-height: 0; padding: 22px; display: flex; flex-direction: column; justify-content: center; text-align: center; flex: 1; }`
+  );
+
+  html = html.replace(
+    `        return \`
+          <article class="video-card">
+            <div class="video-card-main">`,
+    `        const thumbnailUrl = video.thumbnailUrl || "";
+
+        return \`
+          <article class="video-card \${thumbnailUrl ? "has-thumbnail" : ""}">
+            \${thumbnailUrl ? \`<img class="video-thumbnail" src="\${escapeHtml(thumbnailUrl)}" alt="\${escapeHtml(video.title || "TikTok video")}">\` : ""}
+            <div class="video-card-main">`
+  );
+
+  fs.writeFileSync(path, html);
+  console.log("Patched videos.html thumbnails");
+}
+
+patchAdmin();
+patchVideosPage();
