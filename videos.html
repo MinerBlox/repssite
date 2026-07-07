@@ -13,213 +13,46 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { min-height: 100vh; font-family: 'DM Sans', sans-serif; }
-    body.dark {
-      --bg: #0a0a0b;
-      --surface: #111114;
-      --surface2: #18181c;
-      --border: #252529;
-      --text: #f0f0f0;
-      --muted: #888888;
-      --nav-bg: rgba(10,10,11,0.88);
-      --blue: #4da6ff;
-    }
-    body.light {
-      --bg: #f5f8ff;
-      --surface: #ffffff;
-      --surface2: #e8eef8;
-      --border: #dde4f0;
-      --text: #1e293b;
-      --muted: #64748b;
-      --nav-bg: rgba(245,248,255,0.92);
-      --blue: #248df2;
-    }
+    body.dark { --bg:#0a0a0b; --surface:#111114; --surface2:#18181c; --border:#252529; --text:#f0f0f0; --muted:#888888; --nav-bg:rgba(10,10,11,0.88); --blue:#4da6ff; }
+    body.light { --bg:#f5f8ff; --surface:#ffffff; --surface2:#e8eef8; --border:#dde4f0; --text:#1e293b; --muted:#64748b; --nav-bg:rgba(245,248,255,0.92); --blue:#248df2; }
     a { color: inherit; text-decoration: none; }
     button { border: 0; cursor: pointer; font-family: inherit; background: none; }
     #root { min-height: 100vh; background: var(--bg); color: var(--text); transition: background 0.2s, color 0.2s; }
-
     #banner { background: var(--blue); color: #fff; text-align: center; padding: 10px 20px; font-size: 13px; font-weight: 500; }
     #banner a { color: #fff; font-weight: 700; text-decoration: underline; }
-
-    nav {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      height: 60px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 0 28px;
-      border-bottom: 1px solid var(--border);
-      background: var(--nav-bg);
-      backdrop-filter: blur(14px);
-    }
+    nav { position: sticky; top: 0; z-index: 50; height: 60px; display: flex; align-items: center; gap: 8px; padding: 0 28px; border-bottom: 1px solid var(--border); background: var(--nav-bg); backdrop-filter: blur(14px); }
     .nav-logo { margin-right: 12px; color: var(--text); font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 800; letter-spacing: -0.5px; }
     .nav-links { display: flex; gap: 2px; flex: 1; overflow-x: auto; scrollbar-width: none; }
     .nav-links::-webkit-scrollbar { display: none; }
-    .nav-link {
-      padding: 6px 12px;
-      border-radius: 8px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 500;
-      white-space: nowrap;
-      transition: color 0.15s, background 0.15s;
-    }
+    .nav-link { padding: 6px 12px; border-radius: 8px; color: var(--muted); font-size: 13px; font-weight: 500; white-space: nowrap; transition: color 0.15s, background 0.15s; }
     .nav-link:hover, .nav-link.active { color: var(--text); background: var(--surface2); }
-    .nav-theme {
-      min-height: 36px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 6px 12px;
-      border: 1px solid var(--border);
-      border-radius: 9px;
-      background: var(--surface2);
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 500;
-      white-space: nowrap;
-    }
+    .nav-theme { min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface2); color: var(--muted); font-size: 13px; font-weight: 500; white-space: nowrap; }
     .mobile-nav { display: none; position: relative; }
-    .mobile-nav summary {
-      width: 36px;
-      height: 36px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      list-style: none;
-      border: 1px solid var(--border);
-      border-radius: 9px;
-      background: var(--surface2);
-      color: var(--text);
-      cursor: pointer;
-    }
+    .mobile-nav summary { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; list-style: none; border: 1px solid var(--border); border-radius: 9px; background: var(--surface2); color: var(--text); cursor: pointer; }
     .mobile-nav summary::-webkit-details-marker { display: none; }
-    .mobile-nav-menu {
-      position: absolute;
-      top: calc(100% + 10px);
-      right: 0;
-      z-index: 80;
-      width: min(250px, calc(100vw - 28px));
-      padding: 8px;
-      display: grid;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: var(--surface);
-      box-shadow: 0 16px 36px rgba(0,0,0,0.28);
-    }
-    .mobile-nav-menu a {
-      min-height: 44px;
-      padding: 11px 12px;
-      display: flex;
-      align-items: center;
-      border-radius: 8px;
-      color: var(--text);
-      font-size: 14px;
-      font-weight: 600;
-    }
+    .mobile-nav-menu { position: absolute; top: calc(100% + 10px); right: 0; z-index: 80; width: min(250px, calc(100vw - 28px)); padding: 8px; display: grid; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 16px 36px rgba(0,0,0,0.28); }
+    .mobile-nav-menu a { min-height: 44px; padding: 11px 12px; display: flex; align-items: center; border-radius: 8px; color: var(--text); font-size: 14px; font-weight: 600; }
     .mobile-nav-menu a:hover, .mobile-nav-menu a.active { background: var(--surface2); }
-
     main { width: min(1380px, 100%); margin: 0 auto; padding: 54px 40px 72px; }
     .hero { margin-bottom: 34px; display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; }
-    .eyebrow {
-      width: max-content;
-      margin-bottom: 14px;
-      padding: 6px 10px;
-      border: 1px solid rgba(77,166,255,0.28);
-      border-radius: 999px;
-      background: rgba(77,166,255,0.12);
-      color: var(--blue);
-      font-size: 11px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-    h1 {
-      font-family: 'Syne', sans-serif;
-      font-size: clamp(42px, 7vw, 86px);
-      line-height: 0.95;
-      letter-spacing: -3px;
-    }
+    .eyebrow { width: max-content; margin-bottom: 14px; padding: 6px 10px; border: 1px solid rgba(77,166,255,0.28); border-radius: 999px; background: rgba(77,166,255,0.12); color: var(--blue); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
+    .page-title { font-family: 'Syne', sans-serif; font-size: clamp(54px, 9vw, 112px); line-height: 0.9; letter-spacing: -4px; text-transform: uppercase; }
     .hero-copy { max-width: 520px; color: var(--muted); font-size: 15px; line-height: 1.7; }
-    .video-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-      gap: 18px;
-    }
-    .video-card {
-      position: relative;
-      aspect-ratio: 9 / 16;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      background:
-        radial-gradient(circle at 28% 18%, rgba(77,166,255,0.22), transparent 34%),
-        linear-gradient(145deg, var(--surface2), var(--surface));
-      box-shadow: 0 18px 36px rgba(0,0,0,0.18);
-    }
-    .video-card::before {
-      content: "";
-      position: absolute;
-      inset: 14px;
-      border: 1px dashed rgba(128,128,128,0.28);
-      border-radius: 14px;
-      pointer-events: none;
-    }
-    .video-card-inner {
-      position: absolute;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      padding: 22px;
-      text-align: center;
-    }
-    .video-size {
-      font-family: Arial, Helvetica, sans-serif;
-      color: var(--blue);
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing: 0.04em;
-    }
+    .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 18px; }
+    .video-card { position: relative; aspect-ratio: 9 / 16; overflow: hidden; border: 1px solid var(--border); border-radius: 18px; background: radial-gradient(circle at 28% 18%, rgba(77,166,255,0.22), transparent 34%), linear-gradient(145deg, var(--surface2), var(--surface)); box-shadow: 0 18px 36px rgba(0,0,0,0.18); }
+    .video-card::before { content: ""; position: absolute; inset: 14px; border: 1px dashed rgba(128,128,128,0.28); border-radius: 14px; pointer-events: none; }
+    .video-card-inner { position: absolute; inset: 0; display: grid; place-items: center; padding: 22px; text-align: center; }
+    .video-size { font-family: Arial, Helvetica, sans-serif; color: var(--blue); font-size: 12px; font-weight: 900; letter-spacing: 0.04em; }
     .video-title { margin-top: 8px; color: var(--text); font-size: 14px; font-weight: 800; }
     .video-sub { margin-top: 6px; color: var(--muted); font-size: 12px; line-height: 1.45; }
     footer { max-width: 1380px; margin: 0 auto; padding: 0 40px 36px; }
-    .footer-box {
-      border-top: 1px solid var(--border);
-      padding-top: 24px;
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    @media (max-width: 820px) {
-      #banner { padding: 9px 14px; font-size: 12px; line-height: 1.35; }
-      nav { height: 56px; padding: 0 14px; }
-      .nav-logo { flex: 1; min-width: 0; margin-right: 0; font-size: 16px; }
-      .nav-links { display: none; }
-      .mobile-nav { display: block; }
-      .nav-theme { width: 36px; height: 36px; padding: 0; }
-      #theme-label { display: none; }
-      main { padding: 34px 16px 56px; }
-      .hero { display: block; }
-      .hero-copy { margin-top: 16px; }
-      .video-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-      .video-card { border-radius: 14px; }
-      footer { padding: 0 16px 28px; }
-    }
+    .footer-box { border-top: 1px solid var(--border); padding-top: 24px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
+    @media (max-width: 820px) { #banner { padding: 9px 14px; font-size: 12px; line-height: 1.35; } nav { height: 56px; padding: 0 14px; } .nav-logo { flex: 1; min-width: 0; margin-right: 0; font-size: 16px; } .nav-links { display: none; } .mobile-nav { display: block; } .nav-theme { width: 36px; height: 36px; padding: 0; } #theme-label { display: none; } main { padding: 34px 16px 56px; } .hero { display: block; } .hero-copy { margin-top: 16px; } .page-title { font-size: clamp(42px, 17vw, 72px); letter-spacing: -2px; } .video-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } .video-card { border-radius: 14px; } footer { padding: 0 16px 28px; } }
   </style>
 </head>
 <body class="dark">
   <div id="root">
-    <div id="banner">
-      HipoBuy - The cheapest, best and most reliable Chinese agent.&nbsp;
-      <a href="https://hipobuy.com/register?inviteCode=QTYP3P8P5" target="_blank" rel="noopener noreferrer">Sign up today and get up to 40% off your shipping fee →</a>
-    </div>
-
+    <div id="banner">HipoBuy - The cheapest, best and most reliable Chinese agent.&nbsp;<a href="https://hipobuy.com/register?inviteCode=QTYP3P8P5" target="_blank" rel="noopener noreferrer">Sign up today and get up to 40% off your shipping fee →</a></div>
     <nav>
       <a href="index.html?noPopup=1" class="nav-logo">repscentral</a>
       <div class="nav-links">
@@ -231,9 +64,7 @@
         <a href="videos.html" class="nav-link active">Videos</a>
       </div>
       <details class="mobile-nav">
-        <summary aria-label="Open navigation">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
-        </summary>
+        <summary aria-label="Open navigation"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></summary>
         <div class="mobile-nav-menu">
           <a href="spreadsheet.html">Spreadsheet</a>
           <a href="quality-checks.html">Quality Checks</a>
@@ -243,20 +74,16 @@
           <a href="videos.html" class="active">Videos</a>
         </div>
       </details>
-      <button class="nav-theme" id="theme-btn" onclick="toggleTheme()" aria-label="Toggle theme">
-        <span id="theme-label">Light</span>
-      </button>
+      <button class="nav-theme" id="theme-btn" onclick="toggleTheme()" aria-label="Toggle theme"><span id="theme-label">Light</span></button>
     </nav>
-
     <main>
       <section class="hero">
         <div>
           <div class="eyebrow">✦ RepsCentral Videos</div>
-          <h1>Videos</h1>
+          <h1 class="page-title">VIDEOS</h1>
         </div>
         <p class="hero-copy">A clean TikTok-style video grid. Each block keeps a 1080 × 1920 vertical ratio ready for real videos later.</p>
       </section>
-
       <section class="video-grid" aria-label="Video placeholders">
         <article class="video-card"><div class="video-card-inner"><div><div class="video-size">1080 × 1920</div><div class="video-title">Video Slot 01</div><div class="video-sub">TikTok vertical placeholder</div></div></div></article>
         <article class="video-card"><div class="video-card-inner"><div><div class="video-size">1080 × 1920</div><div class="video-title">Video Slot 02</div><div class="video-sub">TikTok vertical placeholder</div></div></div></article>
@@ -270,30 +97,12 @@
         <article class="video-card"><div class="video-card-inner"><div><div class="video-size">1080 × 1920</div><div class="video-title">Video Slot 10</div><div class="video-sub">TikTok vertical placeholder</div></div></div></article>
       </section>
     </main>
-
-    <footer>
-      <div class="footer-box">
-        <span>© 2026 repscentral. All rights reserved.</span>
-        <span>Video placeholders ready for TikTok content.</span>
-      </div>
-    </footer>
+    <footer><div class="footer-box"><span>© 2026 repscentral. All rights reserved.</span><span>Video placeholders ready for TikTok content.</span></div></footer>
   </div>
-
   <script>
     let theme = localStorage.getItem("rc-theme") || "dark";
-
-    function applyTheme() {
-      document.body.className = theme;
-      const label = document.getElementById("theme-label");
-      if (label) label.textContent = theme === "dark" ? "Light" : "Dark";
-    }
-
-    function toggleTheme() {
-      theme = theme === "dark" ? "light" : "dark";
-      localStorage.setItem("rc-theme", theme);
-      applyTheme();
-    }
-
+    function applyTheme() { document.body.className = theme; const label = document.getElementById("theme-label"); if (label) label.textContent = theme === "dark" ? "Light" : "Dark"; }
+    function toggleTheme() { theme = theme === "dark" ? "light" : "dark"; localStorage.setItem("rc-theme", theme); applyTheme(); }
     applyTheme();
   </script>
   <script type="module" src="site-analytics.js?v=2026-07-07-videos"></script>
