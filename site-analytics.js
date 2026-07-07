@@ -137,7 +137,7 @@ function escapeHtml(value) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
+    .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
 
@@ -196,7 +196,7 @@ function installSitewideCurrencyPrices() {
       if (!Number.isFinite(yuan)) return;
 
       node.dataset.rcCurrencyDone = currency;
-      node.innerHTML = `<span class="rc-local-price">${escapeHtml(formatLocalMoney(yuan, currency))}</span><span class="rc-yuan-price">~ ¥${yuan.toFixed(2)}</span>`;
+      node.innerHTML = `<span class="rc-local-price">${escapeHtml(formatLocalMoney(yuan, currency))}</span>`;
     });
   };
 
