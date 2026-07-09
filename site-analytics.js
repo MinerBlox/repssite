@@ -290,11 +290,11 @@ async function updateAllTimeHigh(currentLive) {
     const currentHigh = Number(summary.allTimeHighLive || 0);
 
     if (live > currentHigh) {
-      await updateDoc(totalsRef, {
+      await setDoc(totalsRef, {
         allTimeHighLive: live,
         allTimeHighLiveAt: serverTimestamp(),
         updatedAt: serverTimestamp()
-      });
+      }, { merge: true });
     }
   } catch {
   }
