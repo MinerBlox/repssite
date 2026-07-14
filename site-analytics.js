@@ -416,7 +416,7 @@ async function loadGlobalSearchItems() {
   globalSearchLoaded = true;
 
   try {
-    const snapshot = await getDocs(collection(db, "products"));
+    const snapshot = await getDocs(collection(db, "liveproducts"));
 
     globalSearchItems = snapshot.docs
       .map(productDoc => ({ id: productDoc.id, ...productDoc.data() }))
