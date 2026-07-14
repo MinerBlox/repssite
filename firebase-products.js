@@ -288,7 +288,7 @@ function clearCategory() {
 async function loadProducts() {
   await currencyReady;
   try {
-    const snapshot = await getDocs(collection(db, "products"));
+    const snapshot = await getDocs(collection(db, "liveproducts"));
     firebaseItems = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter(item => item.isActive !== false)
