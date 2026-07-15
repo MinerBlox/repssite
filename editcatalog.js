@@ -1,6 +1,12 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { enableAppCheck } from "./firebase-app-check.js?v=2026-06-30-app-check-1";
 import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import {
   getFirestore,
   collection,
   getDocs,
@@ -19,21 +25,30 @@ const firebaseConfig = {
   measurementId: "G-8T7F9F1FZ9"
 };
 
-const app = initializeApp(firebaseConfig, "edit-catalog-admin");
-enableAppCheck(app);
-const db = getFirestore(app);
-
-const frame = document.getElementById("catalog-frame");
-const statusBox = document.getElementById("admin-status");
-const productMap = new Map();
-const CURRENCY_KEY = "rc-currency";
-const RATE_CACHE_KEY = "rc-cny-rates";
-const GITHUB_TOKEN_KEY = "rc-editcatalog-github-token";
+const ADMIN_UID = "3jC9pWkF5ZeHIDtd1LrPR1Ptvbz1";
 const REPO_OWNER = "MinerBlox";
 const REPO_NAME = "repssite";
 const REPO_BRANCH = "dev";
-let iframeDocument = null;
+const GITHUB_TOKEN_KEY = "rc-editcatalog-github-token";
+const CURRENCY_KEY = "rc-currency";
+const RATE_CACHE_KEY = "rc-cny-rates";
+
+const app = initializeApp(firebaseConfig, "edit-catalog-admin");
+enableAppCheck(app);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const loginView = document.getElementById("login-view");
+const loginForm = document.getElementById("login-form");
+const loginButton = document.getElementById("login-btn");
+const loginError = document.getElementById("login-error");
+const catalogRoot = document.getElementById("catalog-root");
+const statusBox = document.getElementById("admin-status");
+
+const productMap = new Map();
 let statusTimer = null;
+let editorLoaded = false;
+let observer = null;
 let cnyRates = {
   CNY: 1,
   GBP: 0.103,
@@ -49,23 +64,12 @@ let cnyRates = {
   KRW: 191.5
 };
 
-function showStatus(message, isError = false, timeout = 2600) {
+function showStatus(message, isError = false, timeout = 2800) {
   clearTimeout(statusTimer);
   statusBox.textContent = message;
   statusBox.classList.toggle("error", isError);
   statusBox.classList.add("show");
-  if (timeout) {
-    statusTimer = setTimeout(() => statusBox.classList.remove("show"), timeout);
-  }
-}
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+  if (timeout) statusTimer = setTimeout(() => statusBox.classList.remove("show"), timeout);
 }
 
 function formatMoney(value, currency) {
@@ -104,46 +108,115 @@ function refreshCardPrice(card, yuan) {
   if (yuanEl) yuanEl.textContent = `~ ¥${Number(yuan).toFixed(2)}`;
 }
 
-function injectAdminStyles() {
-  if (!iframeDocument || iframeDocument.getElementById("rc-editcatalog-styles")) return;
-  const style = iframeDocument.createElement("style");
+function installEditorStyles() {
+  if (document.getElementById("rc-editcatalog-styles")) return;
+  const style = document.createElement("style");
   style.id = "rc-editcatalog-styles";
   style.textContent = `
     .product-card.rc-catalog-marked {
-      border-color: rgba(239,68,68,.78) !important;
+      border-color: rgba(239,68,68,.82) !important;
       background: rgba(127,29,29,.32) !important;
-      box-shadow: inset 0 0 0 1px rgba(239,68,68,.16);
+      box-shadow: inset 0 0 0 1px rgba(239,68,68,.18) !important;
     }
     .product-card.rc-catalog-marked .product-top { background: rgba(127,29,29,.18) !important; }
     .product-card.rc-catalog-marked .product-image { background: rgba(127,29,29,.12) !important; }
     .product-image.rc-editable-image,
     .product-name.rc-editable-name,
     .yuan-price.rc-editable-price { cursor: pointer !important; }
-    .product-image.rc-editable-image:hover { opacity: .78; }
+    .product-image.rc-editable-image:hover { opacity: .72; }
     .product-name.rc-editable-name:hover,
-    .yuan-price.rc-editable-price:hover { text-decoration: underline; text-decoration-style: dotted; }
+    .yuan-price.rc-editable-price:hover { text-decoration: underline dotted; }
     .rc-mark-above {
-      width: 100%;
-      min-height: 36px;
-      margin-top: 10px;
+      width: 100%; min-height: 36px; margin-top: 10px;
       border: 1px solid rgba(239,68,68,.48) !important;
-      border-radius: 9px;
-      background: rgba(239,68,68,.08) !important;
-      color: #f87171 !important;
-      font-size: 11px !important;
-      font-weight: 900 !important;
-      letter-spacing: .055em;
-      text-transform: uppercase;
-      cursor: pointer;
+      border-radius: 9px; background: rgba(239,68,68,.08) !important;
+      color: #f87171 !important; font-size: 11px !important;
+      font-weight: 900 !important; letter-spacing: .055em;
+      text-transform: uppercase; cursor: pointer;
     }
-    .rc-mark-above:hover { background: rgba(239,68,68,.16) !important; }
+    .rc-mark-above:hover { background: rgba(239,68,68,.17) !important; }
     .product-card.rc-catalog-marked .rc-mark-above {
-      background: #dc2626 !important;
-      border-color: #dc2626 !important;
-      color: #fff !important;
+      background: #dc2626 !important; border-color: #dc2626 !important; color: #fff !important;
     }
+    .rc-editor-bar {
+      position: sticky; top: 60px; z-index: 49; display:flex; align-items:center;
+      justify-content:space-between; gap:12px; padding:10px 28px;
+      border-bottom:1px solid var(--border); background:rgba(17,17,20,.96);
+      backdrop-filter:blur(14px); color:var(--text); font-size:12px;
+    }
+    .rc-editor-bar strong { color:#4da6ff; }
+    .rc-editor-signout { border:1px solid var(--border) !important; border-radius:8px;
+      padding:7px 11px !important; background:var(--surface2) !important; color:var(--text) !important;
+      font:700 11px 'DM Sans',sans-serif !important; }
+    @media (max-width:720px) { .rc-editor-bar { top:60px; padding-inline:16px; } }
   `;
-  iframeDocument.head.appendChild(style);
+  document.head.appendChild(style);
+}
+
+function installThemeHelpers() {
+  let theme = localStorage.getItem("rc-theme") || "dark";
+  window.applyTheme = function applyTheme() {
+    document.body.className = theme;
+    const label = document.getElementById("theme-label");
+    const icon = document.getElementById("theme-icon");
+    if (label) label.textContent = theme === "dark" ? "Light" : "Dark";
+    if (icon) {
+      icon.innerHTML = theme === "dark"
+        ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+        : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+    }
+  };
+  window.toggleTheme = function toggleTheme() {
+    theme = theme === "dark" ? "light" : "dark";
+    localStorage.setItem("rc-theme", theme);
+    window.applyTheme();
+  };
+  window.applyTheme();
+}
+
+async function buildSpreadsheetPage() {
+  const response = await fetch(`spreadsheet.html?editorSource=${Date.now()}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Could not load spreadsheet.html (${response.status}).`);
+
+  const html = await response.text();
+  const parsed = new DOMParser().parseFromString(html, "text/html");
+
+  parsed.head.querySelectorAll("style").forEach(sourceStyle => {
+    const style = document.createElement("style");
+    style.textContent = sourceStyle.textContent;
+    document.head.appendChild(style);
+  });
+
+  const nodes = [...parsed.body.children].filter(node => node.tagName !== "SCRIPT");
+  catalogRoot.replaceChildren(...nodes.map(node => document.importNode(node, true)));
+
+  const root = catalogRoot.querySelector("#root");
+  if (!root) throw new Error("Spreadsheet layout could not be loaded.");
+
+  const nav = root.querySelector("nav");
+  if (nav) {
+    const editorBar = document.createElement("div");
+    editorBar.className = "rc-editor-bar";
+    editorBar.innerHTML = `<span><strong>CATALOG EDIT MODE</strong> — click an image, item name or yuan price to edit it. Marks save permanently.</span><button class="rc-editor-signout" type="button">Sign Out</button>`;
+    nav.insertAdjacentElement("afterend", editorBar);
+    editorBar.querySelector(".rc-editor-signout").addEventListener("click", () => signOut(auth));
+  }
+
+  installThemeHelpers();
+  installEditorStyles();
+  catalogRoot.style.display = "block";
+
+  await import(`./firebase-products.js?v=2026-07-15-editor-${Date.now()}`);
+}
+
+async function waitForProductGrid(timeout = 20000) {
+  const started = Date.now();
+  while (Date.now() - started < timeout) {
+    const grid = document.getElementById("product-grid");
+    if (grid && grid.querySelector(".product-card")) return grid;
+    await new Promise(resolve => setTimeout(resolve, 150));
+  }
+  throw new Error("Products did not finish loading.");
 }
 
 function getProductIdFromCard(card) {
@@ -165,20 +238,15 @@ async function saveName(productId, card) {
   if (!cleanName) return showStatus("Name cannot be blank.", true);
 
   try {
-    await updateDoc(doc(db, "liveproducts", productId), {
-      name: cleanName,
-      updatedAt: serverTimestamp()
-    });
+    await updateDoc(doc(db, "liveproducts", productId), { name: cleanName, updatedAt: serverTimestamp() });
     product.name = cleanName;
-    productMap.set(productId, product);
     const nameEl = card.querySelector(".product-name");
     if (nameEl) nameEl.textContent = cleanName;
     const image = card.querySelector(".product-image");
     if (image) image.alt = cleanName;
     showStatus(`Saved name: ${cleanName}`);
   } catch (error) {
-    console.error(error);
-    showStatus(`Could not save name: ${error.message}`, true, 5000);
+    showStatus(`Could not save name: ${error.message}`, true, 6000);
   }
 }
 
@@ -187,24 +255,17 @@ async function savePrice(productId, card) {
   if (!product) return;
   const nextPrice = window.prompt("Enter the new price in Chinese yuan (CNY):", Number(product.price || 0).toString());
   if (nextPrice === null) return;
-  const normalized = String(nextPrice).replace(/[¥,\s]/g, "");
-  const yuan = Number(normalized);
+  const yuan = Number(String(nextPrice).replace(/[¥,\s]/g, ""));
   if (!Number.isFinite(yuan) || yuan < 0) return showStatus("Enter a valid yuan price.", true);
 
   try {
-    await updateDoc(doc(db, "liveproducts", productId), {
-      price: yuan,
-      currency: "CNY",
-      updatedAt: serverTimestamp()
-    });
+    await updateDoc(doc(db, "liveproducts", productId), { price: yuan, currency: "CNY", updatedAt: serverTimestamp() });
     product.price = yuan;
     product.currency = "CNY";
-    productMap.set(productId, product);
     refreshCardPrice(card, yuan);
     showStatus(`Saved price: ¥${yuan.toFixed(2)}`);
   } catch (error) {
-    console.error(error);
-    showStatus(`Could not save price: ${error.message}`, true, 5000);
+    showStatus(`Could not save price: ${error.message}`, true, 6000);
   }
 }
 
@@ -212,18 +273,14 @@ async function toggleMarked(productId, card) {
   const product = productMap.get(productId);
   if (!product) return;
   const nextMarked = !Boolean(product.catalogMarked);
+
   try {
-    await updateDoc(doc(db, "liveproducts", productId), {
-      catalogMarked: nextMarked,
-      updatedAt: serverTimestamp()
-    });
+    await updateDoc(doc(db, "liveproducts", productId), { catalogMarked: nextMarked, updatedAt: serverTimestamp() });
     product.catalogMarked = nextMarked;
-    productMap.set(productId, product);
     setCardMarkedState(card, nextMarked);
     showStatus(nextMarked ? "Item marked." : "Item unmarked.");
   } catch (error) {
-    console.error(error);
-    showStatus(`Could not update mark: ${error.message}`, true, 5000);
+    showStatus(`Could not update mark: ${error.message}`, true, 6000);
   }
 }
 
@@ -245,14 +302,7 @@ function requestImageFile() {
 
 async function normalizeImageForPath(file, githubPath) {
   const ext = githubPath.split(".").pop()?.toLowerCase();
-  const mime = ext === "jpg" || ext === "jpeg"
-    ? "image/jpeg"
-    : ext === "webp"
-      ? "image/webp"
-      : ext === "png"
-        ? "image/png"
-        : null;
-
+  const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "webp" ? "image/webp" : ext === "png" ? "image/png" : null;
   if (!mime || !window.createImageBitmap) return file;
 
   const bitmap = await createImageBitmap(file);
@@ -261,15 +311,12 @@ async function normalizeImageForPath(file, githubPath) {
   canvas.height = bitmap.height;
   const ctx = canvas.getContext("2d");
   if (mime === "image/jpeg") {
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
   ctx.drawImage(bitmap, 0, 0);
   bitmap.close?.();
-
-  return await new Promise((resolve, reject) => {
-    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Could not process image.")), mime, 0.95);
-  });
+  return await new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Could not process image.")), mime, 0.95));
 }
 
 function blobToBase64(blob) {
@@ -283,16 +330,14 @@ function blobToBase64(blob) {
 
 function githubPathFromRawUrl(imageUrl) {
   const prefix = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_BRANCH}/`;
-  if (!String(imageUrl || "").startsWith(prefix)) {
-    throw new Error("This product image is not in the expected dev GitHub branch.");
-  }
+  if (!String(imageUrl || "").startsWith(prefix)) throw new Error("This product image is not in the expected dev GitHub branch.");
   return decodeURIComponent(String(imageUrl).slice(prefix.length));
 }
 
 async function getGithubToken() {
   let token = sessionStorage.getItem(GITHUB_TOKEN_KEY) || "";
   if (!token) {
-    token = window.prompt("Paste your GitHub token with write access to MinerBlox/repssite. It is kept only for this browser tab/session.")?.trim() || "";
+    token = window.prompt("Paste your GitHub token with write access to MinerBlox/repssite. It stays only in this browser tab/session.")?.trim() || "";
     if (!token) throw new Error("No GitHub token supplied.");
     sessionStorage.setItem(GITHUB_TOKEN_KEY, token);
   }
@@ -304,8 +349,8 @@ async function githubApi(path, options = {}) {
   const response = await fetch(`https://api.github.com${path}`, {
     ...options,
     headers: {
-      "Authorization": `Bearer ${token}`,
-      "Accept": "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28",
       ...(options.headers || {})
     }
@@ -328,7 +373,7 @@ async function replaceImage(productId, card) {
   if (!file) return;
 
   try {
-    showStatus("Replacing image in GitHub…", false, 0);
+    showStatus("Replacing image permanently in GitHub…", false, 0);
     const githubPath = githubPathFromRawUrl(product.imageUrl);
     const encodedPath = githubPath.split("/").map(encodeURIComponent).join("/");
     const apiPath = `/repos/${REPO_OWNER}/${REPO_NAME}/contents/${encodedPath}`;
@@ -347,37 +392,31 @@ async function replaceImage(productId, card) {
       })
     });
 
-    try {
-      await updateDoc(doc(db, "liveproducts", productId), { updatedAt: serverTimestamp() });
-    } catch {}
+    await updateDoc(doc(db, "liveproducts", productId), { updatedAt: serverTimestamp() });
 
     const image = card.querySelector(".product-image");
     if (image) image.src = `${product.imageUrl}${product.imageUrl.includes("?") ? "&" : "?"}v=${Date.now()}`;
-    showStatus("Image replaced permanently in GitHub.", false, 4200);
+    showStatus("Image replaced permanently in GitHub.", false, 4500);
   } catch (error) {
-    console.error(error);
-    showStatus(`Could not replace image: ${error.message}`, true, 7000);
+    showStatus(`Could not replace image: ${error.message}`, true, 8000);
   }
 }
 
 function decorateCard(card) {
-  if (card.dataset.rcEditableReady === "1") {
-    const productId = getProductIdFromCard(card);
-    const product = productMap.get(productId);
-    if (product) setCardMarkedState(card, product.catalogMarked);
-    return;
-  }
-
   const productId = getProductIdFromCard(card);
   const product = productMap.get(productId);
   if (!productId || !product) return;
 
+  if (card.dataset.rcEditableReady === "1") {
+    setCardMarkedState(card, product.catalogMarked);
+    return;
+  }
   card.dataset.rcEditableReady = "1";
 
   const image = card.querySelector(".product-image");
   if (image) {
     image.classList.add("rc-editable-image");
-    image.title = "Click to replace this image";
+    image.title = "Click to permanently replace this GitHub image";
     image.addEventListener("click", event => {
       event.preventDefault();
       event.stopPropagation();
@@ -409,7 +448,7 @@ function decorateCard(card) {
 
   const body = card.querySelector(".product-body");
   if (body && !body.querySelector(".rc-mark-above")) {
-    const markButton = iframeDocument.createElement("button");
+    const markButton = document.createElement("button");
     markButton.type = "button";
     markButton.className = "rc-mark-above";
     markButton.addEventListener("click", event => {
@@ -424,37 +463,78 @@ function decorateCard(card) {
 }
 
 function decorateAllCards() {
-  if (!iframeDocument) return;
-  iframeDocument.querySelectorAll(".product-card").forEach(decorateCard);
+  document.querySelectorAll(".product-card").forEach(decorateCard);
 }
 
 async function loadProductsForEditing() {
+  productMap.clear();
   const snapshot = await getDocs(collection(db, "liveproducts"));
-  snapshot.forEach(snapshotDoc => {
-    productMap.set(snapshotDoc.id, { id: snapshotDoc.id, ...snapshotDoc.data() });
-  });
+  snapshot.forEach(snapshotDoc => productMap.set(snapshotDoc.id, { id: snapshotDoc.id, ...snapshotDoc.data() }));
 }
 
-async function initializeEditor() {
-  iframeDocument = frame.contentDocument;
-  if (!iframeDocument) throw new Error("Could not access spreadsheet page.");
+async function startEditor() {
+  if (editorLoaded) return;
+  editorLoaded = true;
+  loginView.style.display = "none";
 
-  injectAdminStyles();
-  await Promise.all([loadProductsForEditing(), loadCurrencyRates()]);
+  try {
+    await Promise.all([buildSpreadsheetPage(), loadProductsForEditing(), loadCurrencyRates()]);
+    const grid = await waitForProductGrid();
+    decorateAllCards();
 
-  const grid = iframeDocument.getElementById("product-grid");
-  if (!grid) throw new Error("Spreadsheet product grid was not found.");
+    observer?.disconnect();
+    observer = new MutationObserver(() => decorateAllCards());
+    observer.observe(grid, { childList: true, subtree: false });
 
-  decorateAllCards();
-  const observer = new MutationObserver(() => decorateAllCards());
-  observer.observe(grid, { childList: true, subtree: true });
-
-  showStatus("Edit mode ready — click images, names, or yuan prices. Marks save automatically.", false, 5200);
+    showStatus("Edit mode ready — all changes save permanently.", false, 5200);
+  } catch (error) {
+    editorLoaded = false;
+    showStatus(`Editor failed to load: ${error.message}`, true, 9000);
+  }
 }
 
-frame.addEventListener("load", () => {
-  initializeEditor().catch(error => {
-    console.error(error);
-    showStatus(`Editor failed to load: ${error.message}`, true, 8000);
-  });
+function lockEditor() {
+  observer?.disconnect();
+  observer = null;
+  editorLoaded = false;
+  productMap.clear();
+  catalogRoot.innerHTML = "";
+  catalogRoot.style.display = "none";
+  loginView.style.display = "grid";
+  loginButton.disabled = false;
+  loginButton.textContent = "Sign In";
+}
+
+loginForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  loginError.textContent = "";
+  loginButton.disabled = true;
+  loginButton.textContent = "Signing in...";
+
+  try {
+    await signInWithEmailAndPassword(
+      auth,
+      document.getElementById("email-input").value.trim(),
+      document.getElementById("password-input").value
+    );
+  } catch (error) {
+    loginError.textContent = error.code === "auth/invalid-credential" ? "Incorrect email or password." : error.message;
+    loginButton.disabled = false;
+    loginButton.textContent = "Sign In";
+  }
+});
+
+onAuthStateChanged(auth, user => {
+  if (!user) {
+    lockEditor();
+    return;
+  }
+
+  if (user.uid !== ADMIN_UID) {
+    loginError.textContent = "This account is not authorised for admin access.";
+    signOut(auth);
+    return;
+  }
+
+  startEditor();
 });
