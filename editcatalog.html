@@ -33,6 +33,21 @@
 <body>
   <iframe id="catalog-frame" src="spreadsheet.html?editCatalog=1" title="Edit catalog"></iframe>
   <div id="admin-status" role="status" aria-live="polite"></div>
-  <script type="module" src="editcatalog.js?v=2026-07-15-1"></script>
+  <script>
+    // The editor watches the spreadsheet grid for full card re-renders.
+    // Only direct grid children need observing. Watching the entire subtree
+    // also sees the editor's own MARK button/text mutations and can create
+    // a recursive observer loop.
+    const NativeMutationObserver = window.MutationObserver;
+    window.MutationObserver = class extends NativeMutationObserver {
+      observe(target, options = {}) {
+        if (target && target.id === "product-grid" && options.childList) {
+          options = { ...options, subtree: false };
+        }
+        return super.observe(target, options);
+      }
+    };
+  </script>
+  <script type="module" src="editcatalog.js?v=2026-07-15-2"></script>
 </body>
 </html>
