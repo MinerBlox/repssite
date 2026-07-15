@@ -2,21 +2,42 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <meta name="robots" content="noindex, nofollow, noarchive" />
   <title>RepsCentral - Edit Catalog</title>
   <link rel="icon" href="systemimages/repscentrallogo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500&display=swap" rel="stylesheet">
   <style>
-    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #0a0a0b; }
-    #catalog-frame { width: 100%; height: 100%; border: 0; display: block; }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body { background: #0a0a0b; color: #f0f0f0; font-family: 'DM Sans', sans-serif; }
+
+    #login-view { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    .login-card { width: min(420px, 100%); padding: 28px; border: 1px solid #29292f; border-radius: 16px; background: #111114; }
+    .brand { margin-bottom: 26px; font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; }
+    .login-card h1 { margin: 0; font-family: 'Syne', sans-serif; font-size: clamp(34px, 8vw, 48px); line-height: 1; }
+    .login-copy { margin: 10px 0 20px; color: #92929c; font-size: 13px; line-height: 1.55; }
+    .fields { display: grid; gap: 13px; }
+    .field { display: grid; gap: 7px; }
+    .field label { color: #92929c; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .field input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid #29292f; border-radius: 9px; outline: 0; background: #0e0e11; color: #f0f0f0; font: inherit; }
+    .field input:focus { border-color: rgba(77,166,255,.7); box-shadow: 0 0 0 3px rgba(77,166,255,.12); }
+    #login-btn { width: 100%; min-height: 44px; margin-top: 16px; border: 0; border-radius: 9px; background: #4da6ff; color: #fff; font: 700 13px 'DM Sans', sans-serif; cursor: pointer; }
+    #login-btn:disabled { opacity: .55; cursor: not-allowed; }
+    #login-error { min-height: 20px; margin-top: 10px; color: #ff6b6b; font-size: 13px; }
+    #catalog-root { display: none; min-height: 100vh; }
+
     #admin-status {
       position: fixed;
       right: 16px;
       bottom: 16px;
       z-index: 99999;
-      max-width: min(420px, calc(100vw - 32px));
+      max-width: min(460px, calc(100vw - 32px));
       padding: 10px 14px;
       border-radius: 10px;
-      background: rgba(17,17,20,.94);
+      background: rgba(17,17,20,.96);
       border: 1px solid #2a2a30;
       color: #f0f0f0;
       font: 600 12px/1.4 Arial, Helvetica, sans-serif;
@@ -31,23 +52,28 @@
   </style>
 </head>
 <body>
-  <iframe id="catalog-frame" src="spreadsheet.html?editCatalog=1" title="Edit catalog"></iframe>
+  <section id="login-view">
+    <form class="login-card" id="login-form">
+      <div class="brand">repscentral</div>
+      <h1>CATALOG EDITOR</h1>
+      <p class="login-copy">Sign in with your usual RepsCentral admin account.</p>
+      <div class="fields">
+        <div class="field">
+          <label for="email-input">Email</label>
+          <input id="email-input" type="email" autocomplete="email" required>
+        </div>
+        <div class="field">
+          <label for="password-input">Password</label>
+          <input id="password-input" type="password" autocomplete="current-password" required>
+        </div>
+      </div>
+      <button id="login-btn" type="submit">Sign In</button>
+      <div id="login-error"></div>
+    </form>
+  </section>
+
+  <main id="catalog-root"></main>
   <div id="admin-status" role="status" aria-live="polite"></div>
-  <script>
-    // The editor watches the spreadsheet grid for full card re-renders.
-    // Only direct grid children need observing. Watching the entire subtree
-    // also sees the editor's own MARK button/text mutations and can create
-    // a recursive observer loop.
-    const NativeMutationObserver = window.MutationObserver;
-    window.MutationObserver = class extends NativeMutationObserver {
-      observe(target, options = {}) {
-        if (target && target.id === "product-grid" && options.childList) {
-          options = { ...options, subtree: false };
-        }
-        return super.observe(target, options);
-      }
-    };
-  </script>
-  <script type="module" src="editcatalog.js?v=2026-07-15-2"></script>
+  <script type="module" src="editcatalog.js?v=2026-07-15-3"></script>
 </body>
 </html>
