@@ -711,7 +711,7 @@ window.addEventListener("resize", () => {
 
 async function loadHomeProducts() {
   try {
-    const snapshot = await getDocs(collection(db, "products"));
+    const snapshot = await getDocs(collection(db, "liveproducts"));
     const items = snapshot.docs
       .map(productDoc => ({ id: productDoc.id, ...productDoc.data() }))
       .filter(item => item.isActive !== false)
