@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { enableAppCheck } from "./firebase-app-check.js?v=2026-06-30-app-check-1";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA",
@@ -39,10 +39,11 @@ let selectedCurrency = localStorage.getItem(CURRENCY_KEY) || "";
 let currencyNames = { ...FALLBACK_CURRENCIES };
 let cnyRates = { ...FALLBACK_RATES };
 let currencyPickerRequired = false;
+let fullCatalogueLoaded = false;
 
-// Spreadsheet rendering is deliberately incremental. Only enough cards to fill
-// the visible viewport plus one extra row are mounted. More rows are appended
-// as the visitor scrolls, so the page does not create thousands of DOM nodes at once.
+// Fast first paint: fetch only a small first slice, then load the full catalogue
+// quietly in the background. The DOM itself is also mounted incrementally.
+const INITIAL_FETCH_COUNT = 60;
 let visibleItems = [];
 let renderedItemCount = 0;
 let renderBufferFrame = 0;
@@ -169,14 +170,9 @@ function gridColumnCount(grid) {
 function appendItemsThrough(targetCount) {
   const grid = document.getElementById("product-grid");
   if (!grid || renderedItemCount >= visibleItems.length) return;
-
   const nextCount = Math.min(visibleItems.length, Math.max(renderedItemCount, targetCount));
   if (nextCount <= renderedItemCount) return;
-
-  grid.insertAdjacentHTML(
-    "beforeend",
-    visibleItems.slice(renderedItemCount, nextCount).map(itemCard).join("")
-  );
+  grid.insertAdjacentHTML("beforeend", visibleItems.slice(renderedItemCount, nextCount).map(itemCard).join(""));
   renderedItemCount = nextCount;
 }
 
@@ -187,8 +183,6 @@ function ensureViewportBuffer() {
 
   const columns = gridColumnCount(grid);
   const firstCard = grid.querySelector(".product-card");
-
-  // Bootstrap with one row so we can measure the real card height on this device.
   if (!firstCard) {
     appendItemsThrough(columns);
     requestRenderBufferCheck();
@@ -197,18 +191,14 @@ function ensureViewportBuffer() {
 
   const cardHeight = firstCard.getBoundingClientRect().height;
   if (!cardHeight) return;
-
   const styles = getComputedStyle(grid);
   const rowGap = parseFloat(styles.rowGap || styles.gap) || GRID_GAP;
   const rowStep = cardHeight + rowGap;
   const gridTop = grid.getBoundingClientRect().top + window.scrollY;
   const viewportBottom = window.scrollY + window.innerHeight;
-
-  // Number of rows needed to reach the viewport bottom, plus exactly one buffer row.
   const visibleDepth = Math.max(0, viewportBottom - gridTop);
   const rowsNeeded = Math.max(1, Math.ceil(visibleDepth / rowStep) + 1);
   const targetCount = Math.min(visibleItems.length, rowsNeeded * columns);
-
   appendItemsThrough(targetCount);
 }
 
@@ -225,7 +215,9 @@ function renderItems() {
   const copy = document.getElementById("results-copy");
   const filterPill = document.getElementById("active-filter-pill");
 
-  count.textContent = `${items.length} item${items.length === 1 ? "" : "s"}`;
+  count.textContent = fullCatalogueLoaded
+    ? `${items.length} item${items.length === 1 ? "" : "s"}`
+    : `${items.length}+ items`;
   filterPill.textContent = selectedBrand ? `Brand: ${selectedBrand}` : `Category: ${selectedCategory}`;
 
   if (searchTerm.trim()) {
@@ -235,7 +227,7 @@ function renderItems() {
   } else if (selectedCategory !== "All") {
     copy.textContent = `Showing all items in ${selectedCategory}.`;
   } else {
-    copy.textContent = "Showing every item in the spreadsheet.";
+    copy.textContent = fullCatalogueLoaded ? "Showing every item in the spreadsheet." : "Loading the full spreadsheet in the background…";
   }
 
   visibleItems = items;
@@ -248,9 +240,6 @@ function renderItems() {
   }
 
   empty.style.display = "none";
-
-  // Start with only one row. Once it is laid out we measure its actual height and
-  // add only enough additional rows to cover the viewport plus one more row.
   appendItemsThrough(gridColumnCount(grid));
   requestRenderBufferCheck();
 }
@@ -307,8 +296,8 @@ async function loadCurrencyData() {
       cnyRates = { ...cnyRates, CNY: 1, ...data.rates };
       localStorage.setItem(RATE_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), rates: cnyRates }));
     }
-  } catch (error) {
-  }
+    if (selectedCurrency) renderItems();
+  } catch (error) {}
 }
 
 async function chooseCurrency(code) {
@@ -321,7 +310,7 @@ async function chooseCurrency(code) {
   renderItems();
 }
 
-async function initializeCurrency() {
+function initializeCurrency() {
   const pill = document.getElementById("currency-pill");
   if (pill) pill.textContent = `Currency: ${selectedCurrency || "Select"}`;
   document.getElementById("currency-search")?.addEventListener("input", event => renderCurrencyList(event.target.value));
@@ -332,11 +321,12 @@ async function initializeCurrency() {
   document.getElementById("currency-close")?.addEventListener("click", closeCurrencyPicker);
   document.addEventListener("keydown", event => { if (event.key === "Escape") closeCurrencyPicker(); });
   if (!selectedCurrency) openCurrencyPicker(true);
-  await loadCurrencyData();
-  if (document.getElementById("currency-overlay")?.classList.contains("open")) renderCurrencyList();
+
+  // Currency API calls must never block product rendering.
+  loadCurrencyData();
 }
 
-const currencyReady = initializeCurrency();
+initializeCurrency();
 
 async function copyProductLink(url, productId) {
   if (!url || url === "#") return;
@@ -360,27 +350,62 @@ function clearCategory() {
   renderItems();
 }
 
-async function loadProducts() {
-  await currencyReady;
-  try {
-    const snapshot = await getDocs(collection(db, "liveproducts"));
-    firebaseItems = snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter(item => item.isActive !== false)
-      .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
-  } catch (error) {
-    firebaseItems = [];
-  }
+function normaliseSnapshot(snapshot) {
+  return snapshot.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .filter(item => item.isActive !== false)
+    .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
+}
 
-  renderCategoryChips();
-  renderItems();
-
+function showGrid() {
   const loading = document.getElementById("spreadsheet-loading");
   const grid = document.getElementById("product-grid");
   if (loading) loading.style.display = "none";
   if (grid) {
     grid.style.display = "grid";
     requestRenderBufferCheck();
+  }
+}
+
+async function loadFullCatalogueInBackground() {
+  try {
+    const snapshot = await getDocs(collection(db, "liveproducts"));
+    firebaseItems = normaliseSnapshot(snapshot);
+    fullCatalogueLoaded = true;
+    renderCategoryChips();
+    renderItems();
+  } catch (error) {
+    // Keep the fast initial slice visible if the background refresh fails.
+  }
+}
+
+async function loadProducts() {
+  try {
+    const firstPageQuery = query(
+      collection(db, "liveproducts"),
+      orderBy("sortOrder", "asc"),
+      limit(INITIAL_FETCH_COUNT)
+    );
+    const firstSnapshot = await getDocs(firstPageQuery);
+    firebaseItems = normaliseSnapshot(firstSnapshot);
+  } catch (error) {
+    // Fallback for any unexpected query/index issue.
+    try {
+      const snapshot = await getDocs(collection(db, "liveproducts"));
+      firebaseItems = normaliseSnapshot(snapshot);
+      fullCatalogueLoaded = true;
+    } catch {
+      firebaseItems = [];
+    }
+  }
+
+  renderCategoryChips();
+  renderItems();
+  showGrid();
+
+  // Paint the first products immediately, then request the full 12k+ catalogue.
+  if (!fullCatalogueLoaded) {
+    setTimeout(loadFullCatalogueInBackground, 0);
   }
 }
 
@@ -395,7 +420,6 @@ document.getElementById("product-grid")?.addEventListener("click", event => {
     window.rcTrackProductInteraction?.(agentLink.dataset.agentProduct, "outboundClicks");
     return;
   }
-
   const viewLink = event.target.closest("[data-view-product]");
   if (viewLink) window.rcTrackProductInteraction?.(viewLink.dataset.viewProduct, "viewClicks");
 });
@@ -403,9 +427,7 @@ document.getElementById("product-grid")?.addEventListener("click", event => {
 window.addEventListener("scroll", requestRenderBufferCheck, { passive: true });
 window.addEventListener("resize", () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => {
-    renderItems();
-  }, 120);
+  resizeTimer = setTimeout(() => renderItems(), 120);
 });
 
 window.setCategory = setCategory;
