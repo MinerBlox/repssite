@@ -136,5 +136,27 @@
   </section>
 
   <script type="module" src="./admin-fast.js?v=2026-08-11-1"></script>
+  <script>
+    // Keep the admin exactly where it is while a quick category save rerenders the list.
+    (() => {
+      let restoreUntil = 0;
+      let savedScrollY = 0;
+      let restoreFrame = 0;
+
+      const restoreScroll = () => {
+        restoreFrame = 0;
+        if (performance.now() > restoreUntil) return;
+        if (Math.abs(window.scrollY - savedScrollY) > 2) window.scrollTo(0, savedScrollY);
+        restoreFrame = requestAnimationFrame(restoreScroll);
+      };
+
+      document.addEventListener("change", event => {
+        if (!event.target.matches?.("[data-quick-category]")) return;
+        savedScrollY = window.scrollY;
+        restoreUntil = performance.now() + 1800;
+        if (!restoreFrame) restoreFrame = requestAnimationFrame(restoreScroll);
+      }, true);
+    })();
+  </script>
 </body>
 </html>
