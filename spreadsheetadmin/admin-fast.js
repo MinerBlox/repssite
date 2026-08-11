@@ -54,7 +54,7 @@ let searchTimer = 0;
 let selectedCategoryFilter = "";
 
 function slugify(value) { return String(value || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""); }
-function escapeHtml(value) { return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+function escapeHtml(value) { return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;"); }
 function categoryOptions(selected) { return [`<option value="">Blank</option>`, ...categories.map(category => `<option value="${escapeHtml(category)}" ${category === selected ? "selected" : ""}>${escapeHtml(category)}</option>`)].join(""); }
 function badgeSelect(selected) { return badgeOptions.map(badge => `<option value="${badge}" ${badge === (selected || "") ? "selected" : ""}>${badge || "Blank"}</option>`).join(""); }
 function brandSelect(selected) { return brandOptions.map(brand => `<option value="${escapeHtml(brand)}" ${brand === (selected || "") ? "selected" : ""}>${brand || "Blank"}</option>`).join(""); }
@@ -185,7 +185,6 @@ function queueSave(card) {
       const quick = card.querySelector('[data-quick-category]');
       if (quick) quick.value = data.category;
       productStatus(id, "Saved", "saved");
-      if (selectedCategoryFilter && data.category !== selectedCategoryFilter) renderProducts();
     } catch {
       productStatus(id, "Error", "error");
       setStatus("Save failed - check Firestore rules");
@@ -206,7 +205,6 @@ async function quickSaveCategory(card, select) {
     if (expandedSelect) expandedSelect.value = category;
     productStatus(id, "Saved", "saved");
     setStatus(`Category saved: ${category || "Blank"}`);
-    if (selectedCategoryFilter && category !== selectedCategoryFilter) renderProducts();
   } catch {
     productStatus(id, "Error", "error");
     setStatus("Category save failed");
