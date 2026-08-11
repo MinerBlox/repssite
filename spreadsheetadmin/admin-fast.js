@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { enableAppCheck } from "../firebase-app-check.js?v=2026-06-30-app-check-1";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore, collection, doc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, doc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp, query, orderBy, limit, startAfter, where } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = { apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA", authDomain: "reps-central.firebaseapp.com", projectId: "reps-central", storageBucket: "reps-central.firebasestorage.app", messagingSenderId: "812299387060", appId: "1:812299387060:web:1c93d1e7bf30b05653d7e1", measurementId: "G-8T7F9F1FZ9" };
 const defaultCategories = ["Shoes", "Hoodies", "Tees", "Shorts", "Sweats", "Jeans", "Jackets", "Puffer", "Sweaters", "Sets", "Jerseys", "Accessories", "Uncategorised"];
@@ -31,6 +31,12 @@ const searchInput = document.getElementById("search-input");
 const sortInput = document.getElementById("sort-input");
 const copyScriptBtn = document.getElementById("copy-script-btn");
 
+const categoryFilterWrap = document.createElement("div");
+categoryFilterWrap.className = "field sort";
+categoryFilterWrap.innerHTML = `<label for="category-filter-input">Category</label><select id="category-filter-input"><option value="">All categories</option></select>`;
+searchInput.closest(".list-controls")?.insertBefore(categoryFilterWrap, sortInput.closest(".field"));
+const categoryFilterInput = document.getElementById("category-filter-input");
+
 let products = [];
 let categories = [...defaultCategories];
 let saveTimers = new Map();
@@ -45,6 +51,7 @@ let visibleProducts = [];
 let renderedCount = 0;
 let renderFrame = 0;
 let searchTimer = 0;
+let selectedCategoryFilter = "";
 
 function slugify(value) { return String(value || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""); }
 function escapeHtml(value) { return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
@@ -64,6 +71,11 @@ function renderCategories() {
     select.innerHTML = categoryOptions(value);
     select.value = value;
   });
+  if (categoryFilterInput) {
+    const value = selectedCategoryFilter;
+    categoryFilterInput.innerHTML = `<option value="">All categories</option>${categories.map(category => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`).join("")}`;
+    categoryFilterInput.value = value;
+  }
 }
 
 function interactionCount(id) { return Number(productInteractions.get(id) || 0); }
@@ -173,6 +185,7 @@ function queueSave(card) {
       const quick = card.querySelector('[data-quick-category]');
       if (quick) quick.value = data.category;
       productStatus(id, "Saved", "saved");
+      if (selectedCategoryFilter && data.category !== selectedCategoryFilter) renderProducts();
     } catch {
       productStatus(id, "Error", "error");
       setStatus("Save failed - check Firestore rules");
@@ -193,6 +206,7 @@ async function quickSaveCategory(card, select) {
     if (expandedSelect) expandedSelect.value = category;
     productStatus(id, "Saved", "saved");
     setStatus(`Category saved: ${category || "Blank"}`);
+    if (selectedCategoryFilter && category !== selectedCategoryFilter) renderProducts();
   } catch {
     productStatus(id, "Error", "error");
     setStatus("Category save failed");
@@ -211,15 +225,32 @@ async function loadCategories() {
   renderCategories();
 }
 
+function resetProductPaging() {
+  products = [];
+  lastProductDoc = null;
+  hasMoreProducts = true;
+  visibleProducts = [];
+  renderedCount = 0;
+  productsList.innerHTML = "";
+}
+
 async function loadNextProductPage() {
   if (loadingMoreProducts || !hasMoreProducts) return;
   loadingMoreProducts = true;
-  setStatus(products.length ? `Loading more… ${products.length} loaded` : "Loading products");
+  const filterText = selectedCategoryFilter ? ` in ${selectedCategoryFilter}` : "";
+  setStatus(products.length ? `Loading more${filterText}… ${products.length} loaded` : `Loading products${filterText}`);
   try {
     const base = collection(db, "liveproducts");
-    const pageQuery = lastProductDoc
-      ? query(base, orderBy("sortOrder"), startAfter(lastProductDoc), limit(PAGE_SIZE))
-      : query(base, orderBy("sortOrder"), limit(PAGE_SIZE));
+    let pageQuery;
+    if (selectedCategoryFilter) {
+      pageQuery = lastProductDoc
+        ? query(base, where("category", "==", selectedCategoryFilter), startAfter(lastProductDoc), limit(PAGE_SIZE))
+        : query(base, where("category", "==", selectedCategoryFilter), limit(PAGE_SIZE));
+    } else {
+      pageQuery = lastProductDoc
+        ? query(base, orderBy("sortOrder"), startAfter(lastProductDoc), limit(PAGE_SIZE))
+        : query(base, orderBy("sortOrder"), limit(PAGE_SIZE));
+    }
     const snapshot = await getDocs(pageQuery);
     if (!snapshot.empty) lastProductDoc = snapshot.docs[snapshot.docs.length - 1];
     const newProducts = snapshot.docs.map(productDoc => ({ id: productDoc.id, ...normalizeProduct(productDoc.data()) }));
@@ -227,7 +258,7 @@ async function loadNextProductPage() {
     products.push(...newProducts.filter(item => !existingIds.has(item.id)));
     hasMoreProducts = snapshot.docs.length === PAGE_SIZE;
     renderProducts();
-    setStatus(`${products.length.toLocaleString()} products loaded${hasMoreProducts ? " — scroll for more" : ""}`);
+    setStatus(`${products.length.toLocaleString()} ${selectedCategoryFilter || "products"} loaded${hasMoreProducts ? " — scroll for more" : ""}`);
   } catch (error) {
     setStatus("Product load failed - check Firestore/indexes");
     console.error(error);
@@ -278,6 +309,8 @@ function lock() {
   products = [];
   lastProductDoc = null;
   hasMoreProducts = true;
+  selectedCategoryFilter = "";
+  if (categoryFilterInput) categoryFilterInput.value = "";
   hasLoaded = false;
 }
 
@@ -367,6 +400,12 @@ productsList.addEventListener("click", async event => {
 searchInput.addEventListener("input", () => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(renderProducts, 80);
+});
+categoryFilterInput?.addEventListener("change", async () => {
+  selectedCategoryFilter = categoryFilterInput.value;
+  resetProductPaging();
+  window.scrollTo({ top: 0, behavior: "instant" });
+  await loadNextProductPage();
 });
 sortInput.addEventListener("change", async () => {
   if ((sortInput.value === "most-interacted" || sortInput.value === "least-interacted") && !interactionsLoaded) await loadInteractions();
