@@ -40,6 +40,16 @@ let currencyNames = { ...FALLBACK_CURRENCIES };
 let cnyRates = { ...FALLBACK_RATES };
 let currencyPickerRequired = false;
 
+// Spreadsheet rendering is deliberately incremental. Only enough cards to fill
+// the visible viewport plus one extra row are mounted. More rows are appended
+// as the visitor scrolls, so the page does not create thousands of DOM nodes at once.
+let visibleItems = [];
+let renderedItemCount = 0;
+let renderBufferFrame = 0;
+let resizeTimer = 0;
+const GRID_GAP = 16;
+const GRID_MIN_CARD_WIDTH = 220;
+
 function categories(items) {
   return ["All", ...new Set(items.map(item => item.category).filter(Boolean))];
 }
@@ -96,7 +106,7 @@ function productImage(item) {
   if (!imageUrl) {
     return `<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l4-4 4 4 4-4 4 4"/><path d="M3 15l4-4 4 4 4-4 4 4"/></svg>`;
   }
-  return `<img class="product-image" src="${escapeAttr(imageUrl)}" alt="${escapeAttr(item.name || "Product image")}" loading="lazy">`;
+  return `<img class="product-image" src="${escapeAttr(imageUrl)}" alt="${escapeAttr(item.name || "Product image")}" loading="lazy" decoding="async">`;
 }
 
 function productHref(item) {
@@ -149,6 +159,64 @@ function renderCategoryChips() {
   `).join("");
 }
 
+function gridColumnCount(grid) {
+  if (!grid) return 1;
+  if (window.matchMedia("(max-width: 520px)").matches) return 1;
+  if (window.matchMedia("(max-width: 720px)").matches) return 2;
+  return Math.max(1, Math.floor((grid.clientWidth + GRID_GAP) / (GRID_MIN_CARD_WIDTH + GRID_GAP)));
+}
+
+function appendItemsThrough(targetCount) {
+  const grid = document.getElementById("product-grid");
+  if (!grid || renderedItemCount >= visibleItems.length) return;
+
+  const nextCount = Math.min(visibleItems.length, Math.max(renderedItemCount, targetCount));
+  if (nextCount <= renderedItemCount) return;
+
+  grid.insertAdjacentHTML(
+    "beforeend",
+    visibleItems.slice(renderedItemCount, nextCount).map(itemCard).join("")
+  );
+  renderedItemCount = nextCount;
+}
+
+function ensureViewportBuffer() {
+  renderBufferFrame = 0;
+  const grid = document.getElementById("product-grid");
+  if (!grid || !visibleItems.length || renderedItemCount >= visibleItems.length) return;
+
+  const columns = gridColumnCount(grid);
+  const firstCard = grid.querySelector(".product-card");
+
+  // Bootstrap with one row so we can measure the real card height on this device.
+  if (!firstCard) {
+    appendItemsThrough(columns);
+    requestRenderBufferCheck();
+    return;
+  }
+
+  const cardHeight = firstCard.getBoundingClientRect().height;
+  if (!cardHeight) return;
+
+  const styles = getComputedStyle(grid);
+  const rowGap = parseFloat(styles.rowGap || styles.gap) || GRID_GAP;
+  const rowStep = cardHeight + rowGap;
+  const gridTop = grid.getBoundingClientRect().top + window.scrollY;
+  const viewportBottom = window.scrollY + window.innerHeight;
+
+  // Number of rows needed to reach the viewport bottom, plus exactly one buffer row.
+  const visibleDepth = Math.max(0, viewportBottom - gridTop);
+  const rowsNeeded = Math.max(1, Math.ceil(visibleDepth / rowStep) + 1);
+  const targetCount = Math.min(visibleItems.length, rowsNeeded * columns);
+
+  appendItemsThrough(targetCount);
+}
+
+function requestRenderBufferCheck() {
+  if (renderBufferFrame) return;
+  renderBufferFrame = requestAnimationFrame(ensureViewportBuffer);
+}
+
 function renderItems() {
   const items = filteredItems();
   const grid = document.getElementById("product-grid");
@@ -170,14 +238,21 @@ function renderItems() {
     copy.textContent = "Showing every item in the spreadsheet.";
   }
 
+  visibleItems = items;
+  renderedItemCount = 0;
+  grid.innerHTML = "";
+
   if (!items.length) {
-    grid.innerHTML = "";
     empty.style.display = "block";
     return;
   }
 
   empty.style.display = "none";
-  grid.innerHTML = items.map(itemCard).join("");
+
+  // Start with only one row. Once it is laid out we measure its actual height and
+  // add only enough additional rows to cover the viewport plus one more row.
+  appendItemsThrough(gridColumnCount(grid));
+  requestRenderBufferCheck();
 }
 
 function renderCurrencyList(query = "") {
@@ -303,7 +378,10 @@ async function loadProducts() {
   const loading = document.getElementById("spreadsheet-loading");
   const grid = document.getElementById("product-grid");
   if (loading) loading.style.display = "none";
-  if (grid) grid.style.display = "grid";
+  if (grid) {
+    grid.style.display = "grid";
+    requestRenderBufferCheck();
+  }
 }
 
 document.getElementById("category-chips")?.addEventListener("click", event => {
@@ -320,6 +398,14 @@ document.getElementById("product-grid")?.addEventListener("click", event => {
 
   const viewLink = event.target.closest("[data-view-product]");
   if (viewLink) window.rcTrackProductInteraction?.(viewLink.dataset.viewProduct, "viewClicks");
+});
+
+window.addEventListener("scroll", requestRenderBufferCheck, { passive: true });
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    renderItems();
+  }, 120);
 });
 
 window.setCategory = setCategory;
