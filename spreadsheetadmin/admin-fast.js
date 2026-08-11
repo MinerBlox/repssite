@@ -253,9 +253,20 @@ async function loadNextProductPage() {
     if (!snapshot.empty) lastProductDoc = snapshot.docs[snapshot.docs.length - 1];
     const newProducts = snapshot.docs.map(productDoc => ({ id: productDoc.id, ...normalizeProduct(productDoc.data()) }));
     const existingIds = new Set(products.map(item => item.id));
-    products.push(...newProducts.filter(item => !existingIds.has(item.id)));
+    const uniqueNewProducts = newProducts.filter(item => !existingIds.has(item.id));
+    const isInitialLoad = products.length === 0;
+    products.push(...uniqueNewProducts);
     hasMoreProducts = snapshot.docs.length === PAGE_SIZE;
-    renderProducts();
+
+    if (isInitialLoad || searchInput.value.trim() || sortInput.value !== "default") {
+      renderProducts();
+    } else {
+      // Critical: do not rebuild the existing DOM when another Firestore page arrives.
+      // Rebuilding caused the document height to collapse for a frame and made scrolling jump/glitch.
+      visibleProducts.push(...uniqueNewProducts);
+      requestViewportBuffer();
+    }
+
     setStatus(`${products.length.toLocaleString()} ${selectedCategoryFilter || "products"} loaded${hasMoreProducts ? " — scroll for more" : ""}`);
   } catch (error) {
     setStatus("Product load failed - check Firestore/indexes");
