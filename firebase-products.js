@@ -24,6 +24,11 @@ let selectedBrand = requestedBrand || sessionStorage.getItem("rc-pending-brand")
 sessionStorage.removeItem("rc-pending-brand");
 const CURRENCY_KEY = "rc-currency";
 const RATE_CACHE_KEY = "rc-cny-rates";
+const HIDDEN_CATEGORY = "uncategorised";
+const FALLBACK_FILTER_CATEGORIES = [
+  "Shoes", "Hoodies", "Tees", "Shorts", "Sweats", "Jeans", "Jackets", "Puffer",
+  "Sweaters", "Sets", "Jerseys", "Accessories", "Room Decor", "Electronics", "Womens"
+];
 const FALLBACK_CURRENCIES = {
   CNY: "Chinese Yuan", GBP: "British Pound", USD: "United States Dollar", EUR: "Euro",
   AUD: "Australian Dollar", CAD: "Canadian Dollar", JPY: "Japanese Yen", KRW: "South Korean Won",
@@ -40,10 +45,15 @@ let currencyNames = { ...FALLBACK_CURRENCIES };
 let cnyRates = { ...FALLBACK_RATES };
 let currencyPickerRequired = false;
 let fullCatalogueLoaded = false;
+let filterCategories = [];
+let filtersLoaded = false;
+let productPopularity = new Map();
+let popularityLoaded = false;
 
 // Fast first paint: fetch only a small first slice, then load the full catalogue
 // quietly in the background. The DOM itself is also mounted incrementally.
 const INITIAL_FETCH_COUNT = 60;
+const POPULARITY_FETCH_COUNT = 250;
 let visibleItems = [];
 let renderedItemCount = 0;
 let renderBufferFrame = 0;
@@ -51,8 +61,24 @@ let resizeTimer = 0;
 const GRID_GAP = 16;
 const GRID_MIN_CARD_WIDTH = 220;
 
+// Desktop: category filters wrap naturally onto a second line instead of becoming
+// a horizontal scroller. Mobile keeps the existing swipeable single-line layout.
+const filterWrapStyle = document.createElement("style");
+filterWrapStyle.textContent = `
+  @media (min-width: 721px) {
+    .category-row { overflow: visible !important; }
+    .category-chips { flex-wrap: wrap !important; overflow-x: visible !important; }
+  }
+`;
+document.head.appendChild(filterWrapStyle);
+
+function isHiddenCategory(value) {
+  return String(value || "").trim().toLowerCase() === HIDDEN_CATEGORY;
+}
+
 function categories(items) {
-  return ["All", ...new Set(items.map(item => item.category).filter(Boolean))];
+  const itemCategories = items.map(item => item.category).filter(category => category && !isHiddenCategory(category));
+  return ["All", ...new Set(itemCategories)];
 }
 
 function badgeLabel(type) {
@@ -142,22 +168,85 @@ function itemCard(item) {
   `;
 }
 
+function popularityScore(item) {
+  return Number(productPopularity.get(String(item.id)) || 0);
+}
+
 function filteredItems() {
-  return firebaseItems.filter(item => {
+  const items = firebaseItems.filter(item => {
+    if (isHiddenCategory(item.category)) return false;
     const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
     const matchesBrand = !selectedBrand || String(item.brand || "").toLowerCase() === selectedBrand.toLowerCase();
     const value = `${item.name || ""} ${item.brand || ""} ${item.category || ""} ${(item.tags || []).join(" ")}`.toLowerCase();
     const matchesSearch = value.includes(searchTerm.trim().toLowerCase());
     return matchesCategory && matchesBrand && matchesSearch;
   });
+
+  // "All" is popularity-first. Products without recorded clicks simply fall back
+  // to their normal spreadsheet order underneath the popular products.
+  if (selectedCategory === "All") {
+    items.sort((a, b) => {
+      const popularityDifference = popularityScore(b) - popularityScore(a);
+      if (popularityDifference) return popularityDifference;
+      return (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0);
+    });
+  }
+
+  return items;
 }
 
 function renderCategoryChips() {
   const wrap = document.getElementById("category-chips");
-  const itemCategories = categories(firebaseItems);
+  if (!wrap) return;
+
+  if (!filtersLoaded) {
+    wrap.innerHTML = `<span class="category-chip" style="cursor:default;opacity:.72">Loading Filters...</span>`;
+    return;
+  }
+
+  const merged = [
+    ...filterCategories,
+    ...categories(firebaseItems).filter(category => category !== "All")
+  ]
+    .filter(category => category && !isHiddenCategory(category));
+
+  const itemCategories = ["All", ...new Set(merged)];
   wrap.innerHTML = itemCategories.map(category => `
     <button class="category-chip ${selectedCategory === category ? "active" : ""}" type="button" data-category="${escapeAttr(category)}">${escapeHtml(category)}</button>
   `).join("");
+}
+
+async function loadFilterCategories() {
+  try {
+    const snapshot = await getDocs(collection(db, "categories"));
+    const stored = snapshot.docs
+      .map(categoryDoc => categoryDoc.data().name || categoryDoc.id)
+      .filter(category => category && !isHiddenCategory(category));
+    filterCategories = [...new Set([...FALLBACK_FILTER_CATEGORIES, ...stored])];
+  } catch {
+    filterCategories = [...FALLBACK_FILTER_CATEGORIES];
+  } finally {
+    filtersLoaded = true;
+    renderCategoryChips();
+  }
+}
+
+async function loadPopularity() {
+  try {
+    const snapshot = await getDocs(query(
+      collection(db, "analyticsProducts"),
+      orderBy("totalInteractions", "desc"),
+      limit(POPULARITY_FETCH_COUNT)
+    ));
+    productPopularity = new Map(snapshot.docs.map(statsDoc => [
+      String(statsDoc.id),
+      Number(statsDoc.data().totalInteractions || 0)
+    ]));
+    popularityLoaded = true;
+    if (selectedCategory === "All" && firebaseItems.length) renderItems();
+  } catch {
+    popularityLoaded = true;
+  }
 }
 
 function gridColumnCount(grid) {
@@ -227,7 +316,9 @@ function renderItems() {
   } else if (selectedCategory !== "All") {
     copy.textContent = `Showing all items in ${selectedCategory}.`;
   } else {
-    copy.textContent = fullCatalogueLoaded ? "Showing every item in the spreadsheet." : "Loading the full spreadsheet in the background…";
+    copy.textContent = fullCatalogueLoaded
+      ? "Showing popular items first, followed by the rest of the spreadsheet."
+      : "Loading the full spreadsheet in the background…";
   }
 
   visibleItems = items;
@@ -335,6 +426,7 @@ async function copyProductLink(url, productId) {
 }
 
 function setCategory(category) {
+  if (isHiddenCategory(category)) return;
   selectedCategory = category;
   renderCategoryChips();
   renderItems();
@@ -353,7 +445,7 @@ function clearCategory() {
 function normaliseSnapshot(snapshot) {
   return snapshot.docs
     .map(doc => ({ id: doc.id, ...doc.data() }))
-    .filter(item => item.isActive !== false)
+    .filter(item => item.isActive !== false && !isHiddenCategory(item.category))
     .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
 }
 
@@ -372,6 +464,10 @@ async function loadFullCatalogueInBackground() {
     const snapshot = await getDocs(collection(db, "liveproducts"));
     firebaseItems = normaliseSnapshot(snapshot);
     fullCatalogueLoaded = true;
+    if (filtersLoaded) {
+      const discovered = categories(firebaseItems).filter(category => category !== "All");
+      filterCategories = [...new Set([...filterCategories, ...discovered])];
+    }
     renderCategoryChips();
     renderItems();
   } catch (error) {
@@ -380,6 +476,14 @@ async function loadFullCatalogueInBackground() {
 }
 
 async function loadProducts() {
+  // Give the user useful filter feedback immediately rather than leaving the filter bar blank.
+  renderCategoryChips();
+
+  // These are deliberately non-blocking: products can paint while filter names and
+  // popularity rankings are fetched independently.
+  loadFilterCategories();
+  loadPopularity();
+
   try {
     const firstPageQuery = query(
       collection(db, "liveproducts"),
