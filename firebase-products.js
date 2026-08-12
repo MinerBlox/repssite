@@ -50,8 +50,6 @@ let filtersLoaded = false;
 let productPopularity = new Map();
 let popularityLoaded = false;
 
-// Fast first paint: fetch only a small first slice, then load the full catalogue
-// quietly in the background. The DOM itself is also mounted incrementally.
 const INITIAL_FETCH_COUNT = 60;
 const POPULARITY_FETCH_COUNT = 250;
 let visibleItems = [];
@@ -61,8 +59,6 @@ let resizeTimer = 0;
 const GRID_GAP = 16;
 const GRID_MIN_CARD_WIDTH = 220;
 
-// Desktop: category filters wrap naturally onto a second line instead of becoming
-// a horizontal scroller. Mobile keeps the existing swipeable single-line layout.
 const filterWrapStyle = document.createElement("style");
 filterWrapStyle.textContent = `
   @media (min-width: 721px) {
@@ -182,8 +178,6 @@ function filteredItems() {
     return matchesCategory && matchesBrand && matchesSearch;
   });
 
-  // "All" is popularity-first. Products without recorded clicks simply fall back
-  // to their normal spreadsheet order underneath the popular products.
   if (selectedCategory === "All") {
     items.sort((a, b) => {
       const popularityDifference = popularityScore(b) - popularityScore(a);
@@ -199,18 +193,21 @@ function renderCategoryChips() {
   const wrap = document.getElementById("category-chips");
   if (!wrap) return;
 
-  if (!filtersLoaded) {
+  // We can only know that a category is genuinely empty after the full catalogue
+  // has loaded. Until then, show a clear loading state instead of misleading filters.
+  if (!fullCatalogueLoaded) {
     wrap.innerHTML = `<span class="category-chip" style="cursor:default;opacity:.72">Loading Filters...</span>`;
     return;
   }
 
-  const merged = [
-    ...filterCategories,
-    ...categories(firebaseItems).filter(category => category !== "All")
-  ]
-    .filter(category => category && !isHiddenCategory(category));
+  const actualCategories = categories(firebaseItems).filter(category => category !== "All");
+  const itemCategories = ["All", ...actualCategories];
 
-  const itemCategories = ["All", ...new Set(merged)];
+  // If a previously selected category has become empty, return to All.
+  if (selectedCategory !== "All" && !actualCategories.includes(selectedCategory)) {
+    selectedCategory = "All";
+  }
+
   wrap.innerHTML = itemCategories.map(category => `
     <button class="category-chip ${selectedCategory === category ? "active" : ""}" type="button" data-category="${escapeAttr(category)}">${escapeHtml(category)}</button>
   `).join("");
@@ -412,8 +409,6 @@ function initializeCurrency() {
   document.getElementById("currency-close")?.addEventListener("click", closeCurrencyPicker);
   document.addEventListener("keydown", event => { if (event.key === "Escape") closeCurrencyPicker(); });
   if (!selectedCurrency) openCurrencyPicker(true);
-
-  // Currency API calls must never block product rendering.
   loadCurrencyData();
 }
 
@@ -464,23 +459,14 @@ async function loadFullCatalogueInBackground() {
     const snapshot = await getDocs(collection(db, "liveproducts"));
     firebaseItems = normaliseSnapshot(snapshot);
     fullCatalogueLoaded = true;
-    if (filtersLoaded) {
-      const discovered = categories(firebaseItems).filter(category => category !== "All");
-      filterCategories = [...new Set([...filterCategories, ...discovered])];
-    }
     renderCategoryChips();
     renderItems();
   } catch (error) {
-    // Keep the fast initial slice visible if the background refresh fails.
   }
 }
 
 async function loadProducts() {
-  // Give the user useful filter feedback immediately rather than leaving the filter bar blank.
   renderCategoryChips();
-
-  // These are deliberately non-blocking: products can paint while filter names and
-  // popularity rankings are fetched independently.
   loadFilterCategories();
   loadPopularity();
 
@@ -493,7 +479,6 @@ async function loadProducts() {
     const firstSnapshot = await getDocs(firstPageQuery);
     firebaseItems = normaliseSnapshot(firstSnapshot);
   } catch (error) {
-    // Fallback for any unexpected query/index issue.
     try {
       const snapshot = await getDocs(collection(db, "liveproducts"));
       firebaseItems = normaliseSnapshot(snapshot);
@@ -507,7 +492,6 @@ async function loadProducts() {
   renderItems();
   showGrid();
 
-  // Paint the first products immediately, then request the full 12k+ catalogue.
   if (!fullCatalogueLoaded) {
     setTimeout(loadFullCatalogueInBackground, 0);
   }
