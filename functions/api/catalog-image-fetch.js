@@ -3,6 +3,7 @@ const FIREBASE_PROJECT_ID = "reps-central";
 const FIREBASE_ISSUER = `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`;
 const FIREBASE_JWKS_URL = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
 const MAX_BYTES = 12 * 1024 * 1024;
+const MAX_REDIRECTS = 5;
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -100,20 +101,81 @@ function bytesToBase64(bytes) {
   return btoa(binary);
 }
 
+function isBlockedHostname(hostname) {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (!host) return true;
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal")) return true;
+  if (host === "metadata.google.internal") return true;
+  if (host === "::1" || host === "::" || host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80:")) return true;
+
+  const parts = host.split(".");
+  if (parts.length === 4 && parts.every(part => /^\d+$/.test(part))) {
+    const octets = parts.map(Number);
+    if (octets.some(value => value < 0 || value > 255)) return true;
+    const [a, b] = octets;
+    if (a === 0 || a === 10 || a === 127) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true;
+    if (a >= 224) return true;
+  }
+
+  return false;
+}
+
+function validateExternalUrl(input) {
+  let parsed;
+  try {
+    parsed = new URL(String(input || ""));
+  } catch {
+    throw new Error("Invalid image URL.");
+  }
+  if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("Unsupported URL protocol.");
+  if (parsed.username || parsed.password) throw new Error("Credentialed URLs are not allowed.");
+  if (isBlockedHostname(parsed.hostname)) throw new Error("Private or local network URLs are not allowed.");
+  return parsed;
+}
+
+async function safeImageFetch(initialUrl) {
+  let target = validateExternalUrl(initialUrl);
+
+  for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
+    const response = await fetch(target.toString(), {
+      redirect: "manual",
+      headers: {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"
+      }
+    });
+
+    if ([301, 302, 303, 307, 308].includes(response.status)) {
+      if (redirectCount === MAX_REDIRECTS) throw new Error("Too many redirects.");
+      const location = response.headers.get("Location");
+      if (!location) throw new Error("Redirect response did not include a destination.");
+      target = validateExternalUrl(new URL(location, target).toString());
+      continue;
+    }
+
+    return response;
+  }
+
+  throw new Error("Too many redirects.");
+}
+
 export async function onRequestPost({ request }) {
   if (!(await isAdmin(request))) return json({ error: "Unauthorized" }, 401);
 
   let body;
   try { body = await request.json(); } catch { return json({ error: "Invalid JSON body." }, 400); }
 
-  let target;
-  try { target = new URL(String(body?.url || "")); } catch { return json({ error: "Invalid image URL." }, 400); }
-  if (!["http:", "https:"].includes(target.protocol)) return json({ error: "Unsupported URL protocol." }, 400);
+  let response;
+  try {
+    response = await safeImageFetch(body?.url);
+  } catch (error) {
+    return json({ error: error.message || "Could not fetch image." }, 400);
+  }
 
-  const response = await fetch(target.toString(), {
-    redirect: "follow",
-    headers: { "User-Agent": "Mozilla/5.0", "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8" }
-  });
   if (!response.ok) return json({ error: `Source image returned HTTP ${response.status}.` }, 502);
 
   const contentType = (response.headers.get("Content-Type") || "").split(";")[0].trim().toLowerCase();
