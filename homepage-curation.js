@@ -11,12 +11,11 @@ const firebaseConfig = {
   measurementId: "G-8T7F9F1FZ9"
 };
 
-const app = getApps().find(candidate => candidate.name === "homepage-curation") || initializeApp(firebaseConfig, "homepage-curation");
+const app = getApps().find(candidate => candidate.name === "[DEFAULT]") || initializeApp(firebaseConfig, "homepage-curation");
 const db = getFirestore(app);
 const ROW_LIMIT = 5;
 const curated = { picks: [], summer: [], autumn: [], winter: [] };
 let activeSeason = "summer";
-let enforcing = false;
 
 function escapeHtml(value) {
   return String(value || "")
@@ -101,16 +100,10 @@ function hideViewBrands() {
 }
 
 function applyCuratedRows() {
-  if (enforcing) return;
-  enforcing = true;
-  try {
-    hideViewBrands();
-    if (curated.picks.length) renderRow(document.getElementById("our-picks-grid"), curated.picks);
-    const seasonItems = curated[activeSeason] || [];
-    if (seasonItems.length) renderRow(document.getElementById("season-grid"), seasonItems);
-  } finally {
-    enforcing = false;
-  }
+  hideViewBrands();
+  if (curated.picks.length) renderRow(document.getElementById("our-picks-grid"), curated.picks);
+  const seasonItems = curated[activeSeason] || [];
+  if (seasonItems.length) renderRow(document.getElementById("season-grid"), seasonItems);
 }
 
 async function loadFlag(field) {
@@ -154,14 +147,7 @@ function start() {
   loadCurated();
   setTimeout(applyCuratedRows, 700);
   setTimeout(applyCuratedRows, 1800);
-  const observer = new MutationObserver(() => {
-    hideViewBrands();
-    if (!enforcing) setTimeout(applyCuratedRows, 30);
-  });
-  const picks = document.getElementById("our-picks-grid");
-  const seasons = document.getElementById("season-grid");
-  if (picks) observer.observe(picks, { childList: true });
-  if (seasons) observer.observe(seasons, { childList: true });
+  setTimeout(applyCuratedRows, 4000);
 }
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
