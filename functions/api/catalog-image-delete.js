@@ -3,7 +3,7 @@ const FIREBASE_PROJECT_ID = "reps-central";
 const FIREBASE_ISSUER = `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`;
 const FIREBASE_JWKS_URL = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
 const REPO = "MinerBlox/repssite";
-const BRANCH = "dev";
+const LIVE_HOSTS = new Set(["repscentral.net", "www.repscentral.net"]);
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -24,6 +24,11 @@ function decodeBase64Url(value) {
 
 function decodeJsonPart(value) {
   return JSON.parse(new TextDecoder().decode(decodeBase64Url(value)));
+}
+
+function githubBranch(request) {
+  const host = new URL(request.url).hostname.toLowerCase();
+  return LIVE_HOSTS.has(host) ? "main" : "dev";
 }
 
 async function verifyFirebaseIdToken(idToken) {
@@ -110,6 +115,7 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Invalid GitHub image path." }, 400);
   }
 
+  const branch = githubBranch(request);
   const encodedPath = path.split("/").map(encodeURIComponent).join("/");
   const apiUrl = `https://api.github.com/repos/${REPO}/contents/${encodedPath}`;
   const headers = {
@@ -119,9 +125,9 @@ export async function onRequestPost({ request, env }) {
     "User-Agent": "RepsCentral-Catalog-Editor"
   };
 
-  const existingResponse = await fetch(`${apiUrl}?ref=${encodeURIComponent(BRANCH)}`, { headers });
+  const existingResponse = await fetch(`${apiUrl}?ref=${encodeURIComponent(branch)}`, { headers });
   if (existingResponse.status === 404) {
-    return json({ ok: true, alreadyMissing: true });
+    return json({ ok: true, alreadyMissing: true, branch });
   }
   if (!existingResponse.ok) {
     return json({ error: `Could not read existing GitHub image (${existingResponse.status}).` }, 502);
@@ -134,7 +140,7 @@ export async function onRequestPost({ request, env }) {
     body: JSON.stringify({
       message: `Delete catalog image ${path.split("/").pop()}`,
       sha: existing.sha,
-      branch: BRANCH
+      branch
     })
   });
 
@@ -144,5 +150,5 @@ export async function onRequestPost({ request, env }) {
   }
 
   const deleted = await deleteResponse.json();
-  return json({ ok: true, commit: deleted.commit?.sha || "" });
+  return json({ ok: true, branch, commit: deleted.commit?.sha || "" });
 }
