@@ -3,7 +3,9 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-aut
 import { getFirestore, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const ADMIN_UID = "3jC9pWkF5ZeHIDtd1LrPR1Ptvbz1";
-const REPO_PREFIX = "https://raw.githubusercontent.com/MinerBlox/repssite/dev/";
+const LIVE_HOSTS = new Set(["repscentral.net", "www.repscentral.net"]);
+const REPO_BRANCH = LIVE_HOSTS.has(window.location.hostname.toLowerCase()) ? "main" : "dev";
+const REPO_PREFIX = `https://raw.githubusercontent.com/MinerBlox/repssite/${REPO_BRANCH}/`;
 
 const app = getApp("edit-catalog-admin");
 const auth = getAuth(app);
@@ -64,7 +66,7 @@ async function deleteItem(card, button) {
   }
 
   const confirmed = window.confirm(
-    `Permanently delete \"${name}\"?\n\nThis will remove the Firestore product and its GitHub image from the dev branch. This cannot be undone.`
+    `Permanently delete \"${name}\"?\n\nThis will remove the Firestore product and its GitHub image from the ${REPO_BRANCH} branch. This cannot be undone.`
   );
   if (!confirmed) return;
 
