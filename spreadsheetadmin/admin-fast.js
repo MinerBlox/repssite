@@ -60,8 +60,8 @@ function badgeSelect(selected) { return badgeOptions.map(badge => `<option value
 function brandSelect(selected) { return brandOptions.map(brand => `<option value="${escapeHtml(brand)}" ${brand === (selected || "") ? "selected" : ""}>${brand || "Blank"}</option>`).join(""); }
 function setStatus(text) { globalStatus.textContent = text; }
 function productStatus(id, text, className) { const node = document.querySelector(`[data-save-state="${CSS.escape(id)}"]`); if (!node) return; node.textContent = text; node.className = `save-state ${className || ""}`; }
-function normalizeProduct(raw) { return { name: raw.name || "", price: Number(raw.price || 0), category: raw.category || "", brand: raw.brand || "", badge: raw.badge || "", imageUrl: raw.imageUrl || "", productUrl: raw.productUrl || "", agentUrl: raw.agentUrl || "", description: raw.description || "", tags: Array.isArray(raw.tags) ? raw.tags : String(raw.tags || "").split(",").map(tag => tag.trim()).filter(Boolean), isActive: raw.isActive !== false, isOurPick: raw.isOurPick === true, sortOrder: Number(raw.sortOrder || 0) }; }
-function productFromCard(card) { return normalizeProduct({ name: card.querySelector('[data-field="name"]').value, price: card.querySelector('[data-field="price"]').value, category: card.querySelector('[data-field="category"]').value, brand: card.querySelector('[data-field="brand"]').value, badge: card.querySelector('[data-field="badge"]').value, imageUrl: card.querySelector('[data-field="imageUrl"]').value, productUrl: card.querySelector('[data-field="productUrl"]').value, agentUrl: card.querySelector('[data-field="agentUrl"]').value, description: card.querySelector('[data-field="description"]').value, tags: card.querySelector('[data-field="tags"]').value, isActive: card.querySelector('[data-field="isActive"]').checked, isOurPick: card.querySelector('[data-field="isOurPick"]').checked, sortOrder: card.querySelector('[data-field="sortOrder"]').value }); }
+function normalizeProduct(raw) { return { name: raw.name || "", price: Number(raw.price || 0), category: raw.category || "", brand: raw.brand || "", badge: raw.badge || "", imageUrl: raw.imageUrl || "", productUrl: raw.productUrl || "", agentUrl: raw.agentUrl || "", description: raw.description || "", tags: Array.isArray(raw.tags) ? raw.tags : String(raw.tags || "").split(",").map(tag => tag.trim()).filter(Boolean), isActive: raw.isActive !== false, isOurPick: raw.isOurPick === true, homeSummer: raw.homeSummer === true, homeAutumn: raw.homeAutumn === true, homeWinter: raw.homeWinter === true, sortOrder: Number(raw.sortOrder || 0) }; }
+function productFromCard(card) { return normalizeProduct({ name: card.querySelector('[data-field="name"]').value, price: card.querySelector('[data-field="price"]').value, category: card.querySelector('[data-field="category"]').value, brand: card.querySelector('[data-field="brand"]').value, badge: card.querySelector('[data-field="badge"]').value, imageUrl: card.querySelector('[data-field="imageUrl"]').value, productUrl: card.querySelector('[data-field="productUrl"]').value, agentUrl: card.querySelector('[data-field="agentUrl"]').value, description: card.querySelector('[data-field="description"]').value, tags: card.querySelector('[data-field="tags"]').value, isActive: card.querySelector('[data-field="isActive"]').checked, isOurPick: card.querySelector('[data-field="isOurPick"]').checked, homeSummer: card.querySelector('[data-field="homeSummer"]').checked, homeAutumn: card.querySelector('[data-field="homeAutumn"]').checked, homeWinter: card.querySelector('[data-field="homeWinter"]').checked, sortOrder: card.querySelector('[data-field="sortOrder"]').value }); }
 
 function renderCategories() {
   categories = [...new Set(categories.filter(Boolean))].sort((a, b) => a.localeCompare(b));
@@ -117,7 +117,10 @@ function cardMarkup(item) {
       <div class="field span-6"><label>Product URL</label><input data-field="productUrl" value="${escapeHtml(item.productUrl)}"></div>
       <div class="field span-2"><label>Sort Order</label><input data-field="sortOrder" type="number" step="1" value="${Number(item.sortOrder || 0)}"></div>
       <label class="toggle-line span-4"><input data-field="isActive" type="checkbox" ${item.isActive !== false ? "checked" : ""}> Active on site</label>
-      <label class="toggle-line span-4"><input data-field="isOurPick" type="checkbox" ${item.isOurPick === true ? "checked" : ""}> Show in Our Picks</label>
+      <label class="toggle-line span-4"><input data-field="isOurPick" type="checkbox" ${item.isOurPick === true ? "checked" : ""}> Our Picks</label>
+      <label class="toggle-line span-4"><input data-field="homeSummer" type="checkbox" ${item.homeSummer === true ? "checked" : ""}> Season Finds — Summer</label>
+      <label class="toggle-line span-4"><input data-field="homeAutumn" type="checkbox" ${item.homeAutumn === true ? "checked" : ""}> Season Finds — Autumn</label>
+      <label class="toggle-line span-4"><input data-field="homeWinter" type="checkbox" ${item.homeWinter === true ? "checked" : ""}> Season Finds — Winter</label>
       <div class="field span-4"><label>Tags, comma separated</label><input data-field="tags" value="${escapeHtml((item.tags || []).join(", "))}"></div>
       <div class="field span-12"><label>Description</label><textarea data-field="description">${escapeHtml(item.description)}</textarea></div>
       <div class="span-12"><button class="btn danger" type="button" data-delete>Delete item</button></div>
@@ -261,8 +264,6 @@ async function loadNextProductPage() {
     if (isInitialLoad || searchInput.value.trim() || sortInput.value !== "default") {
       renderProducts();
     } else {
-      // Critical: do not rebuild the existing DOM when another Firestore page arrives.
-      // Rebuilding caused the document height to collapse for a frame and made scrolling jump/glitch.
       visibleProducts.push(...uniqueNewProducts);
       requestViewportBuffer();
     }
