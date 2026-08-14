@@ -2,7 +2,9 @@ import { getApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
 const ADMIN_UID = "3jC9pWkF5ZeHIDtd1LrPR1Ptvbz1";
-const REPO_PREFIX = "https://raw.githubusercontent.com/MinerBlox/repssite/dev/";
+const LIVE_HOSTS = new Set(["repscentral.net", "www.repscentral.net"]);
+const REPO_BRANCH = LIVE_HOSTS.has(window.location.hostname.toLowerCase()) ? "main" : "dev";
+const REPO_PREFIX = `https://raw.githubusercontent.com/MinerBlox/repssite/${REPO_BRANCH}/`;
 
 const auth = getAuth(getApp("edit-catalog-admin"));
 let picker = null;
@@ -155,7 +157,7 @@ async function useResult(index) {
     if (!user || user.uid !== ADMIN_UID) throw new Error("Admin login required.");
 
     const imageUrl = currentImageUrl(card);
-    if (!imageUrl.startsWith(REPO_PREFIX)) throw new Error("Current image is not in the dev GitHub image folder.");
+    if (!imageUrl.startsWith(REPO_PREFIX)) throw new Error(`Current image is not in the ${REPO_BRANCH} GitHub image folder.`);
     let path = decodeURIComponent(imageUrl.slice(REPO_PREFIX.length));
 
     const sourceResponse = await fetch("/api/catalog-image-fetch", {
@@ -183,7 +185,7 @@ async function useResult(index) {
     const newUrl = `${REPO_PREFIX}${path}`;
     if (image) image.src = `${newUrl}?v=${Date.now()}`;
     closePicker();
-    showStatus("Done — image permanently replaced in GitHub.", false, 5000);
+    showStatus(`Done — image permanently replaced in GitHub ${REPO_BRANCH}.`, false, 5000);
   } catch (error) {
     picker.querySelectorAll(".rc-png-choice").forEach(button => button.disabled = false);
     showStatus(`Could not replace image: ${error.message}`, true, 9000);
