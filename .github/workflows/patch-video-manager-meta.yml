@@ -1,0 +1,41 @@
+name: Patch Video Manager Metadata
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+    paths:
+      - scripts/patch-video-manager-meta.mjs
+      - .github/workflows/patch-video-manager-meta.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Apply video manager metadata patch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Patch Video Manager
+        run: node scripts/patch-video-manager-meta.mjs
+
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add admin/video-manager/index.html
+          git commit -m "Apply video manager metadata patch"
+          git push origin dev

@@ -78,14 +78,14 @@ function routeSlug() {
 async function findProduct(slug) {
   qcLog("Finding product", { slug, path: window.location.pathname });
   if (!slug) return null;
-  const directSnap = await getDoc(doc(db, "products", slug));
+  const directSnap = await getDoc(doc(db, "liveproducts", slug));
   if (directSnap.exists()) {
     qcLog("Found product by document id", { id: directSnap.id });
     return { id: directSnap.id, ...directSnap.data() };
   }
 
   qcLog("Product id miss, scanning products by slugified name");
-  const allSnap = await getDocs(collection(db, "products"));
+  const allSnap = await getDocs(collection(db, "liveproducts"));
   const match = allSnap.docs
     .map(productDoc => ({ id: productDoc.id, ...productDoc.data() }))
     .find(item => item.id === slug || slugify(item.name) === slug) || null;
@@ -409,7 +409,9 @@ function renderProduct(item) {
   const description = item.description || "No description has been added yet.";
   const agentUrl = safeHttpUrl(item.agentUrl);
   const agentButton = agentUrl ? `<a class="action-btn primary" data-product-action="outboundClicks" href="${escapeHtml(agentUrl)}" target="_blank" rel="noopener noreferrer">Open Agent Link</a>` : "";
-  const productButton = "";
+  const productLink = originalProductLink(item);
+  const safeProductUrl = safeHttpUrl(productLink);
+  const productButton = safeProductUrl ? `<a class="action-btn" data-product-action="outboundClicks" href="${escapeHtml(safeProductUrl)}" target="_blank" rel="noopener noreferrer">Original Link</a>` : "";
 
   root.innerHTML = `
     <a class="back-link" href="${sitePath("spreadsheet.html")}">← Back to spreadsheet</a>

@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { enableAppCheck } from "./firebase-app-check.js?v=2026-06-30-app-check-1";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, doc, getDoc, getDocs, query, where, orderBy, limit, startAt } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA",
@@ -369,7 +369,7 @@ function badgeClass(type) {
 
 function productImage(item) {
   if (item.imageUrl) {
-    return `<div class="product-img"><img class="product-img-real" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name || "Product image")}" loading="lazy"></div>`;
+    return `<div class="product-img"><img class="product-img-real" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name || "Product image")}" loading="lazy" decoding="async"></div>`;
   }
   return `<div class="product-img"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l4-4 4 4 4-4 4 4"/><path d="M3 15l4-4 4 4 4-4 4 4"/></svg></div>`;
 }
@@ -395,20 +395,22 @@ function productCard(item) {
 
 function moreProductCard(remaining, backgroundItem) {
   const background = backgroundItem?.imageUrl
-    ? `<img class="product-more-bg" src="${escapeHtml(backgroundItem.imageUrl)}" alt="" loading="lazy">`
+    ? `<img class="product-more-bg" src="${escapeHtml(backgroundItem.imageUrl)}" alt="" loading="lazy" decoding="async">`
     : "";
+  const label = Number.isFinite(remaining) && remaining > 0 ? `+ ${remaining} more` : "View more";
+  const aria = Number.isFinite(remaining) && remaining > 0 ? `View ${remaining} more products` : "View more products";
   return `
-    <a href="spreadsheet.html" class="product-card product-more-card" aria-label="View ${remaining} more products">
+    <a href="spreadsheet.html" class="product-card product-more-card" aria-label="${aria}">
       ${background}
       <span class="product-more-overlay"></span>
-      <span class="product-more-content">+ ${remaining} more</span>
+      <span class="product-more-content">${label}</span>
     </a>
   `;
 }
 
 function podiumImage(item) {
   if (item.imageUrl) {
-    return `<img class="podium-img-real" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name || "Product image")}" loading="lazy">`;
+    return `<img class="podium-img-real" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name || "Product image")}" loading="lazy" decoding="async">`;
   }
   return `<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l4-4 4 4 4-4 4 4"/><path d="M3 15l4-4 4 4 4-4 4 4"/></svg>`;
 }
@@ -448,16 +450,22 @@ function renderTicker(items) {
   `).join("");
 }
 
+function shuffle(items) {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 function renderHeroParticles(items) {
   const target = document.getElementById("hero-particles");
   if (!target) return;
 
-  const sourceImages = items.filter(item => item.imageUrl);
-  const particleCount = Math.min(30, sourceImages.length);
-  const images = Array.from({ length: particleCount }, (_, index) => {
-    const sourceIndex = Math.floor((index * sourceImages.length) / Math.max(particleCount, 1));
-    return sourceImages[sourceIndex];
-  });
+  const sourceImages = shuffle(items.filter(item => item.imageUrl));
+  const particleCount = Math.min(40, sourceImages.length);
+  const images = sourceImages.slice(0, particleCount);
 
   target.innerHTML = images.map((item, index) => {
     const angle = (Math.PI * 2 * index) / Math.max(images.length, 1);
@@ -475,25 +483,26 @@ function renderHeroParticles(items) {
       class="hero-product-particle"
       src="${escapeHtml(item.imageUrl)}"
       alt=""
+      loading="lazy"
       decoding="async"
       style="--particle-x:${x.toFixed(2)}%;--particle-y:${y.toFixed(2)}%;--particle-dx:${dx}px;--particle-dy:${dy}px;--particle-delay:${delay.toFixed(1)}s;--particle-duration:${duration}s;--particle-size:${size}px"
     >`;
   }).join("");
 }
 
-function categoryMatches(item, categories) {
+function categoryMatches(item, categoryTerms) {
   const category = String(item.category || "").toLowerCase();
-  return categories.some(value => category.includes(value));
+  return categoryTerms.some(value => category.includes(value));
 }
 
 function seasonalItems(items, season) {
   const groups = {
-    summer: ["short", "t-shirt", "tee", "hat", "cap", "sock", "accessor"],
-    autumn: ["hood", "pant", "jacket", "sweat", "jean"],
-    winter: ["jacket", "puffer", "coat", "scarf", "beanie", "hood"]
+    summer: ["short", "t-shirt", "tee", "jersey", "accessor"],
+    autumn: ["hood", "jacket", "sweat", "jean", "sweater"],
+    winter: ["jacket", "puffer", "coat", "sweater", "hood"]
   };
   const picked = items.filter(item => categoryMatches(item, groups[season] || []));
-  return picked.length ? picked : items;
+  return (picked.length ? picked : items).slice(0, 5);
 }
 
 let currentHomeItems = [];
@@ -509,7 +518,7 @@ function visibleProductCount(target) {
 function renderProductRow(target, items, moreCount, backgroundOverride) {
   if (!target) return;
   const count = Math.min(items.length, visibleProductCount(target));
-  const remaining = moreCount ?? Math.max(0, items.length - count);
+  const remaining = Number.isFinite(moreCount) ? moreCount : null;
   const backgroundItem = backgroundOverride || items[count] || items[items.length - 1];
   target.innerHTML = items.slice(0, count).map(productCard).join("") + moreProductCard(remaining, backgroundItem);
 }
@@ -531,15 +540,15 @@ function putUniqueItemFirst(items, usedFirstItems) {
 }
 
 function buildProductRows(items) {
-  const selectedPicks = items.filter(item => item.isOurPick === true);
-  const picks = selectedPicks.length ? selectedPicks : items;
+  const selectedPicks = items.filter(item => item.isOurPick === true).slice(0, 5);
+  const picks = selectedPicks.length ? selectedPicks : items.slice(0, 5);
   const usedFirstItems = new Set();
 
   if (picks[0]) usedFirstItems.add(itemIdentity(picks[0]));
 
   const seasons = {};
   ["summer", "autumn", "winter"].forEach(seasonName => {
-    seasons[seasonName] = putUniqueItemFirst(seasonalItems(items, seasonName), usedFirstItems);
+    seasons[seasonName] = putUniqueItemFirst(seasonalItems(items, seasonName), usedFirstItems).slice(0, 5);
   });
 
   return { picks, seasons };
@@ -551,7 +560,7 @@ function renderSeasonProducts(items, seasonName) {
   window.activeSeason = seasonName;
   document.querySelectorAll(".season-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.season === seasonName));
   const rows = buildProductRows(items);
-  renderProductRow(document.getElementById("season-grid"), rows.seasons[seasonName] || items, undefined, sharedMoreCardBackground);
+  renderProductRow(document.getElementById("season-grid"), rows.seasons[seasonName] || items, null, sharedMoreCardBackground);
 }
 
 function renderProductRows(items) {
@@ -559,33 +568,32 @@ function renderProductRows(items) {
   const picksTarget = document.getElementById("our-picks-grid");
   const picksVisibleCount = picksTarget ? Math.min(rows.picks.length, visibleProductCount(picksTarget)) : 0;
   sharedMoreCardBackground = rows.picks[picksVisibleCount] || rows.picks[rows.picks.length - 1] || null;
-  renderProductRow(picksTarget, rows.picks, items.length, sharedMoreCardBackground);
+  renderProductRow(picksTarget, rows.picks, null, sharedMoreCardBackground);
   window.activeSeason = window.activeSeason || "summer";
   document.querySelectorAll(".season-tab").forEach(btn => btn.classList.toggle("active", btn.dataset.season === window.activeSeason));
-  renderProductRow(document.getElementById("season-grid"), rows.seasons[window.activeSeason] || items, undefined, sharedMoreCardBackground);
+  renderProductRow(document.getElementById("season-grid"), rows.seasons[window.activeSeason] || items, null, sharedMoreCardBackground);
 }
 
-function renderHomeProducts(items, popularity = new Map()) {
+function renderHomeProducts(items, popularity = new Map(), heroItems = items) {
   const podium = document.getElementById("podium-grid");
-  if (!items.length) return;
-  currentHomeItems = items;
+  if (!items.length && !heroItems.length) return;
+  currentHomeItems = items.length ? items : heroItems;
 
-  const podiumItems = [...items]
+  const podiumItems = [...currentHomeItems]
     .sort((a, b) => (popularity.get(b.id) || 0) - (popularity.get(a.id) || 0) || (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
     .slice(0, 3);
   if (podium && podiumItems.length) {
     podium.innerHTML = podiumItems.map((item, index) => podiumCard(item, medals[index], index * 0.1)).join("");
   }
 
-  renderProductRows(items);
-  renderTicker(items);
-  renderHeroParticles(items);
+  renderProductRows(currentHomeItems);
+  renderTicker(heroItems.length ? heroItems : currentHomeItems);
+  renderHeroParticles(heroItems.length ? heroItems : currentHomeItems);
   setupProductSearch();
 
   window.setSeason = seasonName => renderSeasonProducts(currentHomeItems, seasonName);
   window.renderSeason = seasonName => renderSeasonProducts(currentHomeItems, seasonName);
 }
-
 
 let searchActiveIndex = -1;
 let searchMatches = [];
@@ -607,12 +615,12 @@ function updateSearchActiveResult() {
   });
 }
 
-function renderProductSearch(query) {
+function renderProductSearch(queryText) {
   const results = document.getElementById("product-search-results");
   const input = document.getElementById("product-search-input");
   if (!results || !input) return;
 
-  const normalized = query.trim().toLowerCase();
+  const normalized = queryText.trim().toLowerCase();
   if (!normalized) {
     closeProductSearch();
     results.innerHTML = "";
@@ -626,11 +634,11 @@ function renderProductSearch(query) {
   searchActiveIndex = -1;
 
   if (!searchMatches.length) {
-    results.innerHTML = '<div class="nav-search-empty">No matching spreadsheet products.</div>';
+    results.innerHTML = '<div class="nav-search-empty">Press Enter to search the full spreadsheet.</div>';
   } else {
     results.innerHTML = searchMatches.map((item, index) => {
       const image = item.imageUrl
-        ? `<img src="${escapeHtml(item.imageUrl)}" alt="" loading="lazy">`
+        ? `<img src="${escapeHtml(item.imageUrl)}" alt="" loading="lazy" decoding="async">`
         : '<span class="nav-search-thumb-empty" aria-hidden="true">-</span>';
       return `<a class="nav-search-result" role="option" aria-selected="false" data-search-index="${index}" href="${escapeHtml(itemHref(item))}" data-view-product="${escapeHtml(item.id)}">
         ${image}
@@ -657,8 +665,8 @@ function setupProductSearch() {
       if (searchActiveIndex >= 0 && searchMatches[searchActiveIndex]) {
         window.location.href = itemHref(searchMatches[searchActiveIndex]);
       } else {
-        const query = input.value.trim();
-        if (query) window.location.href = `spreadsheet.html?search=${encodeURIComponent(query)}`;
+        const search = input.value.trim();
+        if (search) window.location.href = `spreadsheet.html?search=${encodeURIComponent(search)}`;
       }
       return;
     }
@@ -685,8 +693,8 @@ function setupProductSearch() {
       window.location.href = itemHref(searchMatches[searchActiveIndex]);
       return;
     }
-    const query = input.value.trim();
-    if (query) window.location.href = `spreadsheet.html?search=${encodeURIComponent(query)}`;
+    const search = input.value.trim();
+    if (search) window.location.href = `spreadsheet.html?search=${encodeURIComponent(search)}`;
   });
 
   document.addEventListener("keydown", event => {
@@ -709,23 +717,140 @@ window.addEventListener("resize", () => {
   }, 120);
 });
 
-async function loadHomeProducts() {
-  try {
-    const snapshot = await getDocs(collection(db, "products"));
-    const items = snapshot.docs
-      .map(productDoc => ({ id: productDoc.id, ...productDoc.data() }))
-      .filter(item => item.isActive !== false)
-      .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
+const HERO_PRODUCT_LIMIT = 40;
+const HOME_ROW_LIMIT = 5;
+const APPROX_MAX_SORT_ORDER = 12525;
+const HOME_SEASON_CATEGORIES = {
+  summer: ["Shorts", "Tees", "Jerseys", "Accessories"],
+  autumn: ["Hoodies", "Sweats", "Jackets", "Jeans", "Sweaters"],
+  winter: ["Jackets", "Puffer", "Hoodies", "Sweaters", "Accessories"]
+};
 
-    let popularity = new Map();
-    try {
-      const popularitySnapshot = await getDocs(collection(db, "analyticsProducts"));
-      popularity = new Map(popularitySnapshot.docs.map(statsDoc => [statsDoc.id, Number(statsDoc.data().totalInteractions || 0)]));
-    } catch (analyticsError) {
+function productFromDoc(productDoc) {
+  return { id: productDoc.id, ...productDoc.data() };
+}
+
+function activeProduct(item) {
+  return item && item.isActive !== false;
+}
+
+function dedupeProducts(items) {
+  const seen = new Set();
+  return items.filter(item => {
+    if (!item?.id || seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+async function loadRandomHeroProducts() {
+  const randomStart = Math.max(1, Math.floor(Math.random() * APPROX_MAX_SORT_ORDER));
+  try {
+    const randomSnapshot = await getDocs(query(
+      collection(db, "liveproducts"),
+      orderBy("sortOrder"),
+      startAt(randomStart),
+      limit(HERO_PRODUCT_LIMIT)
+    ));
+    let items = randomSnapshot.docs.map(productFromDoc).filter(activeProduct);
+
+    if (items.length < Math.min(20, HERO_PRODUCT_LIMIT)) {
+      const fallbackSnapshot = await getDocs(query(
+        collection(db, "liveproducts"),
+        orderBy("sortOrder"),
+        limit(HERO_PRODUCT_LIMIT)
+      ));
+      items = dedupeProducts([...items, ...fallbackSnapshot.docs.map(productFromDoc).filter(activeProduct)]).slice(0, HERO_PRODUCT_LIMIT);
     }
 
-    renderHomeProducts(items, popularity);
+    return shuffle(items).slice(0, HERO_PRODUCT_LIMIT);
+  } catch {
+    const fallbackSnapshot = await getDocs(query(collection(db, "liveproducts"), limit(HERO_PRODUCT_LIMIT)));
+    return shuffle(fallbackSnapshot.docs.map(productFromDoc).filter(activeProduct)).slice(0, HERO_PRODUCT_LIMIT);
+  }
+}
+
+async function loadFirstProductsFromCategories(categoryNames) {
+  const requests = categoryNames.map(categoryName => getDocs(query(
+    collection(db, "liveproducts"),
+    where("category", "==", categoryName),
+    limit(HOME_ROW_LIMIT)
+  )).catch(() => null));
+
+  const snapshots = await Promise.all(requests);
+  return dedupeProducts(snapshots.flatMap(snapshot => snapshot ? snapshot.docs.map(productFromDoc) : []))
+    .filter(activeProduct)
+    .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
+    .slice(0, HOME_ROW_LIMIT);
+}
+
+async function loadOurPicks() {
+  try {
+    const snapshot = await getDocs(query(
+      collection(db, "liveproducts"),
+      where("isOurPick", "==", true),
+      limit(HOME_ROW_LIMIT)
+    ));
+    return snapshot.docs.map(productFromDoc).filter(activeProduct).slice(0, HOME_ROW_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+async function loadTopProducts() {
+  try {
+    const statsSnapshot = await getDocs(query(
+      collection(db, "analyticsProducts"),
+      orderBy("totalInteractions", "desc"),
+      limit(3)
+    ));
+
+    const stats = statsSnapshot.docs.map(statsDoc => ({ id: statsDoc.id, total: Number(statsDoc.data().totalInteractions || 0) }));
+    const productsWithStats = await Promise.all(stats.map(async stat => {
+      try {
+        const productSnapshot = await getDoc(doc(db, "liveproducts", stat.id));
+        return productSnapshot.exists() ? { item: productFromDoc(productSnapshot), total: stat.total } : null;
+      } catch {
+        return null;
+      }
+    }));
+
+    const popularity = new Map();
+    const items = [];
+    productsWithStats.filter(Boolean).forEach(entry => {
+      if (!activeProduct(entry.item)) return;
+      popularity.set(entry.item.id, entry.total);
+      items.push(entry.item);
+    });
+    return { items, popularity };
+  } catch {
+    return { items: [], popularity: new Map() };
+  }
+}
+
+async function loadHomeProducts() {
+  try {
+    const [heroItems, picks, summer, autumn, winter, top] = await Promise.all([
+      loadRandomHeroProducts(),
+      loadOurPicks(),
+      loadFirstProductsFromCategories(HOME_SEASON_CATEGORIES.summer),
+      loadFirstProductsFromCategories(HOME_SEASON_CATEGORIES.autumn),
+      loadFirstProductsFromCategories(HOME_SEASON_CATEGORIES.winter),
+      loadTopProducts()
+    ]);
+
+    const curatedItems = dedupeProducts([
+      ...picks,
+      ...summer,
+      ...autumn,
+      ...winter,
+      ...top.items,
+      ...heroItems
+    ]);
+
+    renderHomeProducts(curatedItems, top.popularity, heroItems);
   } catch (error) {
+    console.warn("Home product preview failed", error);
   }
 }
 
