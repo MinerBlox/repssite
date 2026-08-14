@@ -6,6 +6,11 @@ import {
 const SITE_KEY = "6Lex_jwtAAAAAA7h-DHF6lebL4uxvcX7j7liRixl";
 const instances = new Map();
 
+const path = window.location.pathname.replace(/\/+$/, "") || "/";
+if (path === "/" || path === "/index.html") {
+  import("./homepage-curation.js?v=2026-08-14-1").catch(error => console.warn("Homepage curation could not load", error));
+}
+
 function shouldSkipAppCheck() {
   const hostname = window.location.hostname.toLowerCase();
 
