@@ -1,33 +1,79 @@
-!pip install firebase-admin requests
+!pip install -q firebase-admin boto3 requests
 
-import base64
 import mimetypes
+import os
 import re
 import time
-import requests
 from getpass import getpass
+from urllib.parse import quote
+
+import boto3
+from botocore.config import Config
 from google.colab import files
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# --- CONFIG ---
+# ============================================================
+# REPSCENTRAL PRODUCT UPLOADER
+#
+# Images -> Cloudflare R2
+# Products -> Firestore liveproducts
+# ============================================================
 
-GITHUB_REPO = "MinerBlox/repssite"
-GITHUB_BRANCH = "main"
-IMAGE_ROOT_FOLDER = "productimages"
+R2_ENDPOINT = "https://f86db63e8bfe805141b52fbbee59aa38.r2.cloudflarestorage.com"
+R2_BUCKET = "reps-product-images"
 
-GITHUB_TOKEN = getpass("Paste your GitHub token: ")
+print("Cloudflare R2 setup")
+print("-------------------")
+print(f"Endpoint: {R2_ENDPOINT}")
+print(f"Bucket:   {R2_BUCKET}")
+print()
 
+R2_ACCESS_KEY_ID = getpass("R2 Access Key ID: ").strip()
+R2_SECRET_ACCESS_KEY = getpass("R2 Secret Access Key: ").strip()
+
+print()
+print("Paste the PUBLIC base URL you use for product images.")
+print("Example: https://images.repscentral.net")
+print("Do not use the private r2.cloudflarestorage.com API endpoint here.")
+R2_PUBLIC_BASE = input("R2 public base URL: ").strip().rstrip("/")
+
+if not R2_PUBLIC_BASE.startswith(("http://", "https://")):
+    raise ValueError("R2 public base URL must start with http:// or https://")
+
+print()
 print("Upload your Firebase service account JSON file:")
 uploaded_service = files.upload()
-service_account_file = next(iter(uploaded_service.keys()))
 
+if not uploaded_service:
+    raise RuntimeError("No Firebase service account JSON uploaded.")
+
+service_account_file = next(iter(uploaded_service.keys()))
 cred = credentials.Certificate(service_account_file)
 
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
+
+s3 = boto3.client(
+    "s3",
+    endpoint_url=R2_ENDPOINT,
+    aws_access_key_id=R2_ACCESS_KEY_ID,
+    aws_secret_access_key=R2_SECRET_ACCESS_KEY,
+    region_name="auto",
+    config=Config(
+        signature_version="s3v4",
+        retries={"max_attempts": 5, "mode": "standard"}
+    )
+)
+
+# Confirm bucket access before asking for products.
+try:
+    s3.head_bucket(Bucket=R2_BUCKET)
+    print("\n✅ Connected to Cloudflare R2.")
+except Exception as error:
+    raise RuntimeError(f"Could not access R2 bucket '{R2_BUCKET}': {error}")
 
 
 def slugify(value):
@@ -38,42 +84,68 @@ def slugify(value):
     return value.strip("-")
 
 
-def upload_image_to_github(local_filename, repo_path):
-    with open(local_filename, "rb") as f:
-        encoded_content = base64.b64encode(f.read()).decode("utf-8")
-
-    url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{repo_path}"
-
-    headers = {
-        "Authorization": f"Bearer {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github+json"
-    }
-
-    payload = {
-        "message": f"Upload product image: {repo_path}",
-        "content": encoded_content,
-        "branch": GITHUB_BRANCH
-    }
-
-    response = requests.put(url, headers=headers, json=payload)
-
-    if response.status_code not in [200, 201]:
-        raise Exception(f"GitHub upload failed: {response.status_code}\n{response.text}")
-
-    return f"https://raw.githubusercontent.com/{GITHUB_REPO}/{GITHUB_BRANCH}/{repo_path}"
+def extension_for(filename):
+    mime_type, _ = mimetypes.guess_type(filename)
+    extension = mimetypes.guess_extension(mime_type or "") or ""
+    if not extension and "." in filename:
+        extension = "." + filename.rsplit(".", 1)[-1].lower()
+    if extension == ".jpe":
+        extension = ".jpg"
+    return extension or ".png"
 
 
-# --- ENDLESS ITEM INPUT LOOP ---
+def upload_image_to_r2(local_filename, object_key):
+    mime_type, _ = mimetypes.guess_type(local_filename)
+    content_type = mime_type or "application/octet-stream"
+
+    with open(local_filename, "rb") as image_file:
+        s3.put_object(
+            Bucket=R2_BUCKET,
+            Key=object_key,
+            Body=image_file,
+            ContentType=content_type,
+            CacheControl="public, max-age=31536000, immutable"
+        )
+
+    # Quote each path segment without turning / into %2F.
+    public_key = "/".join(quote(part, safe="") for part in object_key.split("/"))
+    return f"{R2_PUBLIC_BASE}/{public_key}"
+
+
+def existing_categories():
+    try:
+        docs = db.collection("categories").stream()
+        names = []
+        for category_doc in docs:
+            data = category_doc.to_dict() or {}
+            name = str(data.get("name") or category_doc.id).strip()
+            if name and name.lower() != "uncategorised":
+                names.append(name)
+        return sorted(set(names), key=str.lower)
+    except Exception:
+        return []
+
+
+categories = existing_categories()
+
+print("\nFirebase destination: liveproducts")
+if categories:
+    print("Current categories:")
+    print(", ".join(categories))
+
+# ============================================================
+# ENDLESS ITEM INPUT LOOP
+# ============================================================
 
 while True:
-    print("\n------------------------------")
-    print("Add a new product")
-    print("Type 'q', 'quit', or 'exit' as the item name to stop.")
-    print("------------------------------\n")
+    print("\n" + "-" * 54)
+    print("Add a new RepsCentral product")
+    print("Type q / quit / exit as the item name to stop.")
+    print("-" * 54)
 
     item_name = input("Item name: ").strip()
 
-    if item_name.lower() in ["q", "quit", "exit"]:
+    if item_name.lower() in {"q", "quit", "exit"}:
         print("Stopped.")
         break
 
@@ -84,13 +156,21 @@ while True:
             yuan_price = float(input("Price in yuan: ").strip())
             break
         except ValueError:
-            print("Please enter a valid number for the yuan price.")
+            print("Please enter a valid number.")
+
+    category = input("Category (leave blank if unsure): ").strip()
 
     item_slug = slugify(item_name)
-
     if not item_slug:
-        print("Invalid item name. Try again.")
+        print("Invalid item name. Starting again.")
         continue
+
+    # Avoid overwriting an existing item with the same name.
+    product_id = item_slug
+    existing = db.collection("liveproducts").document(product_id).get()
+    if existing.exists:
+        product_id = f"{item_slug}-{int(time.time())}"
+        print(f"Existing ID found. Using: {product_id}")
 
     print("Upload item image:")
     uploaded_image = files.upload()
@@ -100,24 +180,20 @@ while True:
         continue
 
     image_filename = next(iter(uploaded_image.keys()))
+    extension = extension_for(image_filename)
 
-    mime_type, _ = mimetypes.guess_type(image_filename)
-    extension = mimetypes.guess_extension(mime_type or "") or ""
-
-    if not extension:
-        extension = "." + image_filename.split(".")[-1].lower()
-
-    github_image_filename = f"{item_slug}-image{extension}"
-    github_image_path = f"{IMAGE_ROOT_FOLDER}/{item_slug}/{github_image_filename}"
+    # New uploads live together in R2; no GitHub image commits are made.
+    object_key = f"uploads/{product_id}{extension}"
 
     try:
-        image_url = upload_image_to_github(image_filename, github_image_path)
+        image_url = upload_image_to_r2(image_filename, object_key)
 
         product_data = {
             "name": item_name,
             "price": yuan_price,
             "currency": "CNY",
-            "category": "",
+            "category": category,
+            "brand": "",
             "badge": "",
             "imageUrl": image_url,
             "productUrl": "",
@@ -125,19 +201,37 @@ while True:
             "description": "",
             "tags": [],
             "isActive": True,
+            "isOurPick": False,
+            "homeSummer": False,
+            "homeAutumn": False,
+            "homeWinter": False,
             "sortOrder": int(time.time()),
             "createdAt": firestore.SERVER_TIMESTAMP,
             "updatedAt": firestore.SERVER_TIMESTAMP
         }
 
-        db.collection("products").document(item_slug).set(product_data)
+        db.collection("liveproducts").document(product_id).set(product_data)
 
-        print("\nDone.")
-        print(f"Product document ID: {item_slug}")
+        # If you typed a genuinely new category, make it available in filters/admin too.
+        if category and category.lower() != "uncategorised":
+            category_slug = slugify(category)
+            if category_slug:
+                db.collection("categories").document(category_slug).set(
+                    {"name": category, "updatedAt": firestore.SERVER_TIMESTAMP},
+                    merge=True
+                )
+                if category not in categories:
+                    categories.append(category)
+                    categories.sort(key=str.lower)
+
+        print("\n✅ Done.")
+        print(f"Firestore collection: liveproducts")
+        print(f"Product document ID: {product_id}")
+        print(f"R2 object: {object_key}")
         print(f"Image URL: {image_url}")
-        print("\nReady for the next product.")
+        print("Ready for the next product.")
 
-    except Exception as e:
-        print("\nSomething went wrong with this item:")
-        print(e)
-        print("\nStarting again.")
+    except Exception as error:
+        print("\n❌ Something went wrong with this item:")
+        print(error)
+        print("Starting again.")
