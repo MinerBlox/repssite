@@ -8,7 +8,8 @@ import {
   where,
   orderBy,
   limit,
-  startAfter
+  startAfter,
+  documentId
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -25,12 +26,10 @@ const app = initializeApp(firebaseConfig);
 enableAppCheck(app);
 const db = getFirestore(app);
 
-const INITIAL_FETCH_COUNT = 100;
-const PAGE_SIZE = 100;
-const POPULARITY_FETCH_COUNT = 250;
 const HIDDEN_CATEGORY = "uncategorised";
 const CURRENCY_KEY = "rc-currency";
 const RATE_CACHE_KEY = "rc-cny-rates";
+const POPULARITY_FETCH_COUNT = 250;
 const FALLBACK_FILTER_CATEGORIES = [
   "Shoes", "Hoodies", "Tees", "Shorts", "Sweats", "Jeans", "Jackets", "Puffer",
   "Sweaters", "Sets", "Jerseys", "Accessories", "Room Decor", "Electronics", "Womens"
@@ -63,14 +62,15 @@ let cnyRates = { ...FALLBACK_RATES };
 let currencyPickerRequired = false;
 let filterCategories = [...FALLBACK_FILTER_CATEGORIES];
 let productPopularity = new Map();
-let fullCatalogueLoaded = false;
-let allPagingFinished = false;
-let loadingMoreAll = false;
-let lastAllDoc = null;
 let searchLoadPromise = null;
-const categoryCache = new Map();
 let searchTimer = 0;
 let resizeTimer = 0;
+let streamGeneration = 0;
+let streamCursor = null;
+let streamFinished = false;
+let streamLoading = false;
+let streamCategory = "All";
+let streamPumpQueued = false;
 
 const filterWrapStyle = document.createElement("style");
 filterWrapStyle.textContent = `
@@ -136,7 +136,7 @@ function productImage(item) {
   if (!imageUrl) {
     return `<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9l4-4 4 4 4-4 4 4"/><path d="M3 15l4-4 4 4 4-4 4 4"/></svg>`;
   }
-  return `<img class="product-image" src="${escapeAttr(imageUrl)}" alt="${escapeAttr(item.name || "Product image")}" loading="lazy" decoding="async">`;
+  return `<img class="product-image" src="${escapeAttr(imageUrl)}" alt="${escapeAttr(item.name || "Product image")}" loading="eager" decoding="async">`;
 }
 
 function productHref(item) {
@@ -149,7 +149,7 @@ function itemCard(item) {
   const agentHref = agentUrl || href;
   const agentTarget = agentUrl ? ` target="_blank" rel="noopener noreferrer"` : "";
   return `
-    <article class="product-card">
+    <article class="product-card" data-product-id="${escapeAttr(item.id)}">
       <div class="product-top">
         <span class="item-badge ${escapeAttr(item.badge || "")}">${badgeLabel(item.badge)}</span>
         ${productImage(item)}
@@ -168,20 +168,20 @@ function itemCard(item) {
     </article>`;
 }
 
-function popularityScore(item) {
-  return Number(productPopularity.get(String(item.id)) || 0);
-}
-
 function normalizeDocs(docs) {
   return docs
     .map(productDoc => ({ id: productDoc.id, ...productDoc.data() }))
     .filter(item => item.isActive !== false && !isHiddenCategory(item.category));
 }
 
-function mergeItems(items) {
-  const map = new Map(firebaseItems.map(item => [item.id, item]));
-  items.forEach(item => map.set(item.id, item));
-  firebaseItems = [...map.values()];
+function mergeItem(item) {
+  const index = firebaseItems.findIndex(existing => existing.id === item.id);
+  if (index === -1) firebaseItems.push(item);
+  else firebaseItems[index] = item;
+}
+
+function popularityScore(item) {
+  return Number(productPopularity.get(String(item.id)) || 0);
 }
 
 function filteredItems() {
@@ -193,16 +193,56 @@ function filteredItems() {
     return matchesCategory && matchesBrand && value.includes(searchTerm.trim().toLowerCase());
   });
 
-  if (selectedCategory === "All") {
+  if (selectedCategory === "All" && (searchTerm.trim() || selectedBrand)) {
     items = items.sort((a, b) => {
       const popularityDifference = popularityScore(b) - popularityScore(a);
       if (popularityDifference) return popularityDifference;
       return (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0);
     });
-  } else {
-    items = items.sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
   }
   return items;
+}
+
+function updateResultsCopy() {
+  const items = filteredItems();
+  const count = document.getElementById("results-count");
+  const copy = document.getElementById("results-copy");
+  const filterPill = document.getElementById("active-filter-pill");
+  if (count) count.textContent = streamFinished || searchTerm.trim() || selectedBrand
+    ? `${items.length} item${items.length === 1 ? "" : "s"}`
+    : `${items.length}+ items`;
+  if (filterPill) filterPill.textContent = selectedBrand ? `Brand: ${selectedBrand}` : `Category: ${selectedCategory}`;
+  if (!copy) return;
+  if (searchTerm.trim()) copy.textContent = `Showing results for “${searchTerm.trim()}”${selectedBrand ? ` from ${selectedBrand}` : ""}.`;
+  else if (selectedBrand) copy.textContent = `Showing all ${selectedBrand} items.`;
+  else if (selectedCategory !== "All") copy.textContent = streamFinished
+    ? `Showing all items in ${selectedCategory}.`
+    : `Loading ${selectedCategory} as you browse…`;
+  else copy.textContent = streamFinished
+    ? "Showing all loaded spreadsheet items."
+    : "Items load one-by-one and pause two rows ahead of you.";
+}
+
+function renderItems() {
+  const items = filteredItems();
+  const grid = document.getElementById("product-grid");
+  const empty = document.getElementById("empty-state");
+  if (!grid || !empty) return;
+  grid.innerHTML = items.map(itemCard).join("");
+  empty.style.display = items.length || !streamFinished ? "none" : "block";
+  updateResultsCopy();
+}
+
+function appendStreamItem(item) {
+  mergeItem(item);
+  const grid = document.getElementById("product-grid");
+  if (!grid) return;
+  const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
+  if (!matchesCategory || isHiddenCategory(item.category)) return;
+  if (grid.querySelector(`[data-product-id="${CSS.escape(String(item.id))}"]`)) return;
+  grid.insertAdjacentHTML("beforeend", itemCard(item));
+  document.getElementById("empty-state").style.display = "none";
+  updateResultsCopy();
 }
 
 function renderCategoryChips() {
@@ -213,37 +253,6 @@ function renderCategoryChips() {
   wrap.innerHTML = unique.map(category => `
     <button class="category-chip ${selectedCategory === category ? "active" : ""}" type="button" data-category="${escapeAttr(category)}">${escapeHtml(category)}</button>
   `).join("");
-}
-
-function renderItems() {
-  const items = filteredItems();
-  const grid = document.getElementById("product-grid");
-  const empty = document.getElementById("empty-state");
-  const count = document.getElementById("results-count");
-  const copy = document.getElementById("results-copy");
-  const filterPill = document.getElementById("active-filter-pill");
-  if (!grid || !empty || !count || !copy || !filterPill) return;
-
-  count.textContent = fullCatalogueLoaded || selectedCategory !== "All"
-    ? `${items.length} item${items.length === 1 ? "" : "s"}`
-    : `${items.length}+ items`;
-  filterPill.textContent = selectedBrand ? `Brand: ${selectedBrand}` : `Category: ${selectedCategory}`;
-
-  if (searchTerm.trim()) copy.textContent = `Showing results for “${searchTerm.trim()}”${selectedBrand ? ` from ${selectedBrand}` : ""}.`;
-  else if (selectedBrand) copy.textContent = `Showing all ${selectedBrand} items.`;
-  else if (selectedCategory !== "All") copy.textContent = `Showing all items in ${selectedCategory}.`;
-  else if (allPagingFinished) copy.textContent = "Showing popular items first, followed by the rest of the spreadsheet.";
-  else copy.textContent = "Showing the first 100 items. Scroll down to load more.";
-
-  grid.innerHTML = items.map(itemCard).join("");
-  empty.style.display = items.length ? "none" : "block";
-}
-
-function showGrid() {
-  const loading = document.getElementById("spreadsheet-loading");
-  const grid = document.getElementById("product-grid");
-  if (loading) loading.style.display = "none";
-  if (grid) grid.style.display = "grid";
 }
 
 async function loadFilterCategories() {
@@ -270,98 +279,121 @@ async function loadPopularity() {
       String(statsDoc.id),
       Number(statsDoc.data().totalInteractions || 0)
     ]));
-    renderItems();
   } catch {}
 }
 
-async function loadInitial100() {
-  try {
-    const snapshot = await getDocs(query(
-      collection(db, "liveproducts"),
-      orderBy("sortOrder", "asc"),
-      limit(INITIAL_FETCH_COUNT)
-    ));
-    lastAllDoc = snapshot.docs[snapshot.docs.length - 1] || null;
-    allPagingFinished = snapshot.docs.length < INITIAL_FETCH_COUNT;
-    firebaseItems = normalizeDocs(snapshot.docs);
-  } catch {
-    const snapshot = await getDocs(query(collection(db, "liveproducts"), limit(INITIAL_FETCH_COUNT)));
-    firebaseItems = normalizeDocs(snapshot.docs).sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
-    allPagingFinished = snapshot.docs.length < INITIAL_FETCH_COUNT;
-  }
-  renderItems();
-  showGrid();
-}
-
-async function loadNextAllPage() {
-  if (loadingMoreAll || allPagingFinished || fullCatalogueLoaded || selectedCategory !== "All" || searchTerm.trim() || selectedBrand) return;
-  loadingMoreAll = true;
-  try {
-    let pageQuery;
-    if (lastAllDoc) {
-      pageQuery = query(
-        collection(db, "liveproducts"),
-        orderBy("sortOrder", "asc"),
-        startAfter(lastAllDoc),
-        limit(PAGE_SIZE)
-      );
-    } else {
-      pageQuery = query(collection(db, "liveproducts"), orderBy("sortOrder", "asc"), limit(PAGE_SIZE));
-    }
-    const snapshot = await getDocs(pageQuery);
-    if (snapshot.docs.length) lastAllDoc = snapshot.docs[snapshot.docs.length - 1];
-    mergeItems(normalizeDocs(snapshot.docs));
-    if (snapshot.docs.length < PAGE_SIZE) allPagingFinished = true;
-    renderItems();
-  } catch (error) {
-    console.warn("Could not load next spreadsheet page", error);
-  } finally {
-    loadingMoreAll = false;
-  }
-}
-
-async function loadCategory(category) {
-  if (!category || category === "All" || isHiddenCategory(category)) return;
-  if (categoryCache.has(category)) {
-    mergeItems(categoryCache.get(category));
-    renderItems();
-    return;
-  }
+function showGrid() {
+  const loading = document.getElementById("spreadsheet-loading");
   const grid = document.getElementById("product-grid");
-  if (grid) grid.style.opacity = "0.55";
-  try {
-    const snapshot = await getDocs(query(
-      collection(db, "liveproducts"),
-      where("category", "==", category)
-    ));
-    const items = normalizeDocs(snapshot.docs).sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
-    categoryCache.set(category, items);
-    mergeItems(items);
-    if (!items.length) {
-      filterCategories = filterCategories.filter(item => item !== category);
-      selectedCategory = "All";
-      renderCategoryChips();
-    }
-    renderItems();
-  } catch (error) {
-    console.warn("Could not load category", category, error);
-  } finally {
-    if (grid) grid.style.opacity = "1";
+  if (loading) loading.style.display = "none";
+  if (grid) grid.style.display = "grid";
+}
+
+function estimatedRowHeight() {
+  const grid = document.getElementById("product-grid");
+  const card = grid?.querySelector(".product-card");
+  if (!card) return 360;
+  const style = getComputedStyle(grid);
+  const gap = parseFloat(style.rowGap || style.gap) || 16;
+  return card.getBoundingClientRect().height + gap;
+}
+
+function needsMoreBufferedItems() {
+  const grid = document.getElementById("product-grid");
+  if (!grid || streamFinished) return false;
+  const cards = grid.querySelectorAll(".product-card");
+  if (!cards.length) return true;
+  const lastCard = cards[cards.length - 1];
+  const bufferBottom = window.innerHeight + (estimatedRowHeight() * 2);
+  return lastCard.getBoundingClientRect().bottom <= bufferBottom;
+}
+
+function buildStreamQuery() {
+  const base = collection(db, "liveproducts");
+  if (streamCategory === "All") {
+    return streamCursor
+      ? query(base, orderBy("sortOrder", "asc"), startAfter(streamCursor), limit(1))
+      : query(base, orderBy("sortOrder", "asc"), limit(1));
   }
+  return streamCursor
+    ? query(base, where("category", "==", streamCategory), orderBy(documentId()), startAfter(streamCursor), limit(1))
+    : query(base, where("category", "==", streamCategory), orderBy(documentId()), limit(1));
+}
+
+async function fetchOneStreamItem(generation) {
+  if (streamLoading || streamFinished || generation !== streamGeneration) return;
+  streamLoading = true;
+  try {
+    const snapshot = await getDocs(buildStreamQuery());
+    if (generation !== streamGeneration) return;
+    if (!snapshot.docs.length) {
+      streamFinished = true;
+      updateResultsCopy();
+      const empty = document.getElementById("empty-state");
+      if (empty && !filteredItems().length) empty.style.display = "block";
+      return;
+    }
+    streamCursor = snapshot.docs[0];
+    const item = normalizeDocs(snapshot.docs)[0];
+    if (item) appendStreamItem(item);
+  } catch (error) {
+    console.warn("Could not load next spreadsheet item", error);
+    streamFinished = true;
+  } finally {
+    streamLoading = false;
+  }
+}
+
+async function pumpStream() {
+  streamPumpQueued = false;
+  if (searchTerm.trim() || selectedBrand || streamFinished) return;
+  const generation = streamGeneration;
+  let safety = 0;
+  while (generation === streamGeneration && needsMoreBufferedItems() && !streamFinished && safety < 80) {
+    safety += 1;
+    await fetchOneStreamItem(generation);
+    await new Promise(resolve => requestAnimationFrame(resolve));
+  }
+}
+
+function queueStreamPump() {
+  if (streamPumpQueued) return;
+  streamPumpQueued = true;
+  requestAnimationFrame(pumpStream);
+}
+
+function resetStream(category = "All") {
+  streamGeneration += 1;
+  streamCursor = null;
+  streamFinished = false;
+  streamLoading = false;
+  streamCategory = category;
+  firebaseItems = [];
+  const grid = document.getElementById("product-grid");
+  if (grid) grid.innerHTML = "";
+  const empty = document.getElementById("empty-state");
+  if (empty) empty.style.display = "none";
+  updateResultsCopy();
+  queueStreamPump();
 }
 
 async function ensureFullCatalogueLoaded() {
-  if (fullCatalogueLoaded) return;
   if (searchLoadPromise) return searchLoadPromise;
   searchLoadPromise = (async () => {
+    const loading = document.getElementById("spreadsheet-loading");
+    if (loading) {
+      loading.textContent = "Searching full catalogue…";
+      loading.style.display = "grid";
+    }
     try {
       const snapshot = await getDocs(collection(db, "liveproducts"));
       firebaseItems = normalizeDocs(snapshot.docs);
-      fullCatalogueLoaded = true;
-      allPagingFinished = true;
+      streamFinished = true;
       renderItems();
+      showGrid();
     } finally {
       searchLoadPromise = null;
+      if (loading) loading.textContent = "Loading spreadsheet...";
     }
   })();
   return searchLoadPromise;
@@ -371,9 +403,11 @@ async function setCategory(category) {
   if (isHiddenCategory(category)) return;
   selectedCategory = category;
   selectedBrand = "";
+  searchTerm = "";
+  const searchInput = document.getElementById("search-input");
+  if (searchInput) searchInput.value = "";
   renderCategoryChips();
-  if (category !== "All") await loadCategory(category);
-  else renderItems();
+  resetStream(category);
 }
 
 function clearCategory() {
@@ -387,7 +421,7 @@ function clearCategory() {
   url.searchParams.delete("search");
   window.history.replaceState({}, "", url);
   renderCategoryChips();
-  renderItems();
+  resetStream("All");
 }
 
 function renderCurrencyList(search = "") {
@@ -437,6 +471,7 @@ async function chooseCurrency(code) {
   const pill = document.getElementById("currency-pill");
   if (pill) pill.textContent = `Currency: ${code}`;
   renderItems();
+  queueStreamPump();
 }
 
 async function loadCurrencyData() {
@@ -455,7 +490,8 @@ async function loadCurrencyData() {
       cnyRates = { ...cnyRates, CNY: 1, ...data.rates };
       localStorage.setItem(RATE_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), rates: cnyRates }));
     }
-    if (selectedCurrency) renderItems();
+    renderItems();
+    queueStreamPump();
   } catch {}
 }
 
@@ -496,13 +532,10 @@ document.getElementById("product-grid")?.addEventListener("click", event => {
   if (viewLink) window.rcTrackProductInteraction?.(viewLink.dataset.viewProduct, "viewClicks");
 });
 
-window.addEventListener("scroll", () => {
-  if (document.documentElement.scrollHeight - (window.scrollY + window.innerHeight) < 1400) loadNextAllPage();
-}, { passive: true });
-
+window.addEventListener("scroll", queueStreamPump, { passive: true });
 window.addEventListener("resize", () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(renderItems, 120);
+  resizeTimer = setTimeout(queueStreamPump, 100);
 });
 
 const spreadsheetSearchInput = document.getElementById("search-input");
@@ -511,8 +544,12 @@ spreadsheetSearchInput.addEventListener("input", event => {
   searchTerm = event.target.value;
   clearTimeout(searchTimer);
   searchTimer = setTimeout(async () => {
-    if (searchTerm.trim()) await ensureFullCatalogueLoaded();
-    renderItems();
+    if (searchTerm.trim()) {
+      await ensureFullCatalogueLoaded();
+      renderItems();
+    } else {
+      resetStream(selectedCategory);
+    }
   }, 220);
 });
 
@@ -525,6 +562,11 @@ initializeCurrency();
 renderCategoryChips();
 loadFilterCategories();
 loadPopularity();
-await loadInitial100();
-if (searchTerm.trim() || selectedBrand) await ensureFullCatalogueLoaded();
-if (selectedBrand) renderItems();
+showGrid();
+
+if (searchTerm.trim() || selectedBrand) {
+  await ensureFullCatalogueLoaded();
+  renderItems();
+} else {
+  resetStream(selectedCategory);
+}
