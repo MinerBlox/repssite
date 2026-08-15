@@ -4,6 +4,7 @@ import {
   getFirestore,
   collection,
   getDocs,
+  getCountFromServer,
   query,
   where,
   orderBy,
@@ -29,6 +30,8 @@ const db = getFirestore(app);
 const HIDDEN_CATEGORY = "uncategorised";
 const CURRENCY_KEY = "rc-currency";
 const RATE_CACHE_KEY = "rc-cny-rates";
+const CATEGORY_COUNT_CACHE_KEY = "rc-category-counts-v1";
+const CATEGORY_COUNT_CACHE_MS = 30 * 60 * 1000;
 const POPULARITY_FETCH_COUNT = 250;
 const FALLBACK_FILTER_CATEGORIES = [
   "Shoes", "Hoodies", "Tees", "Shorts", "Sweats", "Jeans", "Jackets", "Puffer",
@@ -61,16 +64,20 @@ let currencyNames = { ...FALLBACK_CURRENCIES };
 let cnyRates = { ...FALLBACK_RATES };
 let currencyPickerRequired = false;
 let filterCategories = [...FALLBACK_FILTER_CATEGORIES];
+let categoryCounts = new Map();
+let categoryCountsReady = false;
 let productPopularity = new Map();
 let searchLoadPromise = null;
 let searchTimer = 0;
 let resizeTimer = 0;
+
 let streamGeneration = 0;
 let streamCursor = null;
 let streamFinished = false;
 let streamLoading = false;
 let streamCategory = "All";
-let streamPumpQueued = false;
+let bufferRequested = false;
+let streamRetryTimer = 0;
 
 const filterWrapStyle = document.createElement("style");
 filterWrapStyle.textContent = `
@@ -114,11 +121,7 @@ function badgeLabel(type) {
 
 function formatMoney(value, currency) {
   try {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency,
-      currencyDisplay: "narrowSymbol"
-    }).format(value);
+    return new Intl.NumberFormat(undefined, { style: "currency", currency, currencyDisplay: "narrowSymbol" }).format(value);
   } catch {
     return `${currency} ${Number(value).toFixed(2)}`;
   }
@@ -192,35 +195,33 @@ function filteredItems() {
     const value = `${item.name || ""} ${item.brand || ""} ${item.category || ""} ${(item.tags || []).join(" ")}`.toLowerCase();
     return matchesCategory && matchesBrand && value.includes(searchTerm.trim().toLowerCase());
   });
-
   if (selectedCategory === "All" && (searchTerm.trim() || selectedBrand)) {
-    items = items.sort((a, b) => {
-      const popularityDifference = popularityScore(b) - popularityScore(a);
-      if (popularityDifference) return popularityDifference;
-      return (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0);
-    });
+    items.sort((a, b) => popularityScore(b) - popularityScore(a) || (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
   }
   return items;
 }
 
+function visibleTotalCount() {
+  if (searchTerm.trim() || selectedBrand) return filteredItems().length;
+  if (!categoryCountsReady) return null;
+  if (selectedCategory !== "All") return Number(categoryCounts.get(selectedCategory) || 0);
+  return [...categoryCounts.entries()]
+    .filter(([category]) => category !== "All" && !isHiddenCategory(category))
+    .reduce((sum, [, count]) => sum + Number(count || 0), 0);
+}
+
 function updateResultsCopy() {
-  const items = filteredItems();
   const count = document.getElementById("results-count");
   const copy = document.getElementById("results-copy");
   const filterPill = document.getElementById("active-filter-pill");
-  if (count) count.textContent = streamFinished || searchTerm.trim() || selectedBrand
-    ? `${items.length} item${items.length === 1 ? "" : "s"}`
-    : `${items.length}+ items`;
+  const total = visibleTotalCount();
+  if (count) count.textContent = total == null ? "Loading count…" : `${total} item${total === 1 ? "" : "s"}`;
   if (filterPill) filterPill.textContent = selectedBrand ? `Brand: ${selectedBrand}` : `Category: ${selectedCategory}`;
   if (!copy) return;
   if (searchTerm.trim()) copy.textContent = `Showing results for “${searchTerm.trim()}”${selectedBrand ? ` from ${selectedBrand}` : ""}.`;
   else if (selectedBrand) copy.textContent = `Showing all ${selectedBrand} items.`;
-  else if (selectedCategory !== "All") copy.textContent = streamFinished
-    ? `Showing all items in ${selectedCategory}.`
-    : `Loading ${selectedCategory} as you browse…`;
-  else copy.textContent = streamFinished
-    ? "Showing all loaded spreadsheet items."
-    : "Items load one-by-one and pause two rows ahead of you.";
+  else if (selectedCategory !== "All") copy.textContent = `Showing ${selectedCategory}. Items load as you scroll.`;
+  else copy.textContent = "Items load one-by-one and stay about two rows ahead of you.";
 }
 
 function renderItems() {
@@ -237,19 +238,21 @@ function appendStreamItem(item) {
   mergeItem(item);
   const grid = document.getElementById("product-grid");
   if (!grid) return;
-  const matchesCategory = selectedCategory === "All" || item.category === selectedCategory;
-  if (!matchesCategory || isHiddenCategory(item.category)) return;
+  if (selectedCategory !== "All" && item.category !== selectedCategory) return;
+  if (isHiddenCategory(item.category)) return;
   if (grid.querySelector(`[data-product-id="${CSS.escape(String(item.id))}"]`)) return;
   grid.insertAdjacentHTML("beforeend", itemCard(item));
-  document.getElementById("empty-state").style.display = "none";
+  const empty = document.getElementById("empty-state");
+  if (empty) empty.style.display = "none";
   updateResultsCopy();
 }
 
 function renderCategoryChips() {
   const wrap = document.getElementById("category-chips");
   if (!wrap) return;
-  const categories = ["All", ...filterCategories.filter(category => category && !isHiddenCategory(category))];
-  const unique = [...new Set(categories)];
+  let categories = filterCategories.filter(category => category && !isHiddenCategory(category));
+  if (categoryCountsReady) categories = categories.filter(category => Number(categoryCounts.get(category) || 0) > 0);
+  const unique = ["All", ...new Set(categories)];
   wrap.innerHTML = unique.map(category => `
     <button class="category-chip ${selectedCategory === category ? "active" : ""}" type="button" data-category="${escapeAttr(category)}">${escapeHtml(category)}</button>
   `).join("");
@@ -266,19 +269,42 @@ async function loadFilterCategories() {
     filterCategories = [...FALLBACK_FILTER_CATEGORIES];
   }
   renderCategoryChips();
+  await loadCategoryCounts();
+}
+
+async function loadCategoryCounts() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(CATEGORY_COUNT_CACHE_KEY) || "null");
+    if (cached?.savedAt && Date.now() - cached.savedAt < CATEGORY_COUNT_CACHE_MS && cached.counts) {
+      categoryCounts = new Map(Object.entries(cached.counts).map(([key, value]) => [key, Number(value || 0)]));
+      categoryCountsReady = true;
+      renderCategoryChips();
+      updateResultsCopy();
+      return;
+    }
+  } catch {}
+  const counts = new Map();
+  await Promise.all(filterCategories.map(async category => {
+    try {
+      const snapshot = await getCountFromServer(query(collection(db, "liveproducts"), where("category", "==", category)));
+      counts.set(category, snapshot.data().count || 0);
+    } catch {
+      counts.set(category, 0);
+    }
+  }));
+  categoryCounts = counts;
+  categoryCountsReady = true;
+  try {
+    localStorage.setItem(CATEGORY_COUNT_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), counts: Object.fromEntries(counts) }));
+  } catch {}
+  renderCategoryChips();
+  updateResultsCopy();
 }
 
 async function loadPopularity() {
   try {
-    const snapshot = await getDocs(query(
-      collection(db, "analyticsProducts"),
-      orderBy("totalInteractions", "desc"),
-      limit(POPULARITY_FETCH_COUNT)
-    ));
-    productPopularity = new Map(snapshot.docs.map(statsDoc => [
-      String(statsDoc.id),
-      Number(statsDoc.data().totalInteractions || 0)
-    ]));
+    const snapshot = await getDocs(query(collection(db, "analyticsProducts"), orderBy("totalInteractions", "desc"), limit(POPULARITY_FETCH_COUNT)));
+    productPopularity = new Map(snapshot.docs.map(statsDoc => [String(statsDoc.id), Number(statsDoc.data().totalInteractions || 0)]));
   } catch {}
 }
 
@@ -295,7 +321,7 @@ function estimatedRowHeight() {
   if (!card) return 360;
   const style = getComputedStyle(grid);
   const gap = parseFloat(style.rowGap || style.gap) || 16;
-  return card.getBoundingClientRect().height + gap;
+  return Math.max(120, card.getBoundingClientRect().height + gap);
 }
 
 function needsMoreBufferedItems() {
@@ -304,8 +330,7 @@ function needsMoreBufferedItems() {
   const cards = grid.querySelectorAll(".product-card");
   if (!cards.length) return true;
   const lastCard = cards[cards.length - 1];
-  const bufferBottom = window.innerHeight + (estimatedRowHeight() * 2);
-  return lastCard.getBoundingClientRect().bottom <= bufferBottom;
+  return lastCard.getBoundingClientRect().bottom < window.innerHeight + estimatedRowHeight() * 2;
 }
 
 function buildStreamQuery() {
@@ -321,45 +346,50 @@ function buildStreamQuery() {
 }
 
 async function fetchOneStreamItem(generation) {
-  if (streamLoading || streamFinished || generation !== streamGeneration) return;
-  streamLoading = true;
-  try {
-    const snapshot = await getDocs(buildStreamQuery());
-    if (generation !== streamGeneration) return;
-    if (!snapshot.docs.length) {
-      streamFinished = true;
-      updateResultsCopy();
-      const empty = document.getElementById("empty-state");
-      if (empty && !filteredItems().length) empty.style.display = "block";
-      return;
-    }
-    streamCursor = snapshot.docs[0];
-    const item = normalizeDocs(snapshot.docs)[0];
-    if (item) appendStreamItem(item);
-  } catch (error) {
-    console.warn("Could not load next spreadsheet item", error);
+  if (streamFinished || generation !== streamGeneration) return false;
+  const snapshot = await getDocs(buildStreamQuery());
+  if (generation !== streamGeneration) return false;
+  if (!snapshot.docs.length) {
     streamFinished = true;
+    updateResultsCopy();
+    const empty = document.getElementById("empty-state");
+    if (empty && !filteredItems().length) empty.style.display = "block";
+    return false;
+  }
+  streamCursor = snapshot.docs[0];
+  const item = normalizeDocs(snapshot.docs)[0];
+  if (item) appendStreamItem(item);
+  return true;
+}
+
+async function fillViewportBuffer() {
+  if (searchTerm.trim() || selectedBrand || streamFinished) return;
+  if (streamLoading) {
+    bufferRequested = true;
+    return;
+  }
+  streamLoading = true;
+  const generation = streamGeneration;
+  try {
+    let safety = 0;
+    while (generation === streamGeneration && needsMoreBufferedItems() && !streamFinished && safety < 120) {
+      safety += 1;
+      await fetchOneStreamItem(generation);
+      await new Promise(resolve => requestAnimationFrame(resolve));
+    }
+  } catch (error) {
+    console.warn("Spreadsheet stream temporarily failed", error);
+    clearTimeout(streamRetryTimer);
+    streamRetryTimer = setTimeout(() => {
+      if (generation === streamGeneration) void fillViewportBuffer();
+    }, 700);
   } finally {
     streamLoading = false;
+    if (bufferRequested) {
+      bufferRequested = false;
+      requestAnimationFrame(() => void fillViewportBuffer());
+    }
   }
-}
-
-async function pumpStream() {
-  streamPumpQueued = false;
-  if (searchTerm.trim() || selectedBrand || streamFinished) return;
-  const generation = streamGeneration;
-  let safety = 0;
-  while (generation === streamGeneration && needsMoreBufferedItems() && !streamFinished && safety < 80) {
-    safety += 1;
-    await fetchOneStreamItem(generation);
-    await new Promise(resolve => requestAnimationFrame(resolve));
-  }
-}
-
-function queueStreamPump() {
-  if (streamPumpQueued) return;
-  streamPumpQueued = true;
-  requestAnimationFrame(pumpStream);
 }
 
 function resetStream(category = "All") {
@@ -368,13 +398,15 @@ function resetStream(category = "All") {
   streamFinished = false;
   streamLoading = false;
   streamCategory = category;
+  bufferRequested = false;
+  clearTimeout(streamRetryTimer);
   firebaseItems = [];
   const grid = document.getElementById("product-grid");
   if (grid) grid.innerHTML = "";
   const empty = document.getElementById("empty-state");
   if (empty) empty.style.display = "none";
   updateResultsCopy();
-  queueStreamPump();
+  requestAnimationFrame(() => void fillViewportBuffer());
 }
 
 async function ensureFullCatalogueLoaded() {
@@ -432,8 +464,7 @@ function renderCurrencyList(search = "") {
   const entries = Object.entries(currencyNames)
     .filter(([code, name]) => !normalized || code.toLowerCase().includes(normalized) || name.toLowerCase().includes(normalized))
     .sort(([aCode, aName], [bCode, bName]) => {
-      const a = popular.indexOf(aCode);
-      const b = popular.indexOf(bCode);
+      const a = popular.indexOf(aCode), b = popular.indexOf(bCode);
       if (a !== -1 || b !== -1) return (a === -1 ? 99 : a) - (b === -1 ? 99 : b);
       return aName.localeCompare(bName);
     });
@@ -452,10 +483,7 @@ function openCurrencyPicker(required = false) {
   if (close) close.hidden = currencyPickerRequired;
   renderCurrencyList();
   const search = document.getElementById("currency-search");
-  if (search) {
-    search.value = "";
-    requestAnimationFrame(() => search.focus());
-  }
+  if (search) { search.value = ""; requestAnimationFrame(() => search.focus()); }
 }
 
 function closeCurrencyPicker() {
@@ -471,7 +499,7 @@ async function chooseCurrency(code) {
   const pill = document.getElementById("currency-pill");
   if (pill) pill.textContent = `Currency: ${code}`;
   renderItems();
-  queueStreamPump();
+  requestAnimationFrame(() => void fillViewportBuffer());
 }
 
 async function loadCurrencyData() {
@@ -491,7 +519,7 @@ async function loadCurrencyData() {
       localStorage.setItem(RATE_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), rates: cnyRates }));
     }
     renderItems();
-    queueStreamPump();
+    requestAnimationFrame(() => void fillViewportBuffer());
   } catch {}
 }
 
@@ -504,9 +532,7 @@ function initializeCurrency() {
     if (option) chooseCurrency(option.dataset.currency);
   });
   document.getElementById("currency-close")?.addEventListener("click", closeCurrencyPicker);
-  document.addEventListener("keydown", event => {
-    if (event.key === "Escape") closeCurrencyPicker();
-  });
+  document.addEventListener("keydown", event => { if (event.key === "Escape") closeCurrencyPicker(); });
   if (!selectedCurrency) openCurrencyPicker(true);
   loadCurrencyData();
 }
@@ -519,7 +545,7 @@ async function copyProductLink(url, productId) {
 
 document.getElementById("category-chips")?.addEventListener("click", event => {
   const chip = event.target.closest("[data-category]");
-  if (chip) setCategory(chip.dataset.category);
+  if (chip) void setCategory(chip.dataset.category);
 });
 
 document.getElementById("product-grid")?.addEventListener("click", event => {
@@ -532,10 +558,10 @@ document.getElementById("product-grid")?.addEventListener("click", event => {
   if (viewLink) window.rcTrackProductInteraction?.(viewLink.dataset.viewProduct, "viewClicks");
 });
 
-window.addEventListener("scroll", queueStreamPump, { passive: true });
+window.addEventListener("scroll", () => void fillViewportBuffer(), { passive: true });
 window.addEventListener("resize", () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(queueStreamPump, 100);
+  resizeTimer = setTimeout(() => void fillViewportBuffer(), 80);
 });
 
 const spreadsheetSearchInput = document.getElementById("search-input");
@@ -560,8 +586,8 @@ window.openCurrencyPicker = openCurrencyPicker;
 
 initializeCurrency();
 renderCategoryChips();
-loadFilterCategories();
-loadPopularity();
+void loadFilterCategories();
+void loadPopularity();
 showGrid();
 
 if (searchTerm.trim() || selectedBrand) {
