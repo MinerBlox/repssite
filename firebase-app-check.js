@@ -8,7 +8,7 @@ const instances = new Map();
 
 const path = window.location.pathname.replace(/\/+$/, "") || "/";
 if (path === "/" || path === "/index.html") {
-  import("./homepage-curation.js?v=2026-08-14-1").catch(error => console.warn("Homepage curation could not load", error));
+  import("./homepage-curation.js?v=2026-08-16-hide-brands-2").catch(error => console.warn("Homepage curation could not load", error));
 }
 
 function shouldSkipAppCheck() {
