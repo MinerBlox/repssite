@@ -91,11 +91,10 @@ function renderRow(target, items) {
 }
 
 function hideViewBrands() {
-  document.querySelectorAll("a,button").forEach(node => {
-    if (node.textContent.trim().toLowerCase() !== "view brands") return;
-    const section = node.closest("section");
+  document.querySelectorAll(".section-title").forEach(title => {
+    if (title.textContent.trim().toLowerCase() !== "view brands") return;
+    const section = title.closest(".section");
     if (section) section.style.display = "none";
-    else node.style.display = "none";
   });
 }
 
