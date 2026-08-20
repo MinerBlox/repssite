@@ -10,6 +10,9 @@ const path = window.location.pathname.replace(/\/+$/, "") || "/";
 if (path === "/" || path === "/index.html") {
   import("./homepage-curation.js?v=2026-08-16-hide-brands-2").catch(error => console.warn("Homepage curation could not load", error));
 }
+if (path.includes("/spreadsheetadmin") || path.endsWith("/editcatalog.html") || path.endsWith("/editcatalog")) {
+  import("./catalog-index-admin-sync.js?v=2026-08-20-index-1").catch(() => {});
+}
 
 function shouldSkipAppCheck() {
   const hostname = window.location.hostname.toLowerCase();
