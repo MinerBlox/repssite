@@ -1,5 +1,6 @@
 !pip install -q firebase-admin boto3 requests
 
+import json
 import mimetypes
 import os
 import re
@@ -18,10 +19,12 @@ from firebase_admin import credentials, firestore
 #
 # Images -> Cloudflare R2
 # Products -> Firestore liveproducts
+# Search/category index -> R2 catalog/index.json
 # ============================================================
 
 R2_ENDPOINT = "https://f86db63e8bfe805141b52fbbee59aa38.r2.cloudflarestorage.com"
 R2_BUCKET = "reps-product-images"
+CATALOG_INDEX_KEY = "catalog/index.json"
 
 print("Cloudflare R2 setup")
 print("-------------------")
@@ -35,25 +38,19 @@ R2_SECRET_ACCESS_KEY = getpass("R2 Secret Access Key: ").strip()
 print()
 print("Paste the PUBLIC base URL you use for product images.")
 print("Example: https://images.repscentral.net")
-print("Do not use the private r2.cloudflarestorage.com API endpoint here.")
 R2_PUBLIC_BASE = input("R2 public base URL: ").strip().rstrip("/")
-
 if not R2_PUBLIC_BASE.startswith(("http://", "https://")):
     raise ValueError("R2 public base URL must start with http:// or https://")
 
 print()
 print("Upload your Firebase service account JSON file:")
 uploaded_service = files.upload()
-
 if not uploaded_service:
     raise RuntimeError("No Firebase service account JSON uploaded.")
-
 service_account_file = next(iter(uploaded_service.keys()))
 cred = credentials.Certificate(service_account_file)
-
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred)
-
 db = firestore.client()
 
 s3 = boto3.client(
@@ -62,13 +59,9 @@ s3 = boto3.client(
     aws_access_key_id=R2_ACCESS_KEY_ID,
     aws_secret_access_key=R2_SECRET_ACCESS_KEY,
     region_name="auto",
-    config=Config(
-        signature_version="s3v4",
-        retries={"max_attempts": 5, "mode": "standard"}
-    )
+    config=Config(signature_version="s3v4", retries={"max_attempts": 5, "mode": "standard"})
 )
 
-# Confirm bucket access before asking for products.
 try:
     s3.head_bucket(Bucket=R2_BUCKET)
     print("\n✅ Connected to Cloudflare R2.")
@@ -89,53 +82,105 @@ def extension_for(filename):
     extension = mimetypes.guess_extension(mime_type or "") or ""
     if not extension and "." in filename:
         extension = "." + filename.rsplit(".", 1)[-1].lower()
-    if extension == ".jpe":
-        extension = ".jpg"
+    if extension == ".jpe": extension = ".jpg"
     return extension or ".png"
 
 
 def upload_image_to_r2(local_filename, object_key):
     mime_type, _ = mimetypes.guess_type(local_filename)
-    content_type = mime_type or "application/octet-stream"
-
     with open(local_filename, "rb") as image_file:
         s3.put_object(
             Bucket=R2_BUCKET,
             Key=object_key,
             Body=image_file,
-            ContentType=content_type,
+            ContentType=mime_type or "application/octet-stream",
             CacheControl="public, max-age=31536000, immutable"
         )
-
-    # Quote each path segment without turning / into %2F.
     public_key = "/".join(quote(part, safe="") for part in object_key.split("/"))
     return f"{R2_PUBLIC_BASE}/{public_key}"
 
 
+def compact_index_item(product_id, data):
+    return {
+        "id": str(product_id),
+        "name": str(data.get("name") or ""),
+        "category": str(data.get("category") or ""),
+        "brand": str(data.get("brand") or ""),
+        "sortOrder": int(data.get("sortOrder") or 0),
+        "isActive": data.get("isActive") is not False,
+    }
+
+
+def save_catalog_index(items):
+    items = sorted(items, key=lambda item: int(item.get("sortOrder") or 0))
+    payload = {
+        "version": int(time.time() * 1000),
+        "updatedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "items": items,
+    }
+    raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    s3.put_object(
+        Bucket=R2_BUCKET,
+        Key=CATALOG_INDEX_KEY,
+        Body=raw,
+        ContentType="application/json; charset=utf-8",
+        CacheControl="no-cache"
+    )
+    return payload
+
+
+def build_catalog_index_from_firestore():
+    print("\nBuilding persistent search/category index...")
+    items = []
+    for product_doc in db.collection("liveproducts").stream():
+        data = product_doc.to_dict() or {}
+        items.append(compact_index_item(product_doc.id, data))
+    payload = save_catalog_index(items)
+    print(f"✅ Catalog index ready: {len(payload['items']):,} items")
+    print(f"R2 object: {CATALOG_INDEX_KEY}")
+    return payload
+
+
+def load_or_build_catalog_index():
+    try:
+        obj = s3.get_object(Bucket=R2_BUCKET, Key=CATALOG_INDEX_KEY)
+        payload = json.loads(obj["Body"].read().decode("utf-8"))
+        if isinstance(payload.get("items"), list):
+            print(f"✅ Existing catalog index loaded: {len(payload['items']):,} items")
+            return payload
+    except Exception:
+        pass
+    return build_catalog_index_from_firestore()
+
+
+def upsert_catalog_index_item(payload, product_id, data):
+    by_id = {str(item.get("id")): item for item in payload.get("items", []) if item.get("id")}
+    by_id[str(product_id)] = compact_index_item(product_id, data)
+    new_payload = save_catalog_index(list(by_id.values()))
+    payload.clear()
+    payload.update(new_payload)
+
+
 def existing_categories():
     try:
-        docs = db.collection("categories").stream()
         names = []
-        for category_doc in docs:
+        for category_doc in db.collection("categories").stream():
             data = category_doc.to_dict() or {}
             name = str(data.get("name") or category_doc.id).strip()
-            if name and name.lower() != "uncategorised":
-                names.append(name)
+            if name and name.lower() != "uncategorised": names.append(name)
         return sorted(set(names), key=str.lower)
     except Exception:
         return []
 
 
+# This is the one-time bootstrap on the first run. Future runs load the saved R2 index.
+catalog_index = load_or_build_catalog_index()
 categories = existing_categories()
 
 print("\nFirebase destination: liveproducts")
 if categories:
     print("Current categories:")
     print(", ".join(categories))
-
-# ============================================================
-# ENDLESS ITEM INPUT LOOP
-# ============================================================
 
 while True:
     print("\n" + "-" * 54)
@@ -144,13 +189,11 @@ while True:
     print("-" * 54)
 
     item_name = input("Item name: ").strip()
-
     if item_name.lower() in {"q", "quit", "exit"}:
         print("Stopped.")
         break
 
     agent_link = input("Agent link: ").strip()
-
     while True:
         try:
             yuan_price = float(input("Price in yuan: ").strip())
@@ -159,13 +202,11 @@ while True:
             print("Please enter a valid number.")
 
     category = input("Category (leave blank if unsure): ").strip()
-
     item_slug = slugify(item_name)
     if not item_slug:
         print("Invalid item name. Starting again.")
         continue
 
-    # Avoid overwriting an existing item with the same name.
     product_id = item_slug
     existing = db.collection("liveproducts").document(product_id).get()
     if existing.exists:
@@ -174,20 +215,16 @@ while True:
 
     print("Upload item image:")
     uploaded_image = files.upload()
-
     if not uploaded_image:
         print("No image uploaded. Starting this item again.")
         continue
 
     image_filename = next(iter(uploaded_image.keys()))
     extension = extension_for(image_filename)
-
-    # New uploads live together in R2; no GitHub image commits are made.
     object_key = f"uploads/{product_id}{extension}"
 
     try:
         image_url = upload_image_to_r2(image_filename, object_key)
-
         product_data = {
             "name": item_name,
             "price": yuan_price,
@@ -211,25 +248,22 @@ while True:
         }
 
         db.collection("liveproducts").document(product_id).set(product_data)
+        upsert_catalog_index_item(catalog_index, product_id, product_data)
 
-        # If you typed a genuinely new category, make it available in filters/admin too.
         if category and category.lower() != "uncategorised":
             category_slug = slugify(category)
             if category_slug:
-                db.collection("categories").document(category_slug).set(
-                    {"name": category, "updatedAt": firestore.SERVER_TIMESTAMP},
-                    merge=True
-                )
+                db.collection("categories").document(category_slug).set({"name": category, "updatedAt": firestore.SERVER_TIMESTAMP}, merge=True)
                 if category not in categories:
                     categories.append(category)
                     categories.sort(key=str.lower)
 
         print("\n✅ Done.")
-        print(f"Firestore collection: liveproducts")
+        print("Firestore collection: liveproducts")
         print(f"Product document ID: {product_id}")
         print(f"R2 object: {object_key}")
         print(f"Image URL: {image_url}")
-        print("Ready for the next product.")
+        print("✅ Search/category index updated too.")
 
     except Exception as error:
         print("\n❌ Something went wrong with this item:")
