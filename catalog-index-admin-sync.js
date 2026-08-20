@@ -1,0 +1,119 @@
+import { getApps } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+const ADMIN_UID = "3jC9pWkF5ZeHIDtd1LrPR1Ptvbz1";
+const pending = new Map();
+
+function adminUser() {
+  for (const app of getApps()) {
+    try {
+      const user = getAuth(app).currentUser;
+      if (user?.uid === ADMIN_UID) return user;
+    } catch {}
+  }
+  return null;
+}
+
+async function postIndex(body) {
+  const user = adminUser();
+  if (!user) return;
+  const token = await user.getIdToken();
+  const response = await fetch("/api/catalog-index", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+  if (!response.ok) throw new Error(`Catalog index sync failed (${response.status})`);
+}
+
+function value(card, selector, fallback = "") {
+  const el = card.querySelector(selector);
+  if (!el) return fallback;
+  if (el.type === "checkbox") return el.checked;
+  return el.value ?? el.textContent ?? fallback;
+}
+
+function spreadsheetItemFromCard(card) {
+  const id = String(card?.dataset?.productId || "").trim();
+  if (!id) return null;
+  return {
+    id,
+    name: String(value(card, '[data-field="name"]', card.querySelector(".product-title")?.textContent || "")),
+    category: String(value(card, '[data-field="category"]', value(card, '[data-quick-category]', ""))),
+    brand: String(value(card, '[data-field="brand"]', "")),
+    sortOrder: Number(value(card, '[data-field="sortOrder"]', 0) || 0),
+    isActive: Boolean(value(card, '[data-field="isActive"]', true))
+  };
+}
+
+function editCatalogItemFromCard(card) {
+  const id = String(card?.querySelector("[data-agent-product]")?.dataset?.agentProduct || "").trim();
+  if (!id) return null;
+  return { id, name: String(card.querySelector(".product-name")?.textContent || "").trim() };
+}
+
+function queueUpsert(key, item) {
+  if (!item?.id) return;
+  clearTimeout(pending.get(key));
+  pending.set(key, setTimeout(() => {
+    postIndex({ action: "upsert", item }).catch(() => {});
+    pending.delete(key);
+  }, 180));
+}
+
+function installSpreadsheetAdminSync() {
+  const root = document.getElementById("products-list");
+  if (!root) return requestAnimationFrame(installSpreadsheetAdminSync);
+
+  const observer = new MutationObserver(records => {
+    for (const record of records) {
+      const target = record.target.nodeType === Node.TEXT_NODE ? record.target.parentElement : record.target;
+      const state = target?.closest?.(".save-state");
+      if (!state || state.textContent.trim() !== "Saved") continue;
+      const card = state.closest("[data-product-id]");
+      const item = spreadsheetItemFromCard(card);
+      if (item) queueUpsert(`admin:${item.id}`, item);
+    }
+  });
+  observer.observe(root, { subtree: true, childList: true, characterData: true });
+
+  root.addEventListener("click", event => {
+    const button = event.target.closest("[data-delete]");
+    if (!button) return;
+    const card = button.closest("[data-product-id]");
+    const id = String(card?.dataset?.productId || "");
+    if (!id) return;
+    setTimeout(async () => {
+      try {
+        const app = getApps().find(candidate => candidate.name === "[DEFAULT]") || getApps()[0];
+        if (!app) return;
+        const snapshot = await getDoc(doc(getFirestore(app), "liveproducts", id));
+        if (!snapshot.exists()) await postIndex({ action: "remove", id });
+      } catch {}
+    }, 1200);
+  }, true);
+}
+
+function installEditCatalogSync() {
+  const root = document.getElementById("catalog-root");
+  if (!root) return requestAnimationFrame(installEditCatalogSync);
+  const observer = new MutationObserver(records => {
+    for (const record of records) {
+      const target = record.target.nodeType === Node.TEXT_NODE ? record.target.parentElement : record.target;
+      const name = target?.closest?.(".product-name");
+      if (!name) continue;
+      const card = name.closest(".product-card");
+      const item = editCatalogItemFromCard(card);
+      if (item) queueUpsert(`edit:${item.id}`, item);
+    }
+  });
+  observer.observe(root, { subtree: true, childList: true, characterData: true });
+}
+
+const path = location.pathname.toLowerCase();
+if (path.includes("/spreadsheetadmin")) installSpreadsheetAdminSync();
+if (path.endsWith("/editcatalog.html") || path.endsWith("/editcatalog")) installEditCatalogSync();
