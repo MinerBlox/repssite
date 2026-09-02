@@ -81,19 +81,21 @@ async function findProduct(slug) {
 
   const response = await fetch(`/api/catalog?id=${encodeURIComponent(slug)}`, { cache: "default" });
 
+  if (response.ok) {
+    const data = await response.json();
+    const item = data?.product || null;
+    qcLog("Cached catalog result", item ? { id: item.id, name: item.name } : null);
+    return item;
+  }
+
   if (response.status === 404) {
     qcLog("Cached catalog product miss", { slug });
     return null;
   }
 
-  if (!response.ok) {
-    throw new Error(`Catalog API returned ${response.status}`);
-  }
-
-  const data = await response.json();
-  const item = data?.product || null;
-  qcLog("Cached catalog result", item ? { id: item.id, name: item.name } : null);
-  return item;
+  qcWarn("Cached catalog unavailable; trying one direct Firestore document read.", { status: response.status });
+  const directSnap = await getDoc(doc(db, "liveproducts", slug));
+  return directSnap.exists() ? { id: directSnap.id, ...directSnap.data() } : null;
 }
 
 function originalProductLink(item) {
