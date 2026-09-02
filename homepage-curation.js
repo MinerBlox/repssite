@@ -16,6 +16,23 @@ const db = getFirestore(app);
 const ROW_LIMIT = 5;
 const curated = { picks: [], summer: [], autumn: [], winter: [] };
 let activeSeason = "summer";
+let catalogPromise = null;
+
+async function loadCatalog() {
+  if (catalogPromise) return catalogPromise;
+  catalogPromise = (async () => {
+    const response = await fetch("/api/catalog", { cache: "default" });
+    if (!response.ok) throw new Error(`catalog ${response.status}`);
+    const data = await response.json();
+    return (Array.isArray(data.products) ? data.products : [])
+      .filter(item => item && item.isActive !== false)
+      .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
+  })().catch(error => {
+    catalogPromise = null;
+    throw error;
+  });
+  return catalogPromise;
+}
 
 function escapeHtml(value) {
   return String(value || "")
@@ -107,12 +124,8 @@ function applyCuratedRows() {
 
 async function loadFlag(field) {
   try {
-    const snapshot = await getDocs(query(collection(db, "liveproducts"), where(field, "==", true), limit(ROW_LIMIT)));
-    return snapshot.docs
-      .map(productDoc => ({ id: productDoc.id, ...productDoc.data() }))
-      .filter(item => item.isActive !== false)
-      .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
-      .slice(0, ROW_LIMIT);
+    const items = await loadCatalog();
+    return items.filter(item => item[field] === true).slice(0, ROW_LIMIT);
   } catch {
     return [];
   }
