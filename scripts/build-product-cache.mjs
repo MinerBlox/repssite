@@ -1,4 +1,5 @@
-import admin from "firebase-admin";
+import { cert, getApps, initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 function required(name) {
@@ -13,13 +14,13 @@ const accessKeyId = required("R2_ACCESS_KEY_ID");
 const secretAccessKey = required("R2_SECRET_ACCESS_KEY");
 const bucketName = required("R2_BUCKET_NAME");
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+if (!getApps().length) {
+  initializeApp({
+    credential: cert(serviceAccount)
   });
 }
 
-const db = admin.firestore();
+const db = getFirestore();
 
 const r2 = new S3Client({
   region: "auto",
