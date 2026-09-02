@@ -3,10 +3,10 @@ name: Build Product Cache
 on:
   workflow_dispatch:
   schedule:
-    # GitHub cron uses UTC. Running at both possible UK-midnight hours lets
-    # the gate below keep this at midnight in Europe/London year-round.
-    - cron: "5 23 * * *"
-    - cron: "5 0 * * *"
+    # Firestore free quota resets around midnight Pacific time.
+    # Run at 00:02 Pacific year-round (07:02 UTC during PDT, 08:02 UTC during PST).
+    - cron: "2 7 * * *"
+    - cron: "2 8 * * *"
 
 permissions:
   contents: read
@@ -16,13 +16,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check UK midnight
+      - name: Check Pacific midnight
         id: midnight
         shell: bash
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
-          elif [ "$(TZ=Europe/London date +%H)" = "00" ]; then
+          elif [ "$(TZ=America/Los_Angeles date +%H:%M)" = "00:02" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
