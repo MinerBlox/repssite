@@ -21,12 +21,21 @@ let catalogPromise = null;
 async function loadCatalog() {
   if (catalogPromise) return catalogPromise;
   catalogPromise = (async () => {
-    const response = await fetch("/api/catalog", { cache: "default" });
-    if (!response.ok) throw new Error(`catalog ${response.status}`);
-    const data = await response.json();
-    return (Array.isArray(data.products) ? data.products : [])
-      .filter(item => item && item.isActive !== false)
-      .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
+    try {
+      const response = await fetch("/api/catalog", { cache: "default" });
+      if (!response.ok) throw new Error(`catalog ${response.status}`);
+      const data = await response.json();
+      return (Array.isArray(data.products) ? data.products : [])
+        .filter(item => item && item.isActive !== false)
+        .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
+    } catch (error) {
+      console.warn("Cached catalog unavailable; using temporary Firestore fallback.", error);
+      const snapshot = await getDocs(collection(db, "liveproducts"));
+      return snapshot.docs
+        .map(productDoc => ({ id: productDoc.id, ...productDoc.data() }))
+        .filter(item => item.isActive !== false)
+        .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
+    }
   })().catch(error => {
     catalogPromise = null;
     throw error;
