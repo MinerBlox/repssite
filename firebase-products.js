@@ -42,6 +42,21 @@ let indexedModeIds=[];
 let indexedModeCursor=0;
 let indexedRequestToken=0;
 let indexedLoadingToken=0;
+let fullCatalogPromise=null;
+
+async function loadFullCatalog(){
+  if(fullCatalogPromise)return fullCatalogPromise;
+  fullCatalogPromise=(async()=>{
+    const r=await fetch("/api/catalog",{cache:"default"});
+    if(!r.ok)throw new Error(`catalog ${r.status}`);
+    const d=await r.json();
+    return sortItems((Array.isArray(d.products)?d.products:[]).filter(i=>i&&i.isActive!==false&&!hidden(i.category)));
+  })().catch(error=>{
+    fullCatalogPromise=null;
+    throw error;
+  });
+  return fullCatalogPromise;
+}
 
 const style=document.createElement("style");
 style.textContent=`@media(min-width:721px){.category-row{overflow:visible!important}.category-chips{flex-wrap:wrap!important;overflow-x:visible!important}}.image-loading-label{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:12px;font-weight:600;background:var(--surface2);z-index:0}.image-loading-label.is-hidden{display:none}.product-image{position:relative;z-index:1;opacity:0;transition:opacity .12s ease}.product-image.is-loaded{opacity:1}.category-loading-label{display:inline-flex;align-items:center;min-height:32px;padding:0 4px;color:var(--muted);font-size:12px;font-weight:600}`;
@@ -72,12 +87,12 @@ function resetRendered(){const g=document.getElementById("product-grid");if(!g)r
 
 function compactFromFull(item){return{id:String(item.id||""),name:String(item.name||""),category:String(item.category||""),brand:String(item.brand||""),sortOrder:Number(item.sortOrder||0),isActive:item.isActive!==false}}
 function deriveIndexMetadata(){const active=catalogIndex.filter(i=>i.isActive!==false&&!hidden(i.category));const counts=new Map();for(const item of active){const c=String(item.category||"").trim();if(c)counts.set(c,(counts.get(c)||0)+1)}categoryCounts=counts;filterCategories=[...counts.keys()].sort((a,b)=>a.localeCompare(b));allTotalCount=active.length;indexReady=true;renderChips();updateMeta()}
-async function loadCatalogIndex(){if(indexReady)return catalogIndex;if(indexPromise)return indexPromise;indexPromise=(async()=>{try{const r=await fetch(`/api/catalog-index?ts=${Date.now()}`,{cache:"no-cache"});if(!r.ok)throw new Error(`index ${r.status}`);const d=await r.json();catalogIndex=Array.isArray(d.items)?d.items:[];}catch{const s=await getDocs(collection(db,"liveproducts"));catalogIndex=normalizeDocs(s.docs).map(compactFromFull)}catalogIndex.sort((a,b)=>(Number(a.sortOrder)||0)-(Number(b.sortOrder)||0));deriveIndexMetadata();return catalogIndex})().finally(()=>{indexPromise=null});return indexPromise}
+async function loadCatalogIndex(){if(indexReady)return catalogIndex;if(indexPromise)return indexPromise;indexPromise=(async()=>{const full=await loadFullCatalog();catalogIndex=full.map(compactFromFull);catalogIndex.sort((a,b)=>(Number(a.sortOrder)||0)-(Number(b.sortOrder)||0));deriveIndexMetadata();return catalogIndex})().finally(()=>{indexPromise=null});return indexPromise}
 
-async function loadInitial(){loadingPage=true;try{const s=await getDocs(query(collection(db,"liveproducts"),orderBy("sortOrder","asc"),limit(PAGE_SIZE)));lastAllDoc=s.docs.at(-1)||null;allFinished=s.docs.length<PAGE_SIZE;firebaseItems=normalizeDocs(s.docs)}catch{const s=await getDocs(query(collection(db,"liveproducts"),limit(PAGE_SIZE)));lastAllDoc=s.docs.at(-1)||null;allFinished=s.docs.length<PAGE_SIZE;firebaseItems=sortItems(normalizeDocs(s.docs))}finally{loadingPage=false}resetRendered();document.getElementById("spreadsheet-loading")?.style.setProperty("display","none");document.getElementById("product-grid")?.style.setProperty("display","grid")}
-async function loadNextPage(){if(loadingPage||allFinished||selectedCategory!=="All"||searchTerm.trim()||selectedBrand)return;loadingPage=true;try{const q=lastAllDoc?query(collection(db,"liveproducts"),orderBy("sortOrder","asc"),startAfter(lastAllDoc),limit(PAGE_SIZE)):query(collection(db,"liveproducts"),orderBy("sortOrder","asc"),limit(PAGE_SIZE)),s=await getDocs(q);if(s.docs.length)lastAllDoc=s.docs.at(-1);if(s.docs.length<PAGE_SIZE)allFinished=true;merge(normalizeDocs(s.docs));visibleItems=[...firebaseItems];appendUntilTarget()}catch{}finally{loadingPage=false}}
+async function loadInitial(){loadingPage=true;try{firebaseItems=[...(await loadFullCatalog())];allFinished=true;lastAllDoc=null}finally{loadingPage=false}resetRendered();document.getElementById("spreadsheet-loading")?.style.setProperty("display","none");document.getElementById("product-grid")?.style.setProperty("display","grid")}
+async function loadNextPage(){allFinished=true;appendUntilTarget()}
 
-async function loadItemsByIds(ids){if(!ids.length)return[];const chunks=[];for(let i=0;i<ids.length;i+=IN_QUERY_SIZE)chunks.push(ids.slice(i,i+IN_QUERY_SIZE));const snapshots=await Promise.all(chunks.map(chunk=>getDocs(query(collection(db,"liveproducts"),where(documentId(),"in",chunk)))));const map=new Map();for(const s of snapshots)for(const d of s.docs)map.set(d.id,{id:d.id,...d.data()});return ids.map(id=>map.get(id)).filter(i=>i&&i.isActive!==false&&!hidden(i.category))}
+async function loadItemsByIds(ids){if(!ids.length)return[];const full=await loadFullCatalog();const map=new Map(full.map(item=>[String(item.id),item]));return ids.map(id=>map.get(String(id))).filter(i=>i&&i.isActive!==false&&!hidden(i.category))}
 async function loadNextIndexedBatch(token=indexedRequestToken){if(token!==indexedRequestToken||indexedModeCursor>=indexedModeIds.length)return;if(indexedLoadingToken===token)return;indexedLoadingToken=token;try{const start=indexedModeCursor;const ids=indexedModeIds.slice(start,start+INDEX_BATCH_SIZE);const items=await loadItemsByIds(ids);if(token!==indexedRequestToken)return;indexedModeCursor=start+ids.length;merge(items);visibleItems=[...firebaseItems];appendUntilTarget()}finally{if(indexedLoadingToken===token)indexedLoadingToken=0}}
 function matchingIndexIds(){const term=searchTerm.trim().toLowerCase();return catalogIndex.filter(i=>i.isActive!==false&&!hidden(i.category)&&(selectedCategory==="All"||i.category===selectedCategory)&&(!selectedBrand||String(i.brand||"").toLowerCase()===selectedBrand.toLowerCase())&&(!term||`${i.name||""} ${i.category||""} ${i.brand||""} ${i.id||""}`.toLowerCase().includes(term))).sort((a,b)=>(Number(a.sortOrder)||0)-(Number(b.sortOrder)||0)).map(i=>i.id)}
 async function startIndexedMode({category="All",term="",brand=""}={}){await loadCatalogIndex();indexedRequestToken++;const token=indexedRequestToken;indexedLoadingToken=0;selectedCategory=category;searchTerm=term;selectedBrand=brand;indexedModeIds=matchingIndexIds();indexedModeCursor=0;firebaseItems=[];visibleItems=[];renderedCount=0;const g=document.getElementById("product-grid");if(g)g.innerHTML="";categoryLoading=category!=="All"&&!term;searchLoading=Boolean(term);renderChips();updateMeta();refreshEmptyState();if(!indexedModeIds.length){categoryLoading=false;searchLoading=false;refreshEmptyState();return}try{await loadNextIndexedBatch(token)}catch{if(token===indexedRequestToken){categoryLoading=false;searchLoading=false;refreshEmptyState()}return}if(token!==indexedRequestToken)return;categoryLoading=false;searchLoading=false;resetRendered()}
