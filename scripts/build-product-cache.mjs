@@ -53,8 +53,34 @@ function serializable(value) {
   return value;
 }
 
-console.log("Reading liveproducts from Firestore...");
-const snapshot = await db.collection("liveproducts").get();
+async function readCatalogWithQuotaRetry() {
+  const maxAttempts = 12;
+  const retryMs = 2 * 60 * 1000;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      console.log(`Reading liveproducts from Firestore (attempt ${attempt}/${maxAttempts})...`);
+      return await db.collection("liveproducts").get();
+    } catch (error) {
+      const quotaExceeded =
+        error?.code === 8 ||
+        String(error?.code || "").includes("RESOURCE_EXHAUSTED") ||
+        String(error?.message || "").includes("RESOURCE_EXHAUSTED") ||
+        String(error?.message || "").includes("Quota exceeded");
+
+      if (!quotaExceeded || attempt === maxAttempts) throw error;
+
+      console.warn(
+        `Firestore quota has not reset yet. Retrying in 2 minutes... (${attempt}/${maxAttempts})`
+      );
+      await new Promise(resolve => setTimeout(resolve, retryMs));
+    }
+  }
+
+  throw new Error("Firestore quota did not reset within the retry window.");
+}
+
+const snapshot = await readCatalogWithQuotaRetry();
 
 const products = snapshot.docs
   .map(doc => ({
