@@ -726,6 +726,23 @@ const HOME_SEASON_CATEGORIES = {
   winter: ["Jackets", "Puffer", "Hoodies", "Sweaters", "Accessories"]
 };
 
+let cachedCatalogPromise = null;
+async function loadCachedCatalog() {
+  if (cachedCatalogPromise) return cachedCatalogPromise;
+  cachedCatalogPromise = (async () => {
+    const response = await fetch("/api/catalog", { cache: "default" });
+    if (!response.ok) throw new Error(`catalog ${response.status}`);
+    const data = await response.json();
+    return (Array.isArray(data.products) ? data.products : [])
+      .filter(activeProduct)
+      .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
+  })().catch(error => {
+    cachedCatalogPromise = null;
+    throw error;
+  });
+  return cachedCatalogPromise;
+}
+
 function productFromDoc(productDoc) {
   return { id: productDoc.id, ...productDoc.data() };
 }
@@ -744,84 +761,46 @@ function dedupeProducts(items) {
 }
 
 async function loadRandomHeroProducts() {
-  const randomStart = Math.max(1, Math.floor(Math.random() * APPROX_MAX_SORT_ORDER));
-  try {
-    const randomSnapshot = await getDocs(query(
-      collection(db, "liveproducts"),
-      orderBy("sortOrder"),
-      startAt(randomStart),
-      limit(HERO_PRODUCT_LIMIT)
-    ));
-    let items = randomSnapshot.docs.map(productFromDoc).filter(activeProduct);
-
-    if (items.length < Math.min(20, HERO_PRODUCT_LIMIT)) {
-      const fallbackSnapshot = await getDocs(query(
-        collection(db, "liveproducts"),
-        orderBy("sortOrder"),
-        limit(HERO_PRODUCT_LIMIT)
-      ));
-      items = dedupeProducts([...items, ...fallbackSnapshot.docs.map(productFromDoc).filter(activeProduct)]).slice(0, HERO_PRODUCT_LIMIT);
-    }
-
-    return shuffle(items).slice(0, HERO_PRODUCT_LIMIT);
-  } catch {
-    const fallbackSnapshot = await getDocs(query(collection(db, "liveproducts"), limit(HERO_PRODUCT_LIMIT)));
-    return shuffle(fallbackSnapshot.docs.map(productFromDoc).filter(activeProduct)).slice(0, HERO_PRODUCT_LIMIT);
-  }
+  const items = await loadCachedCatalog();
+  return shuffle(items).slice(0, HERO_PRODUCT_LIMIT);
 }
 
 async function loadFirstProductsFromCategories(categoryNames) {
-  const requests = categoryNames.map(categoryName => getDocs(query(
-    collection(db, "liveproducts"),
-    where("category", "==", categoryName),
-    limit(HOME_ROW_LIMIT)
-  )).catch(() => null));
-
-  const snapshots = await Promise.all(requests);
-  return dedupeProducts(snapshots.flatMap(snapshot => snapshot ? snapshot.docs.map(productFromDoc) : []))
-    .filter(activeProduct)
-    .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
+  const wanted = new Set(categoryNames.map(value => String(value).toLowerCase()));
+  const items = await loadCachedCatalog();
+  return items
+    .filter(item => wanted.has(String(item.category || "").toLowerCase()))
     .slice(0, HOME_ROW_LIMIT);
 }
 
 async function loadOurPicks() {
-  try {
-    const snapshot = await getDocs(query(
-      collection(db, "liveproducts"),
-      where("isOurPick", "==", true),
-      limit(HOME_ROW_LIMIT)
-    ));
-    return snapshot.docs.map(productFromDoc).filter(activeProduct).slice(0, HOME_ROW_LIMIT);
-  } catch {
-    return [];
-  }
+  const items = await loadCachedCatalog();
+  return items.filter(item => item.isOurPick === true).slice(0, HOME_ROW_LIMIT);
 }
 
 async function loadTopProducts() {
   try {
-    const statsSnapshot = await getDocs(query(
-      collection(db, "analyticsProducts"),
-      orderBy("totalInteractions", "desc"),
-      limit(3)
-    ));
+    const [statsSnapshot, catalog] = await Promise.all([
+      getDocs(query(
+        collection(db, "analyticsProducts"),
+        orderBy("totalInteractions", "desc"),
+        limit(3)
+      )),
+      loadCachedCatalog()
+    ]);
 
-    const stats = statsSnapshot.docs.map(statsDoc => ({ id: statsDoc.id, total: Number(statsDoc.data().totalInteractions || 0) }));
-    const productsWithStats = await Promise.all(stats.map(async stat => {
-      try {
-        const productSnapshot = await getDoc(doc(db, "liveproducts", stat.id));
-        return productSnapshot.exists() ? { item: productFromDoc(productSnapshot), total: stat.total } : null;
-      } catch {
-        return null;
-      }
-    }));
-
+    const byId = new Map(catalog.map(item => [String(item.id), item]));
     const popularity = new Map();
     const items = [];
-    productsWithStats.filter(Boolean).forEach(entry => {
-      if (!activeProduct(entry.item)) return;
-      popularity.set(entry.item.id, entry.total);
-      items.push(entry.item);
-    });
+
+    for (const statsDoc of statsSnapshot.docs) {
+      const total = Number(statsDoc.data().totalInteractions || 0);
+      const item = byId.get(String(statsDoc.id));
+      if (!item || !activeProduct(item)) continue;
+      popularity.set(item.id, total);
+      items.push(item);
+    }
+
     return { items, popularity };
   } catch {
     return { items: [], popularity: new Map() };
