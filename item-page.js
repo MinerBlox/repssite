@@ -76,21 +76,24 @@ function routeSlug() {
 }
 
 async function findProduct(slug) {
-  qcLog("Finding product", { slug, path: window.location.pathname });
+  qcLog("Finding product from cached catalog", { slug, path: window.location.pathname });
   if (!slug) return null;
-  const directSnap = await getDoc(doc(db, "liveproducts", slug));
-  if (directSnap.exists()) {
-    qcLog("Found product by document id", { id: directSnap.id });
-    return { id: directSnap.id, ...directSnap.data() };
+
+  const response = await fetch(`/api/catalog?id=${encodeURIComponent(slug)}`, { cache: "default" });
+
+  if (response.status === 404) {
+    qcLog("Cached catalog product miss", { slug });
+    return null;
   }
 
-  qcLog("Product id miss, scanning products by slugified name");
-  const allSnap = await getDocs(collection(db, "liveproducts"));
-  const match = allSnap.docs
-    .map(productDoc => ({ id: productDoc.id, ...productDoc.data() }))
-    .find(item => item.id === slug || slugify(item.name) === slug) || null;
-  qcLog("Slug scan result", match ? { id: match.id, name: match.name } : null);
-  return match;
+  if (!response.ok) {
+    throw new Error(`Catalog API returned ${response.status}`);
+  }
+
+  const data = await response.json();
+  const item = data?.product || null;
+  qcLog("Cached catalog result", item ? { id: item.id, name: item.name } : null);
+  return item;
 }
 
 function originalProductLink(item) {
