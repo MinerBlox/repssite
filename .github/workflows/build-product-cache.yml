@@ -1,0 +1,53 @@
+name: Build Product Cache
+
+on:
+  workflow_dispatch:
+  schedule:
+    # GitHub cron uses UTC. Running at both possible UK-midnight hours lets
+    # the gate below keep this at midnight in Europe/London year-round.
+    - cron: "5 23 * * *"
+    - cron: "5 0 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check UK midnight
+        id: midnight
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          elif [ "$(TZ=Europe/London date +%H)" = "00" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.midnight.outputs.run == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        if: steps.midnight.outputs.run == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install cache dependencies
+        if: steps.midnight.outputs.run == 'true'
+        run: npm install --no-save firebase-admin @aws-sdk/client-s3
+
+      - name: Export Firestore catalog to R2
+        if: steps.midnight.outputs.run == 'true'
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: node scripts/build-product-cache.mjs
