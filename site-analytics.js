@@ -417,13 +417,22 @@ async function loadGlobalSearchItems() {
   globalSearchLoaded = true;
 
   try {
-    const response = await fetch("/api/catalog", { cache: "default" });
-    if (!response.ok) throw new Error(`catalog ${response.status}`);
-    const data = await response.json();
+    try {
+      const response = await fetch("/api/catalog", { cache: "default" });
+      if (!response.ok) throw new Error(`catalog ${response.status}`);
+      const data = await response.json();
 
-    globalSearchItems = (Array.isArray(data.products) ? data.products : [])
-      .filter(item => item.isActive !== false)
-      .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+      globalSearchItems = (Array.isArray(data.products) ? data.products : [])
+        .filter(item => item.isActive !== false)
+        .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+    } catch (error) {
+      console.warn("Cached catalog unavailable for global search; using temporary Firestore fallback.", error);
+      const snapshot = await getDocs(collection(db, "liveproducts"));
+      globalSearchItems = snapshot.docs
+        .map(productDoc => ({ id: productDoc.id, ...productDoc.data() }))
+        .filter(item => item.isActive !== false)
+        .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+    }
   } catch {
     globalSearchItems = [];
   }
