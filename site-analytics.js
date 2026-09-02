@@ -264,7 +264,8 @@ async function heartbeat() {
     await setDoc(presenceRef, presence, { merge: true });
   }
 
-  updateAllTimeHigh(1).catch(() => {});
+  // Do not scan analyticsPresence on every heartbeat.
+  // Presence aggregation/all-time-high should be computed server-side or on demand.
 }
 
 function installGlobalSearchStyles() {
@@ -416,10 +417,11 @@ async function loadGlobalSearchItems() {
   globalSearchLoaded = true;
 
   try {
-    const snapshot = await getDocs(collection(db, "liveproducts"));
+    const response = await fetch("/api/catalog", { cache: "default" });
+    if (!response.ok) throw new Error(`catalog ${response.status}`);
+    const data = await response.json();
 
-    globalSearchItems = snapshot.docs
-      .map(productDoc => ({ id: productDoc.id, ...productDoc.data() }))
+    globalSearchItems = (Array.isArray(data.products) ? data.products : [])
       .filter(item => item.isActive !== false)
       .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
   } catch {
