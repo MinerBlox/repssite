@@ -47,10 +47,16 @@ let fullCatalogPromise=null;
 async function loadFullCatalog(){
   if(fullCatalogPromise)return fullCatalogPromise;
   fullCatalogPromise=(async()=>{
-    const r=await fetch("/api/catalog",{cache:"default"});
-    if(!r.ok)throw new Error(`catalog ${r.status}`);
-    const d=await r.json();
-    return sortItems((Array.isArray(d.products)?d.products:[]).filter(i=>i&&i.isActive!==false&&!hidden(i.category)));
+    try{
+      const r=await fetch("/api/catalog",{cache:"default"});
+      if(!r.ok)throw new Error(`catalog ${r.status}`);
+      const d=await r.json();
+      return sortItems((Array.isArray(d.products)?d.products:[]).filter(i=>i&&i.isActive!==false&&!hidden(i.category)));
+    }catch(error){
+      console.warn("Cached catalog unavailable; using temporary Firestore fallback.",error);
+      const s=await getDocs(collection(db,"liveproducts"));
+      return sortItems(normalizeDocs(s.docs));
+    }
   })().catch(error=>{
     fullCatalogPromise=null;
     throw error;
