@@ -1,20 +1,3 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { enableAppCheck } from "./firebase-app-check.js?v=2026-06-30-app-check-1";
-import { getFirestore, collection, doc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA",
-  authDomain: "reps-central.firebaseapp.com",
-  projectId: "reps-central",
-  storageBucket: "reps-central.firebasestorage.app",
-  messagingSenderId: "812299387060",
-  appId: "1:812299387060:web:1c93d1e7bf30b05653d7e1",
-  measurementId: "G-8T7F9F1FZ9"
-};
-
-const app = initializeApp(firebaseConfig);
-enableAppCheck(app);
-const db = getFirestore(app);
 const root = document.getElementById("app");
 window.__rcQcData = { sources: [], entries: [] };
 function qcLog() {}
@@ -93,9 +76,8 @@ async function findProduct(slug) {
     return null;
   }
 
-  qcWarn("Cached catalog unavailable; trying one direct Firestore document read.", { status: response.status });
-  const directSnap = await getDoc(doc(db, "liveproducts", slug));
-  return directSnap.exists() ? { id: directSnap.id, ...directSnap.data() } : null;
+  qcWarn("Cached catalog unavailable. Firestore fallback is disabled on dev.", { status: response.status });
+  throw new Error(`Catalog unavailable (${response.status})`);
 }
 
 function originalProductLink(item) {
