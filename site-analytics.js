@@ -2,11 +2,8 @@ import { initializeApp, getApp, getApps } from "https://www.gstatic.com/firebase
 import { enableAppCheck } from "./firebase-app-check.js?v=2026-07-01-preview-skip";
 import {
   getFirestore,
-  collection,
   doc,
-  getDocs,
   setDoc,
-  updateDoc,
   serverTimestamp,
   increment,
   Timestamp
@@ -215,36 +212,6 @@ async function recordVisit() {
   ]);
 }
 
-async function updateAllTimeHigh(currentLive) {
-  try {
-    const totalsRef = doc(db, "analyticsTotals", "summary");
-    const presenceSnapshot = await getDocs(collection(db, "analyticsPresence"));
-
-    const live = Math.max(
-      currentLive,
-      presenceSnapshot.docs
-        .map(item => item.data())
-        .filter(item => {
-          const lastSeen = item.lastSeen?.toMillis?.() || 0;
-          return lastSeen >= Date.now() - PRESENCE_WINDOW_MS;
-        }).length
-    );
-
-    const totalsSnapshot = await getDocs(collection(db, "analyticsTotals"));
-    const summary = totalsSnapshot.docs.find(item => item.id === "summary")?.data() || {};
-    const currentHigh = Number(summary.allTimeHighLive || 0);
-
-    if (live > currentHigh) {
-      await updateDoc(totalsRef, {
-        allTimeHighLive: live,
-        allTimeHighLiveAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
-    }
-  } catch {
-  }
-}
-
 async function heartbeat() {
   const presence = {
     pageId: page.id,
@@ -426,12 +393,8 @@ async function loadGlobalSearchItems() {
         .filter(item => item.isActive !== false)
         .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
     } catch (error) {
-      console.warn("Cached catalog unavailable for global search; using temporary Firestore fallback.", error);
-      const snapshot = await getDocs(collection(db, "liveproducts"));
-      globalSearchItems = snapshot.docs
-        .map(productDoc => ({ id: productDoc.id, ...productDoc.data() }))
-        .filter(item => item.isActive !== false)
-        .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+      console.error("Cached catalog unavailable for global search. Firestore fallback is disabled on dev.", error);
+      globalSearchItems = [];
     }
   } catch {
     globalSearchItems = [];
