@@ -1,18 +1,3 @@
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getFirestore, collection, getDocs, query, where, limit } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA",
-  authDomain: "reps-central.firebaseapp.com",
-  projectId: "reps-central",
-  storageBucket: "reps-central.firebasestorage.app",
-  messagingSenderId: "812299387060",
-  appId: "1:812299387060:web:1c93d1e7bf30b05653d7e1",
-  measurementId: "G-8T7F9F1FZ9"
-};
-
-const app = getApps().find(candidate => candidate.name === "[DEFAULT]") || initializeApp(firebaseConfig, "homepage-curation");
-const db = getFirestore(app);
 const ROW_LIMIT = 5;
 const curated = { picks: [], summer: [], autumn: [], winter: [] };
 let activeSeason = "summer";
@@ -29,12 +14,8 @@ async function loadCatalog() {
         .filter(item => item && item.isActive !== false)
         .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
     } catch (error) {
-      console.warn("Cached catalog unavailable; using temporary Firestore fallback.", error);
-      const snapshot = await getDocs(collection(db, "liveproducts"));
-      return snapshot.docs
-        .map(productDoc => ({ id: productDoc.id, ...productDoc.data() }))
-        .filter(item => item.isActive !== false)
-        .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
+      console.error("Cached catalog unavailable. Firestore fallback is disabled on dev.", error);
+      throw error;
     }
   })().catch(error => {
     catalogPromise = null;
