@@ -1,21 +1,3 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { enableAppCheck } from "./firebase-app-check.js?v=2026-06-30-app-check-1";
-import { getFirestore, collection, doc, getDoc, getDocs, query, where, orderBy, limit, startAt } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA",
-  authDomain: "reps-central.firebaseapp.com",
-  projectId: "reps-central",
-  storageBucket: "reps-central.firebasestorage.app",
-  messagingSenderId: "812299387060",
-  appId: "1:812299387060:web:1c93d1e7bf30b05653d7e1",
-  measurementId: "G-8T7F9F1FZ9"
-};
-
-const app = initializeApp(firebaseConfig);
-enableAppCheck(app);
-const db = getFirestore(app);
-
 const tutorialSteps = [
   {
     number: 3,
@@ -738,11 +720,8 @@ async function loadCachedCatalog() {
         .filter(activeProduct)
         .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
     } catch (error) {
-      console.warn("Cached catalog unavailable; using temporary Firestore fallback.", error);
-      const snapshot = await getDocs(collection(db, "liveproducts"));
-      return snapshot.docs.map(productFromDoc)
-        .filter(activeProduct)
-        .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
+      console.error("Cached catalog unavailable. Firestore fallback is disabled on dev.", error);
+      throw error;
     }
   })().catch(error => {
     cachedCatalogPromise = null;
@@ -787,32 +766,8 @@ async function loadOurPicks() {
 }
 
 async function loadTopProducts() {
-  try {
-    const [statsSnapshot, catalog] = await Promise.all([
-      getDocs(query(
-        collection(db, "analyticsProducts"),
-        orderBy("totalInteractions", "desc"),
-        limit(3)
-      )),
-      loadCachedCatalog()
-    ]);
-
-    const byId = new Map(catalog.map(item => [String(item.id), item]));
-    const popularity = new Map();
-    const items = [];
-
-    for (const statsDoc of statsSnapshot.docs) {
-      const total = Number(statsDoc.data().totalInteractions || 0);
-      const item = byId.get(String(statsDoc.id));
-      if (!item || !activeProduct(item)) continue;
-      popularity.set(item.id, total);
-      items.push(item);
-    }
-
-    return { items, popularity };
-  } catch {
-    return { items: [], popularity: new Map() };
-  }
+  // Firestore reads are intentionally disabled on dev until the R2 catalog is established.
+  return { items: [], popularity: new Map() };
 }
 
 async function loadHomeProducts() {
