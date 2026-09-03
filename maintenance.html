@@ -12,135 +12,112 @@
       background: #070707;
       color: #f5f5f5;
     }
+
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       min-height: 100vh;
       display: grid;
       place-items: center;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at 20% 0%, rgba(255,255,255,.08), transparent 32%),
-        radial-gradient(circle at 80% 100%, rgba(255,255,255,.05), transparent 30%),
-        #070707;
+      background: #070707;
+      padding: 24px;
     }
-    .grid {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      opacity: .16;
-      background-image:
-        linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px);
-      background-size: 42px 42px;
-      mask-image: linear-gradient(to bottom, black, transparent 85%);
-    }
+
     main {
-      width: min(92vw, 560px);
-      position: relative;
-      z-index: 1;
-      padding: 44px;
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: 28px;
-      background: rgba(17,17,17,.78);
-      backdrop-filter: blur(18px);
-      box-shadow: 0 24px 90px rgba(0,0,0,.45);
+      width: min(92vw, 620px);
+      text-align: center;
     }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 11px;
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: 999px;
-      font-size: 12px;
-      color: #cfcfcf;
-      background: rgba(255,255,255,.04);
+
+    .icon {
+      font-size: 54px;
+      line-height: 1;
+      margin-bottom: 22px;
     }
-    .dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 0 18px rgba(255,255,255,.75);
-    }
+
     h1 {
-      margin: 24px 0 14px;
-      font-size: clamp(34px, 7vw, 58px);
-      line-height: .98;
-      letter-spacing: -.055em;
-      font-weight: 760;
-    }
-    p {
       margin: 0;
+      font-size: clamp(34px, 7vw, 58px);
+      line-height: 1;
+      letter-spacing: -.04em;
+      font-weight: 800;
+    }
+
+    p {
+      margin: 18px auto 0;
+      max-width: 560px;
       color: #a8a8a8;
-      font-size: 15px;
+      font-size: 16px;
       line-height: 1.65;
     }
+
     .admin {
-      margin-top: 30px;
-      padding-top: 24px;
-      border-top: 1px solid rgba(255,255,255,.1);
+      margin-top: 34px;
     }
+
     .admin-toggle {
       appearance: none;
       border: 0;
       background: transparent;
-      padding: 0;
-      color: #7e7e7e;
+      color: #555;
       font: inherit;
       font-size: 12px;
       cursor: pointer;
     }
+
     form {
       display: none;
-      margin-top: 14px;
+      margin: 14px auto 0;
+      max-width: 420px;
       gap: 10px;
     }
+
     form.open { display: flex; }
+
     input {
       min-width: 0;
       flex: 1;
-      height: 46px;
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: 14px;
+      height: 44px;
+      border: 1px solid #222;
+      border-radius: 12px;
       padding: 0 14px;
-      background: rgba(255,255,255,.05);
+      background: #101010;
       color: #fff;
       outline: none;
       font: inherit;
     }
-    input:focus { border-color: rgba(255,255,255,.34); }
+
     button[type="submit"] {
-      height: 46px;
+      height: 44px;
       border: 0;
-      border-radius: 14px;
-      padding: 0 18px;
+      border-radius: 12px;
+      padding: 0 16px;
       background: #fff;
       color: #0a0a0a;
       font: inherit;
       font-weight: 700;
       cursor: pointer;
     }
+
     .status {
       min-height: 18px;
       margin-top: 10px;
       font-size: 12px;
-      color: #8f8f8f;
+      color: #777;
     }
-    @media (max-width: 560px) {
-      main { padding: 30px 24px; border-radius: 22px; }
+
+    @media (max-width: 520px) {
+      .icon { font-size: 46px; }
       form.open { flex-direction: column; }
       button[type="submit"] { width: 100%; }
     }
   </style>
 </head>
 <body>
-  <div class="grid"></div>
   <main>
-    <div class="badge"><span class="dot"></span> Scheduled maintenance</div>
-    <h1>We’ll be right back.</h1>
-    <p>Reps Central is temporarily offline while we upgrade the catalogue system. The site will return automatically once the migration is complete.</p>
+    <div class="icon">⚠️</div>
+    <h1>MAINTENANCE</h1>
+    <p>We're upgrading things to improve your experience. This will take no longer than a few hours.</p>
 
     <div class="admin">
       <button class="admin-toggle" id="adminToggle" type="button">Admin access</button>
