@@ -26,8 +26,11 @@ export async function onRequest(context) {
   const pathname = url.pathname;
 
   if (
+    pathname === "/maintenance" ||
+    pathname === "/maintenance/" ||
     pathname === "/maintenance.html" ||
-    pathname === "/api/maintenance-bypass"
+    pathname === "/api/maintenance-bypass" ||
+    pathname === "/api/maintenance-bypass/"
   ) {
     return next();
   }
@@ -41,7 +44,7 @@ export async function onRequest(context) {
 
   const returnTo = encodeURIComponent(pathname + url.search);
   return Response.redirect(
-    `${url.origin}/maintenance.html?return=${returnTo}`,
+    `${url.origin}/maintenance?return=${returnTo}`,
     302
   );
 }
