@@ -1,5 +1,5 @@
 const ROW_LIMIT = 5;
-const curated = { picks: [], summer: [], autumn: [], winter: [] };
+const curated = { popular: [], picks: [], summer: [], autumn: [], winter: [] };
 let activeSeason = "summer";
 let catalogPromise = null;
 
@@ -76,6 +76,35 @@ function productCard(item) {
     </div>`;
 }
 
+const popularMedals = [
+  { rank: 1, label: "1st", border: "#FFD700", glow: "rgba(255,215,0,0.18)", bg: "#FFD700", text: "#000", emoji: "🥇" },
+  { rank: 2, label: "2nd", border: "#C0C0C0", glow: "rgba(192,192,192,0.14)", bg: "#C0C0C0", text: "#000", emoji: "🥈" },
+  { rank: 3, label: "3rd", border: "#CD7F32", glow: "rgba(205,127,50,0.16)", bg: "#CD7F32", text: "#fff", emoji: "🥉" }
+];
+
+function popularCard(item, medal, index) {
+  const image = item.imageUrl
+    ? `<img class="podium-img-real" src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name || "Product image")}" loading="eager" decoding="async">`
+    : "";
+  return `
+    <div class="podium-card rank-${medal.rank}" data-home-curated-popular="true" style="border:2px solid ${medal.border};box-shadow:0 0 28px ${medal.glow},0 4px 20px rgba(0,0,0,0.2);animation-delay:${index * 0.1}s">
+      <div class="podium-rank" style="background:${medal.bg};color:${medal.text}">${medal.emoji} ${medal.label}</div>
+      <div class="podium-img">${image}<div class="podium-watermark"><span style="color:${medal.border}">#${medal.rank}</span></div></div>
+      <div class="podium-body">
+        <div class="podium-name">${escapeHtml(item.name || "Unnamed item")}</div>
+        <p class="podium-desc">#${medal.rank} most popular this week</p>
+        <div class="podium-footer"><span class="podium-price" style="color:${medal.border}">${formatPrice(item)}</span><span class="podium-cat">${escapeHtml(item.category || "Unsorted")}</span></div>
+        <a href="${escapeHtml(itemHref(item))}" class="podium-btn" style="background:${medal.bg};color:${medal.text}" data-view-product="${escapeHtml(item.id)}">View Find →</a>
+      </div>
+    </div>`;
+}
+
+function renderPopular(items) {
+  const target = document.getElementById("podium-grid");
+  if (!target || !items.length) return;
+  target.innerHTML = items.slice(0, 3).map((item, index) => popularCard(item, popularMedals[index], index)).join("");
+}
+
 function visibleProductCount(target) {
   if (window.matchMedia("(max-width: 720px)").matches) return 1;
   const gap = 16;
@@ -107,6 +136,7 @@ function hideViewBrands() {
 
 function applyCuratedRows() {
   hideViewBrands();
+  if (curated.popular.length) renderPopular(curated.popular);
   if (curated.picks.length) renderRow(document.getElementById("our-picks-grid"), curated.picks);
   const seasonItems = curated[activeSeason] || [];
   if (seasonItems.length) renderRow(document.getElementById("season-grid"), seasonItems);
@@ -121,13 +151,27 @@ async function loadFlag(field) {
   }
 }
 
+async function loadPopular() {
+  try {
+    const items = await loadCatalog();
+    return items
+      .filter(item => Number(item.homePopularRank) >= 1 && Number(item.homePopularRank) <= 3)
+      .sort((a, b) => Number(a.homePopularRank) - Number(b.homePopularRank))
+      .slice(0, 3);
+  } catch {
+    return [];
+  }
+}
+
 async function loadCurated() {
-  const [picks, summer, autumn, winter] = await Promise.all([
+  const [popular, picks, summer, autumn, winter] = await Promise.all([
+    loadPopular(),
     loadFlag("isOurPick"),
     loadFlag("homeSummer"),
     loadFlag("homeAutumn"),
     loadFlag("homeWinter")
   ]);
+  curated.popular = popular;
   curated.picks = picks;
   curated.summer = summer;
   curated.autumn = autumn;
