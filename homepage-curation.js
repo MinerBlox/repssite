@@ -7,14 +7,14 @@ async function loadCatalog() {
   if (catalogPromise) return catalogPromise;
   catalogPromise = (async () => {
     try {
-      const response = await fetch("/api/catalog", { cache: "default" });
+      const response = await fetch(`/api/catalog?homepage=${Date.now()}`, { cache: "no-store" });
       if (!response.ok) throw new Error(`catalog ${response.status}`);
       const data = await response.json();
       return (Array.isArray(data.products) ? data.products : [])
         .filter(item => item && item.isActive !== false)
         .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0));
     } catch (error) {
-      console.error("Cached catalog unavailable. Firestore fallback is disabled on dev.", error);
+      console.error("Cached catalog unavailable. Firestore fallback is disabled.", error);
       throw error;
     }
   })().catch(error => {
@@ -29,7 +29,7 @@ function escapeHtml(value) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/\"/g, "&quot;");
 }
 
 function formatPrice(item) {
