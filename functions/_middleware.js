@@ -1,4 +1,4 @@
-const MAINTENANCE_ENABLED = true;
+const MAINTENANCE_ENABLED = false;
 
 async function sessionToken(secret) {
   const payload = new TextEncoder().encode(`repscentral-maintenance-v1:${secret}`);
