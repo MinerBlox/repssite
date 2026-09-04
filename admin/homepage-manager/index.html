@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>RepsCentral - Homepage Manager</title>
+  <link rel="icon" href="../../systemimages/repscentrallogo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%}body{background:#0a0a0b;color:#f1f1f3;font-family:'DM Sans',sans-serif}button,input{font:inherit}button{cursor:pointer}.hidden{display:none!important}
+    :root{--surface:#111114;--surface2:#18181c;--border:#29292f;--muted:#92929c;--blue:#4da6ff;--red:#ff6b6b;--green:#21c56b}
+    #login{min-height:100vh;display:grid;place-items:center;padding:24px}.card{width:min(420px,100%);padding:28px;border:1px solid var(--border);border-radius:16px;background:var(--surface)}.brand{font:800 18px 'Syne',sans-serif;margin-bottom:26px}.card h1{font:800 clamp(34px,8vw,48px)/1 'Syne',sans-serif;margin:0}.copy{margin:10px 0 20px;color:var(--muted);font-size:13px;line-height:1.55}.field{display:grid;gap:7px;margin-top:13px}.field label{color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.field input{width:100%;min-height:44px;padding:0 12px;border:1px solid var(--border);border-radius:9px;background:#0e0e11;color:#fff;outline:0}.field input:focus{border-color:rgba(77,166,255,.7);box-shadow:0 0 0 3px rgba(77,166,255,.12)}.btn{min-height:42px;padding:0 14px;border:0;border-radius:9px;background:var(--surface2);color:#fff;font-weight:700}.btn.primary{background:var(--blue)}.card .btn{width:100%;margin-top:16px}.error{min-height:20px;margin-top:10px;color:var(--red);font-size:13px}
+    #app{display:none;min-height:100vh}.topbar{position:sticky;top:0;z-index:30;min-height:64px;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:rgba(10,10,11,.92);backdrop-filter:blur(14px)}.topbar a{color:inherit;text-decoration:none}.topbar .brand{margin:0}.wrap{width:min(1180px,100%);margin:0 auto;padding:42px 24px 72px}.head{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:28px}.head h1{font:800 clamp(32px,5vw,48px)/1 'Syne',sans-serif;margin:0}.head p{max-width:620px;margin:10px 0 0;color:var(--muted);font-size:14px;line-height:1.6}.savebar{display:flex;gap:10px;align-items:center}.status{color:var(--muted);font-size:12px}
+    .section{margin-bottom:28px}.section-title{margin-bottom:10px;font:700 18px 'Syne',sans-serif}.section-copy{margin-bottom:12px;color:var(--muted);font-size:12px}.slots{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.slots.popular{grid-template-columns:repeat(3,minmax(0,1fr))}.slot{min-height:160px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface);display:flex;flex-direction:column;gap:10px}.slot img{width:100%;height:92px;object-fit:contain;border-radius:8px;background:#0e0e11}.slot-name{font-size:12px;font-weight:700;line-height:1.35}.slot-meta{color:var(--muted);font-size:11px}.slot button{margin-top:auto;min-height:34px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:#fff;font-weight:700}.empty{min-height:160px;display:grid;place-items:center;color:var(--muted);font-size:12px;text-align:center}
+    .picker{margin-top:30px;padding-top:24px;border-top:1px solid var(--border)}.picker-head{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px}.picker-head input{width:min(420px,100%);min-height:42px;padding:0 12px;border:1px solid var(--border);border-radius:9px;background:#0e0e11;color:#fff;outline:0}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.product{padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--surface);display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center}.product img{width:64px;height:64px;object-fit:contain;border-radius:8px;background:#0e0e11}.product-name{font-size:12px;font-weight:700;line-height:1.3}.product-cat{margin-top:4px;color:var(--muted);font-size:10px}.product button{grid-column:1/-1;min-height:32px;border:0;border-radius:8px;background:var(--blue);color:#fff;font-size:11px;font-weight:700}.picker-mode{color:var(--blue);font-size:12px;font-weight:700}.notice{margin-bottom:20px;padding:12px 14px;border:1px solid rgba(77,166,255,.25);border-radius:10px;background:rgba(77,166,255,.08);color:#cfe7ff;font-size:12px;line-height:1.5}
+    @media(max-width:900px){.slots,.slots.popular{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.head{align-items:flex-start;flex-direction:column}}@media(max-width:560px){.topbar{padding:10px 14px}.wrap{padding:30px 14px 56px}.slots,.slots.popular,.grid{grid-template-columns:1fr}.savebar{width:100%;flex-direction:column;align-items:stretch}.picker-head{align-items:stretch;flex-direction:column}}
+  </style>
+</head>
+<body>
+  <section id="login">
+    <form class="card" id="login-form">
+      <div class="brand">repscentral</div>
+      <h1>HOMEPAGE</h1>
+      <p class="copy">Sign in with your usual RepsCentral admin account.</p>
+      <div class="field"><label for="email">Email</label><input id="email" type="email" autocomplete="username" required></div>
+      <div class="field"><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required></div>
+      <button class="btn primary" id="login-btn" type="submit">Sign In</button>
+      <div class="error" id="login-error"></div>
+    </form>
+  </section>
+
+  <section id="app">
+    <header class="topbar">
+      <a class="brand" href="../">repscentral admin</a>
+      <button class="btn" id="sign-out" type="button">Sign Out</button>
+    </header>
+    <main class="wrap">
+      <div class="head">
+        <div><h1>Homepage Products</h1><p>Choose exactly which products appear in the homepage sections. Changes are written to Firestore and pushed straight into the R2 catalogue cache.</p></div>
+        <div class="savebar"><span class="status" id="status">Loading catalogue…</span><button class="btn primary" id="save" type="button">Save changes</button></div>
+      </div>
+      <div class="notice">Most Popular is now manually controlled here instead of being read from analytics. Our Picks and seasonal rows can also be curated manually.</div>
+
+      <section class="section"><div class="section-title">Most Popular</div><div class="section-copy">Pick the 3 products shown on the podium, in order.</div><div class="slots popular" id="popular"></div></section>
+      <section class="section"><div class="section-title">Our Picks</div><div class="section-copy">Up to 5 hand-picked products.</div><div class="slots" id="picks"></div></section>
+      <section class="section"><div class="section-title">Summer</div><div class="section-copy">Up to 5 products for the Summer tab.</div><div class="slots" id="summer"></div></section>
+      <section class="section"><div class="section-title">Autumn</div><div class="section-copy">Up to 5 products for the Autumn tab.</div><div class="slots" id="autumn"></div></section>
+      <section class="section"><div class="section-title">Winter</div><div class="section-copy">Up to 5 products for the Winter tab.</div><div class="slots" id="winter"></div></section>
+
+      <section class="picker">
+        <div class="picker-head"><div><div class="section-title">Product Picker</div><div class="picker-mode" id="picker-mode">Click a slot above to choose a product.</div></div><input id="search" type="search" placeholder="Search products…"></div>
+        <div class="grid" id="grid"></div>
+      </section>
+    </main>
+  </section>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { enableAppCheck } from "../../firebase-app-check.js?v=2026-06-30-app-check-1";
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import { getFirestore, doc, writeBatch, deleteField } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const firebaseConfig={apiKey:"AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA",authDomain:"reps-central.firebaseapp.com",projectId:"reps-central",storageBucket:"reps-central.firebasestorage.app",messagingSenderId:"812299387060",appId:"1:812299387060:web:1c93d1e7bf30b05653d7e1",measurementId:"G-8T7F9F1FZ9"};
+    const ADMIN_UID="3jC9pWkF5ZeHIDtd1LrPR1Ptvbz1";
+    const app=initializeApp(firebaseConfig,"homepage-manager");enableAppCheck(app);const auth=getAuth(app);const db=getFirestore(app);
+    const login=document.getElementById("login"),admin=document.getElementById("app"),form=document.getElementById("login-form"),loginError=document.getElementById("login-error"),loginBtn=document.getElementById("login-btn"),status=document.getElementById("status"),grid=document.getElementById("grid"),search=document.getElementById("search"),pickerMode=document.getElementById("picker-mode"),saveBtn=document.getElementById("save");
+    let products=[];let original=new Map();let target=null;
+    const selections={popular:[null,null,null],picks:[null,null,null,null,null],summer:[null,null,null,null,null],autumn:[null,null,null,null,null],winter:[null,null,null,null,null]};
+    const fieldMap={picks:"isOurPick",summer:"homeSummer",autumn:"homeAutumn",winter:"homeWinter"};
+    const esc=v=>String(v||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    function byId(id){return products.find(p=>String(p.id)===String(id))||null}
+    function productCard(p){const img=p.imageUrl?`<img src="${esc(p.imageUrl)}" alt="">`:`<div style="width:64px;height:64px;background:#0e0e11;border-radius:8px"></div>`;return `<article class="product">${img}<div><div class="product-name">${esc(p.name||"Unnamed item")}</div><div class="product-cat">${esc(p.category||"Unsorted")}</div></div><button type="button" data-pick="${esc(p.id)}">Choose</button></article>`}
+    function renderGrid(){const q=search.value.trim().toLowerCase();const filtered=products.filter(p=>!q||`${p.name||""} ${p.category||""} ${p.brand||""} ${p.id||""}`.toLowerCase().includes(q)).slice(0,120);grid.innerHTML=filtered.map(productCard).join("")||'<div class="empty">No matching products.</div>'}
+    function renderSlots(section){const el=document.getElementById(section);el.innerHTML=selections[section].map((id,index)=>{const p=id?byId(id):null;if(!p)return `<div class="slot empty"><div>${section==="popular"?`#${index+1}`:`Slot ${index+1}`}<br>Click to choose</div><button type="button" data-slot="${section}:${index}">Choose product</button></div>`;const img=p.imageUrl?`<img src="${esc(p.imageUrl)}" alt="">`:"";return `<div class="slot">${img}<div class="slot-name">${esc(p.name||"Unnamed item")}</div><div class="slot-meta">${section==="popular"?`#${index+1} · `:""}${esc(p.category||"Unsorted")}</div><button type="button" data-slot="${section}:${index}">Change</button><button type="button" data-remove="${section}:${index}">Remove</button></div>`}).join("")}
+    function renderAll(){["popular","picks","summer","autumn","winter"].forEach(renderSlots);renderGrid()}
+    function setTarget(section,index){target={section,index:Number(index)};pickerMode.textContent=`Choosing ${section==="popular"?`Most Popular #${Number(index)+1}`:`${section} slot ${Number(index)+1}`}`;document.querySelector(".picker").scrollIntoView({behavior:"smooth",block:"start"})}
+    function assignProduct(id){if(!target)return;const arr=selections[target.section];const existing=arr.indexOf(id);if(existing>=0&&existing!==target.index)arr[existing]=null;arr[target.index]=id;renderSlots(target.section);status.textContent="Unsaved changes"}
+    document.addEventListener("click",e=>{const slot=e.target.closest("[data-slot]");if(slot){const[s,i]=slot.dataset.slot.split(":");setTarget(s,i);return}const rem=e.target.closest("[data-remove]");if(rem){const[s,i]=rem.dataset.remove.split(":");selections[s][Number(i)]=null;renderSlots(s);status.textContent="Unsaved changes";return}const pick=e.target.closest("[data-pick]");if(pick)assignProduct(pick.dataset.pick)});
+    search.addEventListener("input",renderGrid);
+
+    async function loadCatalog(){status.textContent="Loading catalogue…";const r=await fetch("/api/catalog",{cache:"no-store"});if(!r.ok)throw new Error(`Catalog ${r.status}`);const d=await r.json();products=(Array.isArray(d.products)?d.products:[]).filter(p=>p&&p.isActive!==false);original=new Map(products.map(p=>[String(p.id),{homePopularRank:Number(p.homePopularRank)||null,isOurPick:p.isOurPick===true,homeSummer:p.homeSummer===true,homeAutumn:p.homeAutumn===true,homeWinter:p.homeWinter===true}]));products.filter(p=>Number(p.homePopularRank)>=1&&Number(p.homePopularRank)<=3).sort((a,b)=>Number(a.homePopularRank)-Number(b.homePopularRank)).forEach(p=>selections.popular[Number(p.homePopularRank)-1]=String(p.id));for(const [section,field] of Object.entries(fieldMap)){products.filter(p=>p[field]===true).sort((a,b)=>(Number(a.sortOrder)||0)-(Number(b.sortOrder)||0)).slice(0,5).forEach((p,i)=>selections[section][i]=String(p.id))}renderAll();status.textContent=`${products.length.toLocaleString()} products loaded`}
+
+    function desiredFor(id){const out={homePopularRank:null,isOurPick:false,homeSummer:false,homeAutumn:false,homeWinter:false};const rank=selections.popular.indexOf(id);if(rank>=0)out.homePopularRank=rank+1;for(const [section,field] of Object.entries(fieldMap))out[field]=selections[section].includes(id);return out}
+    async function save(){saveBtn.disabled=true;status.textContent="Saving…";try{const changed=[];for(const p of products){const id=String(p.id),before=original.get(id)||{},after=desiredFor(id);if(before.homePopularRank!==after.homePopularRank||before.isOurPick!==after.isOurPick||before.homeSummer!==after.homeSummer||before.homeAutumn!==after.homeAutumn||before.homeWinter!==after.homeWinter)changed.push({id,after})}if(!changed.length){status.textContent="No changes to save";return}const batch=writeBatch(db);for(const {id,after} of changed){const data={homePopularRank:after.homePopularRank??deleteField(),isOurPick:after.isOurPick?true:deleteField(),homeSummer:after.homeSummer?true:deleteField(),homeAutumn:after.homeAutumn?true:deleteField(),homeWinter:after.homeWinter?true:deleteField()};batch.update(doc(db,"liveproducts",id),data)}await batch.commit();const token=await auth.currentUser.getIdToken();const patches=changed.map(({id,after})=>({id,fields:{homePopularRank:after.homePopularRank,isOurPick:after.isOurPick?true:null,homeSummer:after.homeSummer?true:null,homeAutumn:after.homeAutumn?true:null,homeWinter:after.homeWinter?true:null}}));const r=await fetch("/api/homepage-curation",{method:"POST",headers:{"content-type":"application/json","authorization":`Bearer ${token}`},body:JSON.stringify({patches})});const result=await r.json().catch(()=>({}));if(!r.ok)throw new Error(result.error||`Cache update failed (${r.status})`);for(const {id,after} of changed)original.set(id,{...after});status.textContent=`Saved ${changed.length} product${changed.length===1?"":"s"} · homepage cache updated`;await loadCatalog()}catch(error){console.error(error);status.textContent=`Save failed: ${error.message}`}finally{saveBtn.disabled=false}}
+    saveBtn.addEventListener("click",save);
+    form.addEventListener("submit",async e=>{e.preventDefault();loginError.textContent="";loginBtn.disabled=true;try{const cred=await signInWithEmailAndPassword(auth,document.getElementById("email").value.trim(),document.getElementById("password").value);if(cred.user.uid!==ADMIN_UID){await signOut(auth);throw new Error("This account is not authorised for admin access.")}}catch(error){loginError.textContent=error.message||"Could not sign in."}finally{loginBtn.disabled=false}});
+    document.getElementById("sign-out").addEventListener("click",()=>signOut(auth));
+    onAuthStateChanged(auth,async user=>{if(!user||user.uid!==ADMIN_UID){login.style.display="grid";admin.style.display="none";return}login.style.display="none";admin.style.display="block";try{await loadCatalog()}catch(error){status.textContent=`Could not load catalogue: ${error.message}`}});
+  </script>
+</body>
+</html>
