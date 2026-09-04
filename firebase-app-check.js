@@ -17,6 +17,10 @@ if (path.includes("/admin/homepage-manager")) {
   import("./admin/homepage-manager/cache-search.js?v=2026-09-04-full-catalog-1")
     .catch(error => console.warn("Homepage manager cached search could not load", error));
 }
+if (path === "/admin" || path === "/admin/index.html") {
+  import("./admin/analytics-enhancements.js?v=2026-09-04-high-tooltip-1")
+    .catch(error => console.warn("Admin analytics enhancements could not load", error));
+}
 
 function addHomepageManagerCard() {
   const cleanPath = window.location.pathname.replace(/\/+$/, "") || "/";
