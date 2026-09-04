@@ -13,6 +13,10 @@ if (path === "/" || path === "/index.html") {
 if (path.includes("/spreadsheetadmin") || path.endsWith("/editcatalog.html") || path.endsWith("/editcatalog")) {
   import("./catalog-index-admin-sync.js?v=2026-08-20-index-1").catch(() => {});
 }
+if (path.includes("/admin/homepage-manager")) {
+  import("./admin/homepage-manager/cache-search.js?v=2026-09-04-full-catalog-1")
+    .catch(error => console.warn("Homepage manager cached search could not load", error));
+}
 
 function addHomepageManagerCard() {
   const cleanPath = window.location.pathname.replace(/\/+$/, "") || "/";
