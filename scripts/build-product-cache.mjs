@@ -59,8 +59,8 @@ async function readCatalogWithQuotaRetry() {
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      console.log(`Reading liveproducts from Firestore (attempt ${attempt}/${maxAttempts})...`);
-      return await db.collection("liveproducts").get();
+      console.log(`Reading fixed_products from Firestore (attempt ${attempt}/${maxAttempts})...`);
+      return await db.collection("fixed_products").get();
     } catch (error) {
       const quotaExceeded =
         error?.code === 8 ||
@@ -98,14 +98,14 @@ const payload = {
 
 const body = JSON.stringify(payload);
 
-console.log(`Uploading ${products.length.toLocaleString()} products (${(Buffer.byteLength(body) / 1024 / 1024).toFixed(2)} MiB) to R2...`);
+console.log(`Uploading ${products.length.toLocaleString()} products (${(Buffer.byteLength(body) / 1024 / 1024).toFixed(2)} MiB) to R2 dev cache...`);
 
 await r2.send(new PutObjectCommand({
   Bucket: bucketName,
-  Key: "catalog/products.json",
+  Key: "catalog/products-dev.json",
   Body: body,
   ContentType: "application/json; charset=utf-8",
-  CacheControl: "public, max-age=3600, s-maxage=86400"
+  CacheControl: "public, max-age=60, s-maxage=60"
 }));
 
-console.log("✅ catalog/products.json updated.");
+console.log("✅ catalog/products-dev.json updated.");
