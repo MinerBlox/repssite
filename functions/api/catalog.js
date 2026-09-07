@@ -1,4 +1,4 @@
-const CATALOG_KEY = "catalog/products.json";
+const CATALOG_KEY = "catalog/products-dev.json";
 
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
@@ -55,7 +55,7 @@ export async function onRequestGet({ request, env }) {
 
   if (!catalog) {
     return json(
-      { error: "Full product catalog has not been generated yet." },
+      { error: "Dev product catalog has not been generated yet." },
       404,
       { "Cache-Control": "no-store" }
     );
@@ -72,20 +72,20 @@ export async function onRequestGet({ request, env }) {
       return json(
         { error: "Product not found." },
         404,
-        { "Cache-Control": "public, max-age=300, s-maxage=3600" }
+        { "Cache-Control": "public, max-age=60, s-maxage=60" }
       );
     }
 
     return json(
       { product, generatedAt: catalog.generatedAt, version: catalog.version },
       200,
-      { "Cache-Control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=3600" }
+      { "Cache-Control": "public, max-age=60, s-maxage=60" }
     );
   }
 
   return json(
     catalog,
     200,
-    { "Cache-Control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=3600" }
+    { "Cache-Control": "public, max-age=60, s-maxage=60" }
   );
 }
