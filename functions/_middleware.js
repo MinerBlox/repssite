@@ -17,10 +17,31 @@ function getCookie(request, name) {
   return match ? decodeURIComponent(match.slice(name.length + 1)) : null;
 }
 
+async function injectCurrencyOverride(response) {
+  const contentType = response.headers.get("Content-Type") || "";
+  if (!contentType.includes("text/html")) return response;
+
+  const html = await response.text();
+  const injected = html.includes("/currency-rate-override.js")
+    ? html
+    : html.replace("</head>", '<script src="/currency-rate-override.js"></script>\n</head>');
+
+  const headers = new Headers(response.headers);
+  headers.delete("Content-Length");
+
+  return new Response(injected, {
+    status: response.status,
+    statusText: response.statusText,
+    headers
+  });
+}
+
 export async function onRequest(context) {
   const { request, env, next } = context;
 
-  if (!MAINTENANCE_ENABLED) return next();
+  if (!MAINTENANCE_ENABLED) {
+    return injectCurrencyOverride(await next());
+  }
 
   const url = new URL(request.url);
   const pathname = url.pathname;
@@ -32,14 +53,16 @@ export async function onRequest(context) {
     pathname === "/api/maintenance-bypass" ||
     pathname === "/api/maintenance-bypass/"
   ) {
-    return next();
+    return injectCurrencyOverride(await next());
   }
 
   const secret = env.MAINTENANCE_ADMIN_PASSWORD;
   if (secret) {
     const supplied = getCookie(request, "rc_maintenance_session");
     const expected = await sessionToken(secret);
-    if (supplied && supplied === expected) return next();
+    if (supplied && supplied === expected) {
+      return injectCurrencyOverride(await next());
+    }
   }
 
   const returnTo = encodeURIComponent(pathname + url.search);
