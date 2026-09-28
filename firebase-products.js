@@ -41,7 +41,7 @@ async function loadFullCatalog(){
   if(fullCatalogPromise)return fullCatalogPromise;
   fullCatalogPromise=(async()=>{
     try{
-      const r=await fetch("/api/catalog",{cache:"default"});
+      const r=await fetch(`/api/catalog?ts=${Date.now()}`,{cache:"no-store"});
       if(!r.ok)throw new Error(`catalog ${r.status}`);
       const d=await r.json();
       return sortItems((Array.isArray(d.products)?d.products:[]).filter(i=>i&&i.isActive!==false&&!hidden(i.category)));
