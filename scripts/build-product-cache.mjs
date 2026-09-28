@@ -82,6 +82,18 @@ async function readCatalogWithQuotaRetry() {
 
 const snapshot = await readCatalogWithQuotaRetry();
 
+console.log(`Firebase project: ${serviceAccount.project_id || "(unknown)"}`);
+console.log(`Products found: ${snapshot.size.toLocaleString()}`);
+
+const kroenById = snapshot.docs.find(doc => doc.id === "kroen-sweatshirt");
+const kroenByName = snapshot.docs.find(doc =>
+  String(doc.data()?.name || "").trim().toLowerCase() === "kroen sweatshirt"
+);
+
+console.log(`kroen-sweatshirt document ID found: ${kroenById ? "YES" : "NO"}`);
+console.log(`Kroen Sweatshirt name found: ${kroenByName ? "YES" : "NO"}`);
+if (kroenByName) console.log(`Kroen Sweatshirt document ID: ${kroenByName.id}`);
+
 const products = snapshot.docs
   .map(doc => ({
     id: doc.id,
