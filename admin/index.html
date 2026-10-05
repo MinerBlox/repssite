@@ -677,7 +677,9 @@
       getFirestore,
       collection,
       doc,
-      onSnapshot
+      onSnapshot,
+      runTransaction,
+      serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -713,6 +715,33 @@
     let hourlyViews = [];
     let totalsSummary = {};
     let chartRange = "daily";
+    let peakWriteInFlight = false;
+
+
+    async function persistAllTimeHigh(liveCount) {
+      if (peakWriteInFlight || liveCount <= Number(totalsSummary.allTimeHighLive || 0)) return;
+      peakWriteInFlight = true;
+
+      try {
+        const summaryRef = doc(db, "analyticsTotals", "summary");
+
+        await runTransaction(db, async transaction => {
+          const snapshot = await transaction.get(summaryRef);
+          const storedHigh = Number(snapshot.exists() ? snapshot.data()?.allTimeHighLive || 0 : 0);
+
+          if (liveCount <= storedHigh) return;
+
+          transaction.set(summaryRef, {
+            allTimeHighLive: liveCount,
+            allTimeHighLiveAt: serverTimestamp()
+          }, { merge: true });
+        });
+      } catch (error) {
+        console.error("Could not persist all-time-high viewers.", error);
+      } finally {
+        peakWriteInFlight = false;
+      }
+    }
 
 
     function escapeHtml(value) {
@@ -953,6 +982,8 @@
       const liveCount = activePresence.length;
       const storedHigh = Number(totalsSummary.allTimeHighLive || 0);
       const high = Math.max(storedHigh, liveCount);
+
+      if (liveCount > storedHigh) void persistAllTimeHigh(liveCount);
 
       document.getElementById("live-viewers").textContent = formatNumber(liveCount);
       document.getElementById("all-time-high").textContent = formatNumber(high);
