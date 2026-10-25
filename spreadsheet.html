@@ -994,7 +994,7 @@ function renderModal() {
         </div>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
       </button>
-      <button class="modal-dismiss" onclick="window.location.href='spreadsheet.html'">Skip to spreadsheet
+      <button class="modal-dismiss" onclick="closeModal()">Skip to spreadsheet
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
       <div class="modal-counter">
@@ -1080,7 +1080,7 @@ function renderModal() {
         <h2 class="modal-title" style="margin-bottom:12px">You're all set!</h2>
         <p style="font-size:14px;color:var(--muted);margin-bottom:24px">Head over to the spreadsheet and start finding items for your next haul.</p>
         <div class="done-bars"><div class="done-bar"></div><div class="done-bar"></div><div class="done-bar"></div></div>
-        <a href="spreadsheet.html" class="done-cta">Go to Spreadsheet →</a>
+        <button onclick="closeModal()" class="done-cta">Go to Spreadsheet →</button>
         <button class="done-close" onclick="closeModal()">Close</button>
       </div>
     `;
