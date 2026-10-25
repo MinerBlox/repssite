@@ -673,9 +673,116 @@
       .topbar > div { min-width: 0; max-width: 100%; }
       .page-title { font-size: clamp(22px, 7.5vw, 40px); line-height: 1; white-space: nowrap; overflow-wrap: normal; }
     }
+  
+    /* Spreadsheet A/B variant reuses the homepage popup styles. */
+    /* ── MODAL ── */
+    #modal-overlay {
+      position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px;
+      backdrop-filter: blur(8px);
+      animation: rc-modal-fadein 0.25s ease;
+    }
+    body.dark #modal-overlay { background: rgba(0,0,0,0.85); }
+    body.light #modal-overlay { background: rgba(10,20,50,0.60); }
+    .modal-box {
+      position: relative; border-radius: 16px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+      width: 100%; max-width: 430px; background: var(--bg); border: 1px solid var(--border);
+      animation: rc-slideup 0.3s cubic-bezier(0.22,1,0.36,1);
+      transition: max-width 0.4s cubic-bezier(0.22,1,0.36,1);
+    }
+    .modal-box.wide { max-width: 560px; }
+    .modal-top-bar { height: 3px; background: linear-gradient(90deg, #4da6ff 0%, #7dd3fc 50%, #4da6ff 100%); background-size: 200% 100%; animation: rc-shimmer 3s linear infinite; }
+    .modal-close { position: absolute; top: 16px; right: 16px; padding: 6px; border-radius: 8px; color: var(--muted); transition: opacity 0.15s; z-index: 10; cursor: pointer; background: none; border: none; }
+    .modal-close:hover { opacity: 0.6; }
+    .modal-body { padding: 28px 28px 28px; }
+    .modal-content { transition: opacity 0.35s ease, transform 0.35s ease; }
+    .modal-content.fading { opacity: 0; transform: scale(0.96) translateY(10px); }
+
+    /* Modal intro */
+    .modal-intro-badge { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 99px; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 12px; background: rgba(77,166,255,0.12); border: 1px solid rgba(77,166,255,0.25); color: #4da6ff; }
+    .modal-title { font-family: 'Syne', sans-serif; font-weight: 900; font-size: 22px; letter-spacing: -0.5px; line-height: 1; margin-bottom: 8px; color: var(--text); }
+    .modal-title span { color: #4da6ff; }
+    .modal-sub { font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 20px; }
+    .intro-steps { display: flex; gap: 8px; margin-bottom: 20px; }
+    .intro-step { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; border-radius: 14px; padding: 16px 8px; text-align: center; background: var(--surface2); border: 1px solid var(--border); transition: transform 0.15s; animation: rc-fadein 0.4s ease both; }
+    .intro-step:hover { transform: scale(1.03); }
+    .intro-step-emoji { font-size: 26px; filter: drop-shadow(0 2px 8px rgba(77,166,255,0.3)); }
+    .intro-step-label { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; line-height: 1.3; color: #4da6ff; }
+    .intro-step-num { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; background: #4da6ff; color: #fff; }
+    .modal-cta {
+      display: flex; align-items: center; justify-content: space-between; width: 100%;
+      padding: 16px 20px; border-radius: 14px; background: linear-gradient(135deg, #4da6ff 0%, #3b9eff 100%);
+      color: #fff; box-shadow: 0 4px 20px rgba(77,166,255,0.35); margin-bottom: 8px; cursor: pointer;
+      transition: opacity 0.15s, transform 0.15s; border: none; font-family: inherit;
+    }
+    .modal-cta:hover { opacity: 0.9; transform: translateY(-2px); }
+    .modal-cta-left { display: flex; align-items: center; gap: 12px; }
+    .modal-cta-info .title { font-size: 14px; font-weight: 900; letter-spacing: -0.3px; }
+    .modal-cta-info .sub { font-size: 11px; opacity: 0.75; }
+    .modal-dismiss { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; padding: 10px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; background: none; border: none; font-family: inherit; transition: opacity 0.15s; }
+    .modal-dismiss:hover { opacity: 0.6; }
+    .modal-counter { margin-top: 20px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); }
+    .counter-label { font-size: 11px; font-weight: 500; margin-bottom: 2px; color: var(--muted); }
+    .counter-number { font-family: 'Syne', sans-serif; font-weight: 900; font-size: 18px; color: #4da6ff; }
+    .counter-sub { font-size: 11px; color: var(--muted); }
+    .counter-live { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 99px; font-size: 10px; font-weight: 700; background: rgba(77,166,255,0.1); border: 1px solid rgba(77,166,255,0.2); color: #4da6ff; }
+
+    /* Modal steps */
+    .progress-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 24px; }
+    .progress-bar-inner { display: flex; gap: 6px; flex: 1; }
+    .progress-segment { flex: 1; height: 4px; border-radius: 99px; background: var(--border); transition: background 0.3s; }
+    .progress-segment.done { background: #4da6ff; }
+    .progress-label { font-size: 11px; font-weight: 700; color: #4da6ff; flex-shrink: 0; }
+    .step-badge { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 99px; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 16px; background: rgba(77,166,255,0.12); border: 1px solid rgba(77,166,255,0.25); color: #4da6ff; }
+    .step-title { font-family: 'Syne', sans-serif; font-weight: 900; font-size: 20px; letter-spacing: -0.5px; margin-bottom: 20px; color: var(--text); }
+    .step-link { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-radius: 14px; background: linear-gradient(135deg, #4da6ff 0%, #3b9eff 100%); color: #fff; box-shadow: 0 4px 20px rgba(77,166,255,0.3); text-decoration: none; margin-bottom: 8px; transition: opacity 0.15s, transform 0.15s; }
+    .step-link:hover { opacity: 0.9; transform: translateY(-2px); }
+    .step-link-left { display: flex; align-items: center; gap: 12px; }
+    .step-link .title { font-size: 14px; font-weight: 900; letter-spacing: -0.3px; }
+    .step-link .sub { font-size: 11px; opacity: 0.75; }
+    .checkbox-row { display: flex; align-items: center; gap: 12px; margin-top: 20px; cursor: pointer; user-select: none; }
+    .checkbox-box { width: 20px; height: 20px; border-radius: 6px; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+    .checkbox-box.checked { background: #4da6ff; border-color: #4da6ff; box-shadow: 0 0 10px rgba(77,166,255,0.4); }
+    .checkbox-label { font-size: 13px; font-weight: 500; color: var(--text); transition: color 0.2s; }
+    .checkbox-label.checked { color: #4da6ff; }
+    .step-progress-note { margin-top: 20px; border-radius: 12px; padding: 12px 16px; text-align: center; background: var(--surface); border: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--muted); }
+    .step-progress-note span { color: #4da6ff; font-weight: 800; }
+    .yt-embed { border-radius: 14px; overflow: hidden; margin-bottom: 20px; border: 1px solid var(--border); aspect-ratio: 16/9; background: #000; }
+    .yt-embed iframe { width: 100%; height: 100%; border: none; display: block; }
+
+    /* Modal done */
+    .done-emoji { font-size: 56px; margin-bottom: 16px; display: block; text-align: center; animation: rc-float 2s ease-in-out infinite; }
+    .done-bars { display: flex; gap: 6px; justify-content: center; margin-bottom: 24px; }
+    .done-bar { height: 4px; width: 40px; border-radius: 99px; background: #4da6ff; }
+    .done-cta { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 14px 20px; border-radius: 14px; background: linear-gradient(135deg, #4da6ff 0%, #3b9eff 100%); color: #fff; box-shadow: 0 4px 20px rgba(77,166,255,0.35); text-decoration: none; font-size: 14px; font-weight: 900; margin-bottom: 8px; transition: opacity 0.15s, transform 0.15s; }
+    .done-cta:hover { opacity: 0.9; transform: translateY(-2px); }
+    .done-close { font-size: 12px; color: var(--muted); cursor: pointer; background: none; border: none; font-family: inherit; transition: opacity 0.15s; width: 100%; text-align: center; padding: 8px; }
+    .done-close:hover { opacity: 0.6; }
+      .product-price, .podium-price, .counter-number, .progress-label, .intro-step-num, .podium-watermark span, .ticker-item span:nth-child(3) { font-family: Arial, Helvetica, sans-serif !important; font-variant-numeric: tabular-nums; letter-spacing: 0 !important; } 
+
+    @keyframes rc-modal-fadein { from { opacity:0; } to { opacity:1; } }
+    @keyframes rc-slideup { from { opacity:0; transform:translateY(14px) scale(.98); } to { opacity:1; transform:none; } }
+    @keyframes rc-shimmer { to { background-position: 200% 0; } }
+    @keyframes rc-float { 50% { transform:translateY(-5px); } }
+
   </style>
 </head>
 <body class="dark">
+<!-- ── MODAL ── -->
+<div id="modal-overlay" role="dialog" aria-modal="true" aria-label="HipoBuy signup and tutorial" style="display:none">
+  <div class="modal-box" id="modal-box">
+    <div class="modal-top-bar"></div>
+    <button class="modal-close" onclick="closeModal()" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="modal-body">
+      <div class="modal-content" id="modal-content">
+        <!-- Intro step injected by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+
   <div id="root">
     <div id="banner">
       HipoBuy - The cheapest, best and most reliable Chinese agent.&nbsp;
@@ -795,6 +902,211 @@
       <div class="currency-list" id="currency-list"></div>
     </div>
   </div>
+  <script>
+/* Spreadsheet popup experiment: alternate every page visit per browser. */
+const HIPOBUY_LINK = "https://hipobuy.com/register?inviteCode=QTYP3P8P5";
+/* ── MODAL ── */
+let modalStep = "intro";
+let step1Done = false;
+let step2Done = false;
+let counterVal = 1281271;
+
+setInterval(() => {
+  counterVal += Math.floor(Math.random() * 2) + 1;
+  const el = document.getElementById("modal-counter-num");
+  if (el) el.textContent = counterVal.toLocaleString();
+}, 2800);
+
+function closeModal() {
+  const overlay = document.getElementById("modal-overlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+function openTutorial() {
+  modalStep = "intro";
+  step1Done = false;
+  step2Done = false;
+  renderModal();
+  const overlay = document.getElementById("modal-overlay");
+  if (overlay) overlay.style.display = "flex";
+}
+
+function goToStep(next) {
+  const content = document.getElementById("modal-content");
+  if (!content) return;
+  content.classList.add("fading");
+  setTimeout(() => {
+    modalStep = next;
+    renderModal();
+    content.classList.remove("fading");
+  }, 350);
+}
+
+function checkStep1(checked) {
+  step1Done = checked;
+  renderModal();
+  if (checked) setTimeout(() => goToStep("step2"), 600);
+}
+
+function checkStep2(checked) {
+  step2Done = checked;
+  renderModal();
+  if (checked) setTimeout(() => goToStep("done"), 600);
+}
+
+function renderModal() {
+  const content = document.getElementById("modal-content");
+  const box = document.getElementById("modal-box");
+  if (!content || !box) return;
+
+  const isIntro = modalStep === "intro";
+  const isDone = modalStep === "done";
+  document.querySelector(".modal-close")?.classList.toggle("rc-visible", isIntro);
+  const tutorialClose = document.getElementById("tutorial-close-link");
+  if (tutorialClose) tutorialClose.hidden = isIntro || isDone;
+
+  box.classList.toggle("wide", modalStep === "step2");
+
+  if (modalStep === "intro") {
+    content.innerHTML = `
+      <div style="text-align:center;margin-bottom:20px">
+        <div class="modal-intro-badge">✦ REPSCENTRAL x HIPOBUY</div>
+        <h2 class="modal-title">BRINGING YOU <span>35% OFF</span> SHIPPING</h2>
+        <p class="modal-sub">in 3 simple steps...</p>
+      </div>
+      <div class="intro-steps">
+        ${[["🦛","SIGN UP TO HIPOBUY"],["🛒","BROWSE SPREADSHEET"],["📦","SHIP YOUR HAUL!"]].map(([emoji,label],i)=>`
+          <div class="intro-step" style="animation-delay:${i*0.08}s">
+            <div class="intro-step-emoji">${emoji}</div>
+            <div class="intro-step-label">${label}</div>
+            <div class="intro-step-num">${i+1}</div>
+          </div>
+        `).join("")}
+      </div>
+      <p style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:16px">Still confused? Watch our tutorial.</p>
+      <button class="modal-cta" onclick="goToStep('step1')">
+        <div class="modal-cta-left">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <div class="modal-cta-info">
+            <div class="title">START TUTORIAL</div>
+            <div class="sub">Learn everything in 2 minutes — completely free.</div>
+          </div>
+        </div>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </button>
+      <button class="modal-dismiss" onclick="window.location.href='spreadsheet.html'">Skip to spreadsheet
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <div class="modal-counter">
+        <div>
+          <div class="counter-label">Trusted by 1M+ users</div>
+          <div style="display:flex;align-items:baseline;gap:6px">
+            <span class="counter-number" id="modal-counter-num">${counterVal.toLocaleString()}</span>
+            <span class="counter-sub">people already signed up</span>
+          </div>
+        </div>
+        <div class="counter-live"><span class="live-dot"></span>LIVE</div>
+      </div>
+    `;
+  } else if (modalStep === "step1") {
+    content.innerHTML = `
+      <div style="animation:rc-fadein 0.4s ease">
+        <div class="progress-bar">
+          <div class="progress-bar-inner">
+            <div class="progress-segment done"></div>
+            <div class="progress-segment"></div>
+            <div class="progress-segment"></div>
+            <div class="progress-segment"></div>
+            <div class="progress-segment"></div>
+            <div class="progress-segment"></div>
+          </div>
+          <span class="progress-label">1 / 6</span>
+        </div>
+        <div class="step-badge">STEP 1</div>
+        <h2 class="step-title">First, sign up to HipoBuy.</h2>
+        <a href="${HIPOBUY_LINK}" target="_blank" rel="noopener noreferrer" class="step-link">
+          <div class="step-link-left">
+            <span style="font-size:20px">🦛</span>
+            <div>
+              <div class="title">SIGN UP TO HIPOBUY</div>
+              <div class="sub">(includes 35% off shipping coupons)</div>
+            </div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.8"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </a>
+        <div class="checkbox-row" onclick="checkStep1(${!step1Done})">
+          <div class="checkbox-box ${step1Done ? "checked" : ""}">
+            ${step1Done ? `<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ""}
+          </div>
+          <span class="checkbox-label ${step1Done ? "checked" : ""}">I've done this ✓</span>
+        </div>
+        <div class="step-progress-note">You're <span>1/6</span> of the way to your future hauls! 🚀</div>
+      </div>
+    `;
+  } else if (modalStep === "step2") {
+    content.innerHTML = `
+      <div style="animation:rc-fadein 0.4s ease">
+        <div class="progress-bar">
+          <div class="progress-bar-inner">
+            <div class="progress-segment done"></div>
+            <div class="progress-segment done"></div>
+            <div class="progress-segment"></div>
+            <div class="progress-segment"></div>
+            <div class="progress-segment"></div>
+            <div class="progress-segment"></div>
+          </div>
+          <span class="progress-label">2 / 6</span>
+        </div>
+        <div class="step-badge">STEP 2</div>
+        <h2 class="step-title">Watch the quick tutorial.</h2>
+        <div class="yt-embed">
+          <iframe src="https://www.youtube.com/embed/XsZZQPKLChY" title="HipoBuy Tutorial"
+            allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+        </div>
+        <div class="checkbox-row" onclick="checkStep2(${!step2Done})">
+          <div class="checkbox-box ${step2Done ? "checked" : ""}">
+            ${step2Done ? `<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ""}
+          </div>
+          <span class="checkbox-label ${step2Done ? "checked" : ""}">I've done this ✓</span>
+        </div>
+        <div class="step-progress-note">You're <span>2/6</span> of the way to your future hauls! 🔥</div>
+      </div>
+    `;
+  } else if (modalStep === "done") {
+    content.innerHTML = `
+      <div style="text-align:center;padding:16px 0;animation:rc-fadein 0.5s ease">
+        <span class="done-emoji">🎉</span>
+        <div class="modal-intro-badge">✦ TUTORIAL COMPLETE</div>
+        <h2 class="modal-title" style="margin-bottom:12px">You're all set!</h2>
+        <p style="font-size:14px;color:var(--muted);margin-bottom:24px">Head over to the spreadsheet and start finding items for your next haul.</p>
+        <div class="done-bars"><div class="done-bar"></div><div class="done-bar"></div><div class="done-bar"></div></div>
+        <a href="spreadsheet.html" class="done-cta">Go to Spreadsheet →</a>
+        <button class="done-close" onclick="closeModal()">Close</button>
+      </div>
+    `;
+  }
+}
+
+
+const experimentOverlay = document.getElementById("modal-overlay");
+experimentOverlay.addEventListener("click", event => {
+  if (event.target === experimentOverlay) closeModal();
+});
+// Start on the popup variant, then alternate: popup, control, popup, control.
+let showSignupPopup = false;
+try {
+  const key = "rc-spreadsheet-popup-ab-visit-count";
+  const visits = Number.parseInt(localStorage.getItem(key) || "0", 10) || 0;
+  showSignupPopup = visits % 2 === 0;
+  localStorage.setItem(key, String((visits + 1) % 2));
+} catch {
+  // Private browsing/storage restrictions: allow the spreadsheet to load normally.
+}
+if (showSignupPopup) {
+  renderModal();
+  experimentOverlay.style.display = "flex";
+}
+</script>
   <script src="image-performance.js?v=2026-08-13-1" defer></script>
   <script type="module" src="firebase-products.js?v=2026-06-30-app-check-1"></script>
   <script type="module" src="site-analytics.js?v=2026-06-30-app-check-1"></script>
