@@ -51,13 +51,43 @@ function validateTikTokUrl(input, base) {
   return parsed.href;
 }
 
-function extractMeta(html, patterns) {
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (match?.[1]) return decodeHtml(match[1]);
+function readMetaTags(html) {
+  const result = new Map();
+  for (const [tag] of html.matchAll(/<meta\b(?:[^"'<>]|"[^"]*"|'[^']*')*>/gi)) {
+    const attrs = new Map(Array.from(tag.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g),
+      ([, name, double, single, raw]) => [name.toLowerCase(), double ?? single ?? raw]));
+    const key = attrs.get("property") || attrs.get("name");
+    if (key && attrs.get("content") && !result.has(key)) result.set(key, decodeHtml(attrs.get("content")));
   }
+  return result;
+}
 
-  return "";
+function readPostPayload(html, postId) {
+  const sources = [
+    ["__UNIVERSAL_DATA_FOR_REHYDRATION__", data => data?.__DEFAULT_SCOPE__?.["webapp.video-detail"]?.itemInfo?.itemStruct],
+    ["SIGI_STATE", data => data?.ItemModule?.[postId]]
+  ];
+  for (const [id, pick] of sources) {
+    const script = html.match(new RegExp('<script\\b[^>]*\\bid\\s*=\\s*["\\\']' + id + '["\\\'][^>]*>([\\s\\S]*?)<\\/script>', "i"));
+    if (!script) continue;
+    try {
+      const post = pick(JSON.parse(script[1]));
+      if (post && String(post.id) === postId) return post;
+    } catch {
+      // The post may still have usable Open Graph metadata.
+    }
+  }
+  return null;
+}
+
+function safeCoverUrl(value) {
+  if (typeof value !== "string" || !value.trim()) return "";
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password ? url.href : "";
+  } catch {
+    return "";
+  }
 }
 
 function cleanCaption(value) {
@@ -86,7 +116,7 @@ async function fetchOEmbed(tiktokUrl) {
     source: "oembed",
     caption: typeof data.title === "string" ? data.title.trim() : "",
     title: typeof data.title === "string" ? data.title.trim() : "",
-    thumbnailUrl: data.thumbnail_url || "",
+    thumbnailUrl: safeCoverUrl(data.thumbnail_url),
     authorName: data.author_name || "",
     authorUrl: data.author_url || "",
     embedHtml: data.html || ""
@@ -115,45 +145,26 @@ async function fetchHtmlMeta(tiktokUrl) {
       continue;
     }
     if (!response.ok) throw new Error("TikTok page returned " + response.status);
-    return { url, ...readHtmlMeta(await response.text()) };
+    return { url, ...readHtmlMeta(await response.text(), url) };
   }
   throw new Error("Too many TikTok redirects.");
 }
 
-function readHtmlMeta(html) {
-
-
-  const ogTitle = extractMeta(html, [
-    /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']*)["'][^>]*>/i,
-    /<meta[^>]+content=["']([^"']*)["'][^>]+property=["']og:title["'][^>]*>/i,
-    /<title[^>]*>(.*?)<\/title>/is
-  ]);
-
-  const ogDescription = extractMeta(html, [
-    /<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']*)["'][^>]*>/i,
-    /<meta[^>]+content=["']([^"']*)["'][^>]+property=["']og:description["'][^>]*>/i,
-    /<meta[^>]+name=["']description["'][^>]+content=["']([^"']*)["'][^>]*>/i,
-    /<meta[^>]+content=["']([^"']*)["'][^>]+name=["']description["'][^>]*>/i
-  ]);
-
-  const thumbnailUrl = extractMeta(html, [
-    /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']*)["'][^>]*>/i,
-    /<meta[^>]+content=["']([^"']*)["'][^>]+property=["']og:image["'][^>]*>/i,
-    /<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']*)["'][^>]*>/i,
-    /<meta[^>]+content=["']([^"']*)["'][^>]+name=["']twitter:image["'][^>]*>/i
-  ]);
-
-  const authorName = extractMeta(html, [
-    /<meta[^>]+name=["']author["'][^>]+content=["']([^"']*)["'][^>]*>/i,
-    /<meta[^>]+content=["']([^"']*)["'][^>]+name=["']author["'][^>]*>/i
-  ]);
-
+function readHtmlMeta(html, pageUrl) {
+  const meta = readMetaTags(html);
+  const postId = new URL(pageUrl).pathname.match(/\/(?:video|photo)\/(\d+)\/?$/)?.[1];
+  const post = postId ? readPostPayload(html, postId) : null;
+  const photo = post?.imagePost?.images?.[0];
+  const caption = typeof post?.desc === "string" ? post.desc.trim() : cleanCaption(meta.get("og:description") || "");
+  const thumbnailUrl = [post?.video?.cover, post?.video?.originCover,
+    post?.imagePost?.cover?.imageURL?.urlList?.[0], photo?.imageURL?.urlList?.[0],
+    meta.get("og:image"), meta.get("twitter:image")].map(safeCoverUrl).find(Boolean) || "";
   return {
-    source: "html",
-    caption: cleanCaption(ogDescription || ogTitle || ""),
-    title: cleanCaption(ogTitle || ogDescription || ""),
+    source: post ? "post-metadata" : "html",
+    caption,
+    title: cleanCaption(meta.get("og:title") || ""),
     thumbnailUrl,
-    authorName,
+    authorName: post?.author?.nickname || meta.get("author") || "",
     authorUrl: "",
     embedHtml: ""
   };
@@ -193,7 +204,7 @@ export async function onRequest(context) {
   const page = await fetchHtmlMeta(tiktokUrl).catch(() => null);
   const resolved = page?.url && page.url !== tiktokUrl && !(page.caption && page.thumbnailUrl)
     ? await fetchOEmbed(page.url).catch(() => null) : null;
-  const preferred = resolved || oembed || page;
+  const preferred = [resolved, oembed, page].find(meta => meta?.caption || meta?.thumbnailUrl);
   const caption = resolved?.caption || oembed?.caption || page?.caption || "";
   const thumbnailUrl = resolved?.thumbnailUrl || oembed?.thumbnailUrl || page?.thumbnailUrl || "";
   if (caption || thumbnailUrl) {
