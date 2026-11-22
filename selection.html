@@ -81,8 +81,10 @@
       min-height: clamp(240px, 34vh, 360px);
       overflow: hidden;
       border-radius: 12px;
+    }
+    .selection-image:empty {
       border: 1px solid var(--border);
-      background: radial-gradient(ellipse at 18% 12%, rgba(77, 166, 255, 0.16), transparent 75%), var(--surface2);
+      background: var(--surface2);
     }
     .selection-image img {
       position: absolute;
@@ -167,7 +169,7 @@
       <div class="selection-grid">
         <article class="selection-card">
           <h2 class="selection-title">VIDEO ITEMS</h2>
-          <div class="selection-image"><img src="/systemimages/videoitems.png" width="1080" height="1080" alt=""></div>
+          <div class="selection-image"><img src="/systemimages/videoitemsnew.png" width="1080" height="1080" alt=""></div>
           <p class="selection-description">Only video items. Select a video and find all the links.</p>
         </article>
         <a class="selection-card" href="/spreadsheet" aria-labelledby="show-all-title" aria-describedby="show-all-description">
