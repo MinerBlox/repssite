@@ -8,7 +8,7 @@ const JSON_HEADERS = {
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: JSON_HEADERS
+    headers: { ...JSON_HEADERS, "cache-control": status === 200 ? "public, max-age=300" : "no-store" }
   });
 }
 

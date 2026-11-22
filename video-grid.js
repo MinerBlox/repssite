@@ -58,13 +58,56 @@ export function gridMessage(grid, message) {
   grid.replaceChildren(paragraph);
 }
 
+const coverObservers = new WeakMap();
+const pendingCovers = new Map();
+
+function expiredCover(url) {
+  const params = new URL(url).searchParams;
+  const expires = Number(params.get("x-expires") || params.get("Expires"));
+  return expires > 0 && expires * 1000 <= Date.now();
+}
+
+function addCoverImage(cover, url, failure) {
+  const image = document.createElement("img");
+  image.alt = "";
+  image.loading = "lazy";
+  image.decoding = "async";
+  image.addEventListener("error", () => {
+    image.remove();
+    failure?.();
+  }, { once: true });
+  image.src = url;
+  cover.insertBefore(image, cover.querySelector(".video-tile-count"));
+}
+
+function loadCover(url) {
+  if (pendingCovers.has(url)) return pendingCovers.get(url);
+  const endpoint = new URL("/api/tiktok-meta", location.origin);
+  endpoint.searchParams.set("url", url);
+  const request = fetch(endpoint)
+    .then(response => response.ok ? response.json() : null)
+    .then(metadata => assetUrl(metadata?.thumbnailUrl))
+    .catch(() => "")
+    .finally(() => pendingCovers.delete(url));
+  pendingCovers.set(url, request);
+  return request;
+}
+
+async function refreshCover(cover, url) {
+  const image = await loadCover(url);
+  if (image && cover.isConnected) addCoverImage(cover, image);
+}
+
 export function renderVideoGrid(grid, videos, emptyMessage) {
+  coverObservers.get(grid)?.disconnect();
+  coverObservers.delete(grid);
   if (!videos.length) {
     gridMessage(grid, emptyMessage);
     return;
   }
 
   const fragment = document.createDocumentFragment();
+  const missingCovers = new Map();
   for (const video of videos) {
     const button = document.createElement("button");
     button.type = "button";
@@ -79,22 +122,21 @@ export function renderVideoGrid(grid, videos, emptyMessage) {
     fallback.textContent = "▷";
     cover.append(fallback);
 
-    const thumbnail = assetUrl(video.thumbnailUrl);
-    if (thumbnail) {
-      const image = document.createElement("img");
-      image.alt = "";
-      image.loading = "lazy";
-      image.decoding = "async";
-      image.addEventListener("error", () => image.remove(), { once: true });
-      image.src = thumbnail;
-      cover.append(image);
-    }
 
     const count = document.createElement("span");
     count.className = "video-tile-count";
     const total = linkedItems(video).length;
     count.textContent = total === 1 ? "1 item" : total + " items";
     cover.append(count);
+
+    const thumbnail = assetUrl(video.thumbnailUrl);
+    const source = tiktokUrl(video.tiktokUrl);
+    const canRefresh = source && (!thumbnail || video.thumbnailAuto === true);
+    if (thumbnail && !(canRefresh && expiredCover(thumbnail))) {
+      addCoverImage(cover, thumbnail, canRefresh ? () => void refreshCover(cover, source) : null);
+    } else if (canRefresh) {
+      missingCovers.set(cover, source);
+    }
 
     const title = document.createElement("span");
     title.className = "video-tile-title";
@@ -103,4 +145,21 @@ export function renderVideoGrid(grid, videos, emptyMessage) {
     fragment.append(button);
   }
   grid.replaceChildren(fragment);
+  if (!missingCovers.size) return;
+
+  if (typeof IntersectionObserver === "undefined") {
+    for (const [cover, url] of missingCovers) void refreshCover(cover, url);
+    return;
+  }
+  const observer = new IntersectionObserver(entries => {
+    for (const { target, isIntersecting } of entries) {
+      const url = missingCovers.get(target);
+      if (!isIntersecting || !url) continue;
+      observer.unobserve(target);
+      void refreshCover(target, url);
+      missingCovers.delete(target);
+    }
+  }, { rootMargin: "100px" });
+  coverObservers.set(grid, observer);
+  for (const cover of missingCovers.keys()) observer.observe(cover);
 }
