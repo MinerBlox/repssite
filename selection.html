@@ -116,12 +116,12 @@
     @media (max-width: 640px) {
       main.selection { padding: 24px 12px 18px; gap: 18px; }
       .selection-heading { font-size: clamp(16px, 6.25vw, 32px); white-space: nowrap; }
-      .selection-grid { gap: 10px; }
-      .selection-card { padding: 14px 8px 16px; gap: 12px; border-radius: 14px; }
-      .selection-image { min-height: clamp(104px, 30vw, 176px); border-radius: 8px; }
+      .selection-grid { grid-template-columns: 1fr; gap: 14px; }
+      .selection-card { padding: 14px 12px 16px; gap: 12px; border-radius: 14px; }
+      .selection-image { min-height: clamp(132px, 40vw, 200px); border-radius: 8px; }
       .selection-title {
-        min-height: 2.3em;
-        font-size: clamp(12px, 3.5vw, 20px);
+        min-height: 0;
+        font-size: clamp(17px, 4.6vw, 22px);
         line-height: 1.15;
         text-wrap: balance;
       }
@@ -166,14 +166,14 @@
       <h1 class="selection-heading">Choose an option</h1>
       <div class="selection-grid">
         <article class="selection-card">
-          <h2 class="selection-title">ITEMS FROM VIDEOS</h2>
+          <h2 class="selection-title">VIDEO ITEMS</h2>
           <div class="selection-image"></div>
-          <p class="selection-description">Select a video and see all the items in that video and nothing else, or browse a catalogue of every item in my videos.</p>
+          <p class="selection-description">Only video items. Select a video and find all the links.</p>
         </article>
         <a class="selection-card" href="/spreadsheet" aria-labelledby="show-all-title" aria-describedby="show-all-description">
-          <h2 class="selection-title" id="show-all-title">SHOW ALL ITEMS</h2>
+          <h2 class="selection-title" id="show-all-title">FULL SPREADSHEET</h2>
           <div class="selection-image"></div>
-          <p class="selection-description" id="show-all-description">Shows 10,000+ items for you to look through if you're thinking of building a haul. Also contains items from videos.</p>
+          <p class="selection-description" id="show-all-description">Full spreadsheet - 10,000+ items to scroll through</p>
         </a>
       </div>
       <p class="selection-note">You can switch between these, it's not a final decision whichever you pick.</p>
