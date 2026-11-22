@@ -40,15 +40,12 @@
       gap: 24px;
       width: min(1120px, 100%);
       margin: 0 auto;
-      padding: clamp(40px, 7vw, 88px) 40px;
+      padding: clamp(36px, 6vw, 72px) 40px;
     }
     .selection-heading {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
+      text-align: center;
+      font: 800 clamp(32px, 5vw, 48px) / 1.1 'Syne', sans-serif;
+      letter-spacing: -0.04em;
     }
     .selection-grid {
       display: grid;
@@ -58,8 +55,10 @@
     .selection-card {
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      gap: 18px;
       min-width: 0;
+      padding: 22px 18px 28px;
+      text-align: center;
       border: 1px solid var(--border);
       border-radius: 20px;
       background: var(--surface);
@@ -77,9 +76,8 @@
       outline-offset: 4px;
     }
     .selection-image {
-      aspect-ratio: 2 / 1;
+      aspect-ratio: 4 / 3;
       overflow: hidden;
-      margin: 12px 12px 0;
       border-radius: 12px;
       border: 1px solid var(--border);
       background: radial-gradient(ellipse at 18% 12%, rgba(77, 166, 255, 0.16), transparent 75%), var(--surface2);
@@ -90,28 +88,23 @@
       height: 100%;
       object-fit: cover;
     }
-    .selection-copy {
-      display: grid;
-      gap: 10px;
-      padding: 24px 24px 28px;
-    }
     .selection-title {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 12px;
-      font: 800 clamp(20px, 3vw, 30px) / 1.1 'Syne', sans-serif;
+      display: grid;
+      place-items: center;
+      min-height: 2.2em;
+      font: 800 clamp(20px, 2.5vw, 26px) / 1.1 'Syne', sans-serif;
       letter-spacing: -0.03em;
     }
-    .selection-arrow {
-      color: var(--blue);
-      font: 500 24px / 1 'DM Sans', sans-serif;
-    }
-    .selection-copy p, .selection-note {
+    .selection-description, .selection-note {
       color: var(--muted);
       line-height: 1.6;
     }
-    .selection-copy p { font-size: 15px; }
+    .selection-description {
+      align-self: center;
+      max-width: 42ch;
+      padding: 0 4px;
+      font-size: 15px;
+    }
     .selection-note {
       font-size: 13px;
       text-align: center;
@@ -119,7 +112,8 @@
     @media (max-width: 640px) {
       main.selection { padding: 36px 16px; gap: 20px; }
       .selection-grid { grid-template-columns: 1fr; gap: 16px; }
-      .selection-copy { padding: 18px 18px 22px; }
+      .selection-card { padding: 20px 14px 24px; gap: 16px; }
+      .selection-title { min-height: 0; }
     }
     @media (prefers-reduced-motion: reduce) {
       a.selection-card { transition: none; }
@@ -157,21 +151,17 @@
       <button type="button" class="nav-theme" id="theme-btn" onclick="toggleTheme()" aria-label="Toggle theme"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg><span id="theme-label">Light</span></button>
     </nav>
     <main class="selection">
-      <h1 class="selection-heading">Choose how to browse</h1>
+      <h1 class="selection-heading">Choose an option</h1>
       <div class="selection-grid">
         <article class="selection-card">
+          <h2 class="selection-title">ITEMS FROM VIDEOS</h2>
           <div class="selection-image"></div>
-          <div class="selection-copy">
-            <h2 class="selection-title">ITEMS FROM VIDEOS</h2>
-            <p>Select a video and see all the items in that video and nothing else, or browse a catalogue of every item in my videos.</p>
-          </div>
+          <p class="selection-description">Select a video and see all the items in that video and nothing else, or browse a catalogue of every item in my videos.</p>
         </article>
         <a class="selection-card" href="/spreadsheet" aria-labelledby="show-all-title" aria-describedby="show-all-description">
+          <h2 class="selection-title" id="show-all-title">SHOW ALL ITEMS</h2>
           <div class="selection-image"></div>
-          <div class="selection-copy">
-            <h2 class="selection-title" id="show-all-title">SHOW ALL ITEMS <span class="selection-arrow" aria-hidden="true">→</span></h2>
-            <p id="show-all-description">Shows 10,000+ items for you to look through if you're thinking of building a haul. Also contains items from videos.</p>
-          </div>
+          <p class="selection-description" id="show-all-description">Shows 10,000+ items for you to look through if you're thinking of building a haul. Also contains items from videos.</p>
         </a>
       </div>
       <p class="selection-note">You can switch between these, it's not a final decision whichever you pick.</p>
