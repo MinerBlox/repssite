@@ -17,17 +17,24 @@ function getCookie(request, name) {
   return match ? decodeURIComponent(match.slice(name.length + 1)) : null;
 }
 
-async function injectCurrencyOverride(response) {
+async function addSiteStyles(response) {
   const contentType = response.headers.get("Content-Type") || "";
-  if (!contentType.includes("text/html")) return response;
+  if (!response.body || !contentType.includes("text/html")) return response;
 
   const html = await response.text();
-  const injected = html.includes("/currency-rate-override.js")
-    ? html
-    : html.replace("</head>", '<script src="/currency-rate-override.js"></script>\n</head>');
+  const injected = html.replace(/<\/head\s*>/i, head => {
+    const theme = html.includes("/site-viewport-theme.js") ? "" :
+      (/<meta\b[^>]*name=["']theme-color["']/i.test(html) ? "" : '<meta name="theme-color" content="#0a0a0b">') +
+      '<style>html { background-color: #0a0a0b; color-scheme: dark; }</style>' +
+      '<script defer src="/site-viewport-theme.js"></script>';
+    const currency = html.includes("/currency-rate-override.js") ? "" :
+      '<script src="/currency-rate-override.js"></script>';
+    return theme + currency + head;
+  });
 
   const headers = new Headers(response.headers);
   headers.delete("Content-Length");
+  headers.delete("ETag");
 
   return new Response(injected, {
     status: response.status,
@@ -40,7 +47,7 @@ export async function onRequest(context) {
   const { request, env, next } = context;
 
   if (!MAINTENANCE_ENABLED) {
-    return injectCurrencyOverride(await next());
+    return addSiteStyles(await next());
   }
 
   const url = new URL(request.url);
@@ -53,7 +60,7 @@ export async function onRequest(context) {
     pathname === "/api/maintenance-bypass" ||
     pathname === "/api/maintenance-bypass/"
   ) {
-    return injectCurrencyOverride(await next());
+    return addSiteStyles(await next());
   }
 
   const secret = env.MAINTENANCE_ADMIN_PASSWORD;
@@ -61,7 +68,7 @@ export async function onRequest(context) {
     const supplied = getCookie(request, "rc_maintenance_session");
     const expected = await sessionToken(secret);
     if (supplied && supplied === expected) {
-      return injectCurrencyOverride(await next());
+      return addSiteStyles(await next());
     }
   }
 

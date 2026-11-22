@@ -50,6 +50,12 @@
     .status:empty { display: none; }
     .status.error { color: var(--red); }
     #view-status { margin-bottom: 14px; }
+    .inbox { margin-bottom: 24px; }
+    .inbox .actions { justify-content: space-between; margin-bottom: 10px; }
+    .inbox .status { margin-bottom: 10px; }
+    .draft-label { color: var(--blue); font-size: 12px; font-weight: 800; }
+    .upload-field { display: grid; gap: 8px; }
+    .upload-field input { max-width: 100%; }
     .picker { display: grid; gap: 12px; }
     .picker .tabs { margin: 0; }
     .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 12px; }
@@ -89,12 +95,22 @@
 
     <section id="video-library" aria-label="Saved videos">
       <p class="status" id="view-status" role="status"></p>
+      <div class="inbox">
+        <div class="actions">
+          <h2>AWAITING CONFIRMATION</h2>
+          <button class="btn" id="sync-tiktok" type="button">Check TikTok now</button>
+        </div>
+        <p class="status" id="sync-status" role="status"></p>
+        <div class="video-grid" id="pending-videos"><p class="video-grid-message">Loading drafts…</p></div>
+      </div>
+      <h2>Published videos</h2>
       <div class="video-grid" id="saved-videos"><p class="video-grid-message">Loading videos…</p></div>
     </section>
 
     <form class="editor" id="video-editor" hidden>
       <div class="panel editor">
         <h2 id="editor-heading">Add video</h2>
+        <p class="draft-label" id="draft-label" hidden>AWAITING CONFIRMATION</p>
         <div class="field-row">
           <div class="field">
             <label for="video-title">Name</label>
@@ -108,11 +124,21 @@
         <div class="field">
           <label for="video-url">TikTok link</label>
           <div class="link-row">
-            <input id="video-url" name="tiktokUrl" type="url" placeholder="https://www.tiktok.com/@…/video/…" required>
+            <input id="video-url" name="tiktokUrl" type="url" placeholder="https://www.tiktok.com/@…/video/…">
             <button class="btn" id="fetch-metadata" type="button">Fetch from TikTok</button>
           </div>
           <p class="hint">Leave caption and thumbnail blank to fill them from TikTok.</p>
           <p class="status" id="metadata-status" role="status"></p>
+        </div>
+        <div class="field">
+          <label for="video-media-url">Original video URL</label>
+          <input id="video-media-url" name="mediaUrl" placeholder="https://…/video.mp4">
+          <p class="hint">Add a direct HTTPS video URL or select the original file for the RepsCentral player.</p>
+        </div>
+        <div class="upload-field">
+          <label for="video-file">Original video file</label>
+          <input type="file" id="video-file" accept="video/mp4,video/webm,.mp4,.webm">
+          <p class="hint" id="video-file-status">MP4 or WebM up to 90 MB. The file uploads when you press GO LIVE or SAVE on a published video.</p>
         </div>
         <div class="field">
           <label for="video-caption">Caption</label>
@@ -152,7 +178,8 @@
       </section>
 
       <div class="actions">
-        <button class="btn primary" id="save-video" type="submit">SAVE</button>
+        <button class="btn primary" id="save-video" type="submit">GO LIVE</button>
+        <button class="btn" id="save-draft" type="submit" formnovalidate>SAVE DRAFT</button>
         <button class="btn" id="discard-video" type="button">DISCARD</button>
         <button class="btn danger" id="delete-video" type="button" hidden>Delete video</button>
       </div>

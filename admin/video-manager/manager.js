@@ -14,15 +14,24 @@ enableAppCheck(app);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const videosRef = collection(db, "videos");
+const draftsRef = collection(db, "videoDrafts");
 const get = id => document.getElementById(id);
 const form = get("video-editor");
-const fields = Object.fromEntries(["title", "sortOrder", "tiktokUrl", "caption", "thumbnailUrl"]
+const fields = Object.fromEntries(["title", "sortOrder", "tiktokUrl", "caption", "thumbnailUrl", "mediaUrl"]
   .map(name => [name, form.elements.namedItem(name)]));
 const grid = get("saved-videos");
+const pendingGrid = get("pending-videos");
 const results = get("catalog-results");
 const pageSize = 24;
 
 let savedVideos = new Map();
+let queuedVideos = new Map();
+let unsubscribeDrafts = null;
+let pollTimer;
+let syncing = false;
+let publishedReady = false;
+let draftsReady = false;
+let autoSyncDisabled = false;
 let editDrafts = new Map();
 let addDraft = newDraft();
 let draft = null;
@@ -39,6 +48,11 @@ let catalogueError;
 function newDraft(video = {}) {
   return {
     id: video.id || "",
+    awaiting: video.awaiting === true,
+    suggestedTitle: video.suggestedTitle || "",
+    tiktokId: video.tiktokId || "",
+    mediaUrl: video.mediaUrl || "",
+    mediaFile: null,
     version: video.updatedAt || null,
     title: video.title || "",
     sortOrder: video.sortOrder ?? 0,
@@ -81,8 +95,15 @@ function showEditor(nextDraft = null, message = "") {
   setStatus("view-status", message);
   if (!draft) return;
   for (const [name, field] of Object.entries(fields)) field.value = draft[name];
-  get("editor-heading").textContent = draft.id ? "Edit video" : "Add video";
+  get("editor-heading").textContent = draft.awaiting ? "Confirm video" : draft.id ? "Edit video" : "Add video";
+  get("draft-label").hidden = !draft.awaiting;
+  fields.title.placeholder = draft.suggestedTitle || "";
+  get("video-file").value = "";
+  showMediaFile();
   get("delete-video").hidden = !draft.id;
+  get("delete-video").textContent = draft.awaiting ? "Dismiss draft" : "Delete video";
+  get("save-draft").hidden = Boolean(draft.id && !draft.awaiting);
+  get("save-video").textContent = draft.id && !draft.awaiting ? "SAVE" : "GO LIVE";
   get("item-search").value = "";
   visibleLimit = pageSize;
   setPicker(false);
@@ -260,11 +281,79 @@ function syncPickButton(button, item) {
 function lockControls(lock) {
   saving = lock;
   for (const control of [...form.elements, get("add-tab"), get("view-tab"), get("sign-out")]) control.disabled = lock;
-  get("save-video").textContent = lock ? "SAVING…" : "SAVE";
+  get("save-video").textContent = lock ? "WORKING…" : draft?.id && !draft.awaiting ? "SAVE" : "GO LIVE";
 }
 
 function sameVersion(left, right) {
   return left?.seconds === right?.seconds && left?.nanoseconds === right?.nanoseconds;
+}
+
+function tiktokId(video) {
+  const url = tiktokUrl(video.tiktokUrl);
+  return String(video.tiktokId || "") || (url ? new URL(url).pathname.match(/\/(?:video|photo)\/(\d+)\/?$/)?.[1] || "" : "");
+}
+
+function startPolling() {
+  if (!publishedReady || !draftsReady || pollTimer) return;
+  void syncTikTok();
+  pollTimer = setInterval(() => {
+    if (!document.hidden && !autoSyncDisabled) void syncTikTok();
+  }, 5 * 60 * 1000);
+}
+
+async function syncTikTok(manual = false) {
+  const admin = auth.currentUser;
+  if (syncing || !admin || !publishedReady || !draftsReady || (autoSyncDisabled && !manual)) return;
+  syncing = true;
+  const button = get("sync-tiktok");
+  button.disabled = true;
+  setStatus("sync-status", "Checking TikTok…");
+  try {
+    const response = await fetch("/api/tiktok-inbox", {
+      headers: { Authorization: "Bearer " + await admin.getIdToken() }
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "TikTok sync could not run.");
+    if (auth.currentUser !== admin) return;
+    if (!data.configured) {
+      autoSyncDisabled = true;
+      setStatus("sync-status", "Connect TikTok in Cloudflare to import new public posts automatically.");
+      return;
+    }
+    autoSyncDisabled = false;
+
+    const known = new Set([...savedVideos.values(), ...queuedVideos.values()].map(tiktokId).filter(Boolean));
+    let imported = 0;
+    for (const entry of data.videos || []) {
+      if (auth.currentUser !== admin) break;
+      const url = tiktokUrl(entry.tiktokUrl);
+      if (!url || !/^\d+$/.test(entry.id) || known.has(entry.id)) continue;
+      const id = "tiktok-" + entry.id;
+      const queued = doc(draftsRef, id);
+      const live = doc(videosRef, id);
+      const inserted = await runTransaction(db, async transaction => {
+        const [draftDoc, liveDoc] = await Promise.all([transaction.get(queued), transaction.get(live)]);
+        if (draftDoc.exists() || liveDoc.exists()) return false;
+        transaction.set(queued, {
+          status: "awaiting", tiktokId: entry.id, tiktokUrl: url,
+          title: "", suggestedTitle: entry.suggestedTitle || "",
+          caption: entry.caption || "", thumbnailUrl: entry.thumbnailUrl || "",
+          captionAuto: Boolean(entry.caption), thumbnailAuto: Boolean(entry.thumbnailUrl),
+          postedAt: entry.postedAt || 0, itemIds: [], items: [],
+          createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+        });
+        return true;
+      });
+      if (inserted) imported += 1;
+      known.add(entry.id);
+    }
+    if (auth.currentUser === admin) setStatus("sync-status", imported ? imported + " new post(s) awaiting confirmation." : "No new public posts found.");
+  } catch (error) {
+    if (auth.currentUser === admin) setStatus("sync-status", error.message || "TikTok sync failed.", true);
+  } finally {
+    syncing = false;
+    button.disabled = false;
+  }
 }
 
 function resubscribe() {
@@ -273,8 +362,25 @@ function resubscribe() {
   unsubscribe = onSnapshot(videosRef, snapshot => {
     const videos = sortVideos(snapshot.docs.map(entry => ({ ...entry.data(), id: entry.id })));
     savedVideos = new Map(videos.map(video => [video.id, video]));
-    renderVideoGrid(grid, videos, "No videos yet. Choose ADD VIDEO to get started.");
+    renderVideoGrid(grid, videos.filter(video => video.isActive !== false), "No published videos yet.");
+    publishedReady = true;
+    startPolling();
   }, () => gridMessage(grid, "Couldn’t load videos. Refresh or check your Firestore permissions."));
+
+  unsubscribeDrafts?.();
+  unsubscribeDrafts = onSnapshot(draftsRef, snapshot => {
+    const entries = snapshot.docs.map(entry => ({ ...entry.data(), id: entry.id, awaiting: true }));
+    queuedVideos = new Map(entries.map(video => [video.id, video]));
+    const pending = entries.filter(video => video.status !== "dismissed")
+      .sort((left, right) => (right.postedAt || right.createdAt?.seconds || 0) - (left.postedAt || left.createdAt?.seconds || 0))
+      .map(video => ({ ...video, title: video.title || video.suggestedTitle || video.caption || "New TikTok post" }));
+    renderVideoGrid(pendingGrid, pending, "No videos awaiting confirmation.");
+    draftsReady = true;
+    startPolling();
+  }, () => {
+    draftsReady = false;
+    gridMessage(pendingGrid, "The private videoDrafts collection needs admin read and write access.");
+  });
 }
 
 form.addEventListener("input", event => {
@@ -291,13 +397,63 @@ form.addEventListener("input", event => {
   }
 });
 
+function showMediaFile() {
+  get("video-file-status").textContent = draft.mediaFile
+    ? draft.mediaFile.name + " will upload when you publish or save a published video."
+    : "MP4 or WebM up to 90 MB. The file uploads when you publish or save a published video.";
+}
+
+function mediaSource(value) {
+  const source = value.trim();
+  if (!source || (!source.startsWith("/") && !source.startsWith("https://"))) return "";
+  return assetUrl(source);
+}
+
+async function uploadMedia(file) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Sign in before uploading a file.");
+  const type = /\.webm$/i.test(file.name) ? "video/webm" : /\.mp4$/i.test(file.name) ? "video/mp4" : file.type;
+  if (!["video/mp4", "video/webm"].includes(type)) throw new Error("Choose an MP4 or WebM file.");
+  if (file.size > 90 * 1024 * 1024) throw new Error("Choose a video file of 90 MB or smaller.");
+  setStatus("editor-status", "Uploading your original video…");
+  const response = await fetch("/api/video-media", {
+    method: "PUT", body: file,
+    headers: { "Content-Type": type, Authorization: "Bearer " + await user.getIdToken() }
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !mediaSource(data.url || "")) throw new Error(data.error || "The original video couldn’t be uploaded.");
+  return data.url;
+}
+
+get("video-file").addEventListener("change", event => {
+  if (!draft) return;
+  draft.mediaFile = event.target.files?.[0] || null;
+  showMediaFile();
+});
+
 form.addEventListener("submit", async event => {
   event.preventDefault();
   if (saving || !draft) return;
   const title = fields.title.value.trim();
-  const url = tiktokUrl(fields.tiktokUrl.value);
-  if (!title || !url) {
-    setStatus("editor-status", "Enter a name and a valid TikTok link.", true);
+  const rawUrl = fields.tiktokUrl.value.trim();
+  const url = tiktokUrl(rawUrl);
+  const rawMedia = fields.mediaUrl.value.trim();
+  const source = mediaSource(rawMedia);
+  const pending = event.submitter?.id === "save-draft" && !(draft.id && !draft.awaiting);
+  if (rawUrl && !url) {
+    setStatus("editor-status", "Enter a valid public TikTok post link.", true);
+    return;
+  }
+  if (rawMedia && !source) {
+    setStatus("editor-status", "Enter an HTTPS video URL.", true);
+    return;
+  }
+  if (!pending && (!title || !(url || source || draft.mediaFile))) {
+    setStatus("editor-status", "Enter a name and add a TikTok link or original video.", true);
+    return;
+  }
+  if (pending && draft.mediaFile && !url && !source) {
+    setStatus("editor-status", "To save this draft, add a TikTok link or a hosted video URL. The selected file uploads when you go live.", true);
     return;
   }
 
@@ -305,40 +461,70 @@ form.addEventListener("submit", async event => {
   lockControls(true);
   setStatus("editor-status");
   try {
-    const metadataWarning = await fillMetadata();
+    const metadataWarning = url ? await fillMetadata() : "";
     if (draft !== savingDraft) return;
     const thumbnail = fields.thumbnailUrl.value.trim();
     if (thumbnail && !assetUrl(thumbnail)) throw new Error("Enter a valid thumbnail URL.");
-    const items = [...draft.items.values()];
+    const items = [...savingDraft.items.values()];
+    let mediaUrl = source;
+    if (!pending && savingDraft.mediaFile) {
+      mediaUrl = await uploadMedia(savingDraft.mediaFile);
+      if (draft !== savingDraft) return;
+      savingDraft.mediaFile = null;
+      savingDraft.mediaUrl = mediaUrl;
+      fields.mediaUrl.value = mediaUrl;
+      get("video-file").value = "";
+      showMediaFile();
+    }
     const changes = {
-      title,
-      tiktokUrl: url,
-      caption: fields.caption.value.trim(),
-      thumbnailUrl: thumbnail,
-      captionAuto: draft.captionAuto,
-      thumbnailAuto: draft.thumbnailAuto,
-      sortOrder: Number(fields.sortOrder.value) || 0,
-      itemIds: items.map(item => item.id),
-      items,
+      title, tiktokUrl: url, mediaUrl,
+      caption: fields.caption.value.trim(), thumbnailUrl: thumbnail,
+      captionAuto: savingDraft.captionAuto, thumbnailAuto: savingDraft.thumbnailAuto,
+      sortOrder: Number(fields.sortOrder.value) || 0, itemIds: items.map(item => item.id), items,
       updatedAt: serverTimestamp()
     };
-    if (savingDraft.id) {
+    const fromDraft = savingDraft.awaiting ? doc(draftsRef, savingDraft.id) : null;
+    if (pending && !fromDraft) {
+      await addDoc(draftsRef, { ...changes, status: "awaiting", createdAt: serverTimestamp() });
+      addDraft = newDraft();
+    } else if (fromDraft) {
+      const target = doc(videosRef, savingDraft.id);
+      await runTransaction(db, async transaction => {
+        const queued = await transaction.get(fromDraft);
+        const existing = pending ? null : await transaction.get(target);
+        if (!queued.exists() || !sameVersion(savingDraft.version, queued.data().updatedAt)) {
+          throw new Error("This draft changed elsewhere. Reopen it before saving.");
+        }
+        if (pending) {
+          transaction.update(fromDraft, changes);
+        } else {
+          if (existing.exists()) throw new Error("This video is already published.");
+          transaction.set(target, {
+            ...changes, tiktokId: tiktokId({ ...savingDraft, tiktokUrl: url }),
+            isActive: true, createdAt: serverTimestamp()
+          });
+          transaction.delete(fromDraft);
+        }
+      });
+      editDrafts.delete(savingDraft.id);
+    } else if (savingDraft.id) {
       const ref = doc(videosRef, savingDraft.id);
       await runTransaction(db, async transaction => {
         const existing = await transaction.get(ref);
-        if (!existing.exists()) throw new Error("This video was deleted. Discard the draft to return to the list.");
-        if (!sameVersion(savingDraft.version, existing.data().updatedAt)) {
-          throw new Error("This video changed elsewhere. Discard this draft and reopen the updated video.");
+        if (!existing.exists() || !sameVersion(savingDraft.version, existing.data().updatedAt)) {
+          throw new Error("This video changed elsewhere. Reopen it before saving.");
         }
-        transaction.update(ref, changes);
+        transaction.update(ref, { ...changes, tiktokId: tiktokId({ tiktokUrl: url }) });
       });
       editDrafts.delete(savingDraft.id);
     } else {
-      await addDoc(videosRef, { ...changes, isActive: true, createdAt: serverTimestamp() });
+      await addDoc(videosRef, { ...changes, tiktokId: tiktokId({ tiktokUrl: url }), isActive: true, createdAt: serverTimestamp() });
       addDraft = newDraft();
     }
     if (draft === savingDraft) {
-      showEditor(null, metadataWarning ? "Video saved. " + metadataWarning : "Video saved.");
+      const status = pending ? "Draft saved." : savingDraft.id && !savingDraft.awaiting ? "Video saved." : "Video is live.";
+      const fileNote = pending && savingDraft.mediaFile ? " Select the original file again when you publish." : "";
+      showEditor(null, status + (metadataWarning ? " " + metadataWarning : "") + fileNote);
       get("view-tab").focus();
     }
   } catch (error) {
@@ -357,25 +543,41 @@ get("discard-video").addEventListener("click", () => {
   get("view-tab").focus();
 });
 get("delete-video").addEventListener("click", async () => {
-  if (!draft?.id || saving || !confirm("Delete this video from the public Videos page?")) return;
+  if (!draft?.id || saving || !confirm(draft.awaiting ? "Dismiss this draft?" : "Delete this video from the public Videos page?")) return;
   const deletingDraft = draft;
   lockControls(true);
   try {
-    await deleteDoc(doc(videosRef, deletingDraft.id));
+    if (deletingDraft.awaiting) {
+      const ref = doc(draftsRef, deletingDraft.id);
+      await runTransaction(db, async transaction => {
+        const entry = await transaction.get(ref);
+        if (!entry.exists() || !sameVersion(deletingDraft.version, entry.data().updatedAt)) {
+          throw new Error("The draft changed elsewhere. Reopen it before dismissing.");
+        }
+        if (deletingDraft.tiktokId) transaction.set(ref, {
+          tiktokId: deletingDraft.tiktokId, status: "dismissed", updatedAt: serverTimestamp()
+        });
+        else transaction.delete(ref);
+      });
+    } else {
+      await deleteDoc(doc(videosRef, deletingDraft.id));
+    }
     editDrafts.delete(deletingDraft.id);
-    if (draft === deletingDraft) showEditor(null, "Video deleted.");
+    if (draft === deletingDraft) showEditor(null, deletingDraft.awaiting ? "Draft dismissed." : "Video deleted.");
   } catch (error) {
     setStatus("editor-status", error.message || "Couldn’t delete the video.", true);
   } finally {
     lockControls(false);
   }
 });
-grid.addEventListener("click", event => {
+get("video-library").addEventListener("click", event => {
   const id = event.target.closest("[data-video-id]")?.dataset.videoId;
-  if (!id || !savedVideos.has(id)) return;
-  if (!editDrafts.has(id)) editDrafts.set(id, newDraft(savedVideos.get(id)));
+  const video = queuedVideos.get(id) || savedVideos.get(id);
+  if (!video) return;
+  if (!editDrafts.has(id)) editDrafts.set(id, newDraft(video));
   showEditor(editDrafts.get(id));
 });
+get("sync-tiktok").addEventListener("click", () => void syncTikTok(true));
 get("fetch-metadata").addEventListener("click", () => {
   if (!tiktokUrl(fields.tiktokUrl.value)) {
     setStatus("metadata-status", "Paste a valid TikTok link.", true);
@@ -426,7 +628,13 @@ onAuthStateChanged(auth, user => {
     setStatus("auth-status", "An admin session is required.");
     unsubscribe?.();
     unsubscribe = null;
+    unsubscribeDrafts?.();
+    unsubscribeDrafts = null;
+    clearInterval(pollTimer);
+    pollTimer = null;
+    publishedReady = draftsReady = autoSyncDisabled = false;
     savedVideos.clear();
+    queuedVideos.clear();
     editDrafts.clear();
     addDraft = newDraft();
     showEditor();

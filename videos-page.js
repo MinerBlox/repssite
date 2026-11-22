@@ -3,6 +3,8 @@ import { getApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.
 import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js";
 
+import { createNativePlayer } from "/native-video-player.js";
+
 const get = id => document.getElementById(id);
 const grid = get("video-grid");
 const dialog = get("video-details");
@@ -48,12 +50,15 @@ function setPlayerMessage(text = "") {
 
 function stopPlayback() {
   player.querySelector("iframe")?.remove();
+  const local = player.querySelector(".native-player");
+  local?.querySelector("video")?.pause();
+  local?.remove();
   poster.hidden = false;
 }
 
 function setPlayerAvailability() {
-  play.hidden = !detail?.postId;
-  setPlayerMessage(detail?.postId ? "" : detail?.url && !detail.resolved
+  play.hidden = !(detail?.mediaUrl || detail?.postId);
+  setPlayerMessage(!play.hidden ? "" : detail?.url && !detail.resolved
     ? "Loading TikTok player…" : "This video is available on TikTok.");
 }
 
@@ -78,7 +83,7 @@ function showProfile(video, session) {
 function openMedia(video, url, initialCover) {
   stopPlayback();
   const session = {
-    id: video.id, url, postId: postId(url), savedThumbnail: video.thumbnailUrl,
+    id: video.id, url, postId: postId(url), mediaUrl: assetUrl(video.mediaUrl), savedThumbnail: video.thumbnailUrl,
     productKey: "", products: new Map(), resolved: !url
   };
   detail = session;
@@ -241,7 +246,8 @@ function renderItems(video, session) {
 function renderDetails(video, initialCover = "") {
   const url = tiktokUrl(video.tiktokUrl);
   const title = video.title || "Untitled video";
-  const session = detail?.id === video.id && detail.url === url ? detail : openMedia(video, url, initialCover);
+  const session = detail?.id === video.id && detail.url === url && detail.mediaUrl === assetUrl(video.mediaUrl)
+    ? detail : openMedia(video, url, initialCover);
   if (session.savedThumbnail !== video.thumbnailUrl) {
     session.savedThumbnail = video.thumbnailUrl;
     setImage(cover, assetUrl(video.thumbnailUrl) || assetUrl(session.metadata?.thumbnailUrl));
@@ -254,7 +260,21 @@ function renderDetails(video, initialCover = "") {
 }
 
 play.addEventListener("click", () => {
-  if (!detail?.postId || player.querySelector("iframe")) return;
+  if (!detail || player.querySelector("iframe, .native-player")) return;
+  if (detail.mediaUrl) {
+    const session = detail;
+    const native = createNativePlayer(detail.mediaUrl, get("details-title").textContent, () => {
+      if (detail !== session) return;
+      stopPlayback();
+      setPlayerMessage(session.postId ? "The video file could not load. Use Watch on TikTok." : "This video file could not load.");
+      play.focus();
+    });
+    poster.hidden = true;
+    player.append(native.element);
+    native.start();
+    return;
+  }
+  if (!detail.postId) return;
   const src = new URL("/player/v1/" + detail.postId, playerOrigin);
   src.search = new URLSearchParams({ autoplay: "1", rel: "0" });
   const iframe = document.createElement("iframe");
