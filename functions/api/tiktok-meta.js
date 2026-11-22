@@ -19,27 +19,36 @@ function decodeHtml(value = "") {
     .replace(/&#39;/g, "'")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
-    .replace(/&#(\d+);/g, (_, number) => String.fromCodePoint(parseInt(number, 10)))
+    .replace(/&#x([0-9a-f]+);/gi, (match, hex) => decodeCodePoint(match, parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (match, number) => decodeCodePoint(match, Number(number)))
     .trim();
 }
 
-function validateTikTokUrl(input) {
+function decodeCodePoint(original, codePoint) {
+  return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : original;
+}
+
+function validateTikTokUrl(input, base) {
   let parsed;
 
   try {
-    parsed = new URL(String(input || "").trim());
+    parsed = new URL(String(input || "").trim(), base);
   } catch {
     return null;
   }
 
-  if (!/^https?:$/.test(parsed.protocol)) return null;
+  if (parsed.protocol !== "https:" || parsed.port || parsed.username || parsed.password) return null;
 
-  const hostname = parsed.hostname.toLowerCase();
-  const allowed = hostname === "tiktok.com" || hostname.endsWith(".tiktok.com");
-  if (!allowed) return null;
+  const shortHost = ["vm.tiktok.com", "vt.tiktok.com"].includes(parsed.hostname);
+  const postHost = ["www.tiktok.com", "m.tiktok.com", "tiktok.com"].includes(parsed.hostname);
+  const postPath = /^\/@[^/]+\/(?:video|photo)\/\d+\/?$/i;
+  const shortPath = /^\/[a-z\d]+\/?$/i;
+  const sharePath = /^\/t\/[a-z\d]+\/?$/i;
+  if (!(shortHost && shortPath.test(parsed.pathname)) &&
+      !(postHost && (postPath.test(parsed.pathname) || sharePath.test(parsed.pathname)))) return null;
 
-  return parsed.toString();
+  parsed.hash = "";
+  return parsed.href;
 }
 
 function extractMeta(html, patterns) {
@@ -61,6 +70,8 @@ function cleanCaption(value) {
 async function fetchOEmbed(tiktokUrl) {
   const endpoint = `https://www.tiktok.com/oembed?url=${encodeURIComponent(tiktokUrl)}`;
   const response = await fetch(endpoint, {
+    redirect: "error",
+    signal: AbortSignal.timeout(7000),
     headers: {
       "accept": "application/json",
       "user-agent": "Mozilla/5.0 RepsCentralBot/1.0"
@@ -73,8 +84,8 @@ async function fetchOEmbed(tiktokUrl) {
 
   return {
     source: "oembed",
-    caption: cleanCaption(data.title || ""),
-    title: cleanCaption(data.title || ""),
+    caption: typeof data.title === "string" ? data.title.trim() : "",
+    title: typeof data.title === "string" ? data.title.trim() : "",
     thumbnailUrl: data.thumbnail_url || "",
     authorName: data.author_name || "",
     authorUrl: data.author_url || "",
@@ -83,18 +94,34 @@ async function fetchOEmbed(tiktokUrl) {
 }
 
 async function fetchHtmlMeta(tiktokUrl) {
-  const response = await fetch(tiktokUrl, {
-    redirect: "follow",
+  const options = {
+    redirect: "manual",
+    signal: AbortSignal.timeout(7000),
     headers: {
       "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "accept-language": "en-GB,en;q=0.9",
       "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
     }
-  });
+  };
 
-  if (!response.ok) throw new Error(`TikTok page returned ${response.status}`);
+  let url = tiktokUrl;
+  for (let redirects = 0; redirects <= 4; redirects += 1) {
+    const response = await fetch(url, options);
+    if (response.status >= 300 && response.status < 400) {
+      const destination = response.headers.get("location");
+      const nextUrl = destination && validateTikTokUrl(destination, url);
+      if (!nextUrl) throw new Error("TikTok did not redirect to a supported post.");
+      url = nextUrl;
+      continue;
+    }
+    if (!response.ok) throw new Error("TikTok page returned " + response.status);
+    return { url, ...readHtmlMeta(await response.text()) };
+  }
+  throw new Error("Too many TikTok redirects.");
+}
 
-  const html = await response.text();
+function readHtmlMeta(html) {
+
 
   const ogTitle = extractMeta(html, [
     /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']*)["'][^>]*>/i,
@@ -139,7 +166,7 @@ async function readUrl(request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  return body.url;
+  return body?.url;
 }
 
 export async function onRequest(context) {
@@ -160,30 +187,22 @@ export async function onRequest(context) {
     return json({ ok: false, error: "Paste a valid TikTok URL." }, 400);
   }
 
-  const attempts = [];
+  const oembed = await fetchOEmbed(tiktokUrl).catch(() => null);
+  if (oembed?.caption && oembed.thumbnailUrl) return json({ ok: true, url: tiktokUrl, ...oembed });
 
-  for (const fetcher of [fetchOEmbed, fetchHtmlMeta]) {
-    try {
-      const meta = await fetcher(tiktokUrl);
-
-      if (meta.caption || meta.thumbnailUrl || meta.authorName) {
-        return json({
-          ok: true,
-          url: tiktokUrl,
-          ...meta
-        });
-      }
-
-      attempts.push(`${meta.source}: no usable metadata`);
-    } catch (error) {
-      attempts.push(error.message || "metadata fetch failed");
-    }
+  const page = await fetchHtmlMeta(tiktokUrl).catch(() => null);
+  const resolved = page?.url && page.url !== tiktokUrl && !(page.caption && page.thumbnailUrl)
+    ? await fetchOEmbed(page.url).catch(() => null) : null;
+  const preferred = resolved || oembed || page;
+  const caption = resolved?.caption || oembed?.caption || page?.caption || "";
+  const thumbnailUrl = resolved?.thumbnailUrl || oembed?.thumbnailUrl || page?.thumbnailUrl || "";
+  if (caption || thumbnailUrl) {
+    return json({ ...preferred, ok: true, url: page?.url || tiktokUrl, caption, thumbnailUrl });
   }
 
   return json({
     ok: false,
     url: tiktokUrl,
-    error: "Could not fetch TikTok metadata. Paste the caption manually.",
-    attempts
+    error: "TikTok didn’t provide metadata. Try a public post link or enter the caption and thumbnail manually."
   }, 502);
 }
