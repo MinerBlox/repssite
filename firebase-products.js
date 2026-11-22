@@ -77,7 +77,12 @@ function updateMeta(){const c=document.getElementById("results-count"),copy=docu
 function setEmptyState(mode){const e=document.getElementById("empty-state");if(!e)return;const h=e.querySelector("h3"),p=e.querySelector("p");if(mode==="hidden"){e.style.display="none";return}if(mode==="loading"){if(h)h.textContent="Loading items";if(p)p.textContent="Getting things ready…";e.style.display="block";return}if(h)h.textContent="No items found";if(p)p.textContent="Try changing the search term or selecting a different category.";e.style.display="block"}
 function refreshEmptyState(){if(categoryLoading||searchLoading){setEmptyState("loading");return}if(visibleItems.length){setEmptyState("hidden");return}if(searchTerm.trim()){setEmptyState("empty");return}if(selectedCategory!=="All"){setEmptyState(indexedModeIds.length?"loading":"empty");return}setEmptyState("empty")}
 function renderChips(){const w=document.getElementById("category-chips");if(!w)return;if(!indexReady){w.innerHTML=`<span class="category-loading-label">Loading filters...</span>`;return}w.innerHTML=["All",...filterCategories].map(c=>`<button class="category-chip ${selectedCategory===c?"active":""}" type="button" data-category="${esc(c)}">${esc(c)}</button>`).join("")}
-function columns(){const g=document.getElementById("product-grid");if(!g)return 1;const w=g.clientWidth;return w<520?1:w<720?2:Math.max(1,Math.floor((w+16)/236))}
+function columns() {
+  const grid = document.getElementById("product-grid");
+  if (!grid?.clientWidth) return 1;
+  const tracks = getComputedStyle(grid).gridTemplateColumns;
+  return tracks === "none" ? 1 : tracks.trim().split(/\s+/).length;
+}
 function rowHeight(){const g=document.getElementById("product-grid"),f=g?.querySelector(".product-card");if(!f)return 360;const gap=parseFloat(getComputedStyle(g).rowGap||getComputedStyle(g).gap)||16;return Math.max(160,f.getBoundingClientRect().height+gap)}
 function targetCount(){const g=document.getElementById("product-grid");if(!g)return 0;const top=g.getBoundingClientRect().top+scrollY,depth=Math.max(innerHeight,scrollY+innerHeight-top);return(Math.ceil(depth/rowHeight())+2)*columns()}
 function appendUntilTarget(){const g=document.getElementById("product-grid");if(!g||categoryLoading||searchLoading)return;const t=Math.min(visibleItems.length,targetCount());if(t>renderedCount){g.insertAdjacentHTML("beforeend",visibleItems.slice(renderedCount,t).map(card).join(""));renderedCount=t}updateMeta();refreshEmptyState()}
@@ -87,7 +92,7 @@ function compactFromFull(item){return{id:String(item.id||""),name:String(item.na
 function deriveIndexMetadata(){const active=catalogIndex.filter(i=>i.isActive!==false&&!hidden(i.category));const counts=new Map();for(const item of active){const c=String(item.category||"").trim();if(c)counts.set(c,(counts.get(c)||0)+1)}categoryCounts=counts;filterCategories=[...counts.keys()].sort((a,b)=>a.localeCompare(b));allTotalCount=active.length;indexReady=true;renderChips();updateMeta()}
 async function loadCatalogIndex(){if(indexReady)return catalogIndex;if(indexPromise)return indexPromise;indexPromise=(async()=>{const full=await loadFullCatalog();catalogIndex=full.map(compactFromFull);catalogIndex.sort((a,b)=>(Number(a.sortOrder)||0)-(Number(b.sortOrder)||0));deriveIndexMetadata();return catalogIndex})().finally(()=>{indexPromise=null});return indexPromise}
 
-async function loadInitial(){loadingPage=true;try{firebaseItems=[...(await loadFullCatalog())];allFinished=true;lastAllDoc=null}finally{loadingPage=false}resetRendered();document.getElementById("spreadsheet-loading")?.style.setProperty("display","none");document.getElementById("product-grid")?.style.setProperty("display","grid")}
+async function loadInitial(){loadingPage=true;try{firebaseItems=[...(await loadFullCatalog())];allFinished=true;lastAllDoc=null}finally{loadingPage=false}document.getElementById("spreadsheet-loading")?.style.setProperty("display","none");document.getElementById("product-grid")?.style.setProperty("display","grid");resetRendered()}
 async function loadNextPage(){allFinished=true;appendUntilTarget()}
 
 async function loadItemsByIds(ids){if(!ids.length)return[];const full=await loadFullCatalog();const map=new Map(full.map(item=>[String(item.id),item]));return ids.map(id=>map.get(String(id))).filter(i=>i&&i.isActive!==false&&!hidden(i.category))}

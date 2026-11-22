@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <meta name="theme-color" content="#0a0a0b">
   <title>RepsCentral - Spreadsheet</title>
   <link rel="icon" href="systemimages/repscentrallogo.png">
   <link rel="shortcut icon" href="systemimages/repscentrallogo.png">
@@ -12,7 +13,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'DM Sans', sans-serif; min-height: 100vh; background: #0a0a0b; }
+    html { background: #0a0a0b; color-scheme: dark; }
+    body { font-family: 'DM Sans', sans-serif; min-height: 100vh; background: var(--bg, #0a0a0b); }
     a { text-decoration: none; }
     button, input { font-family: inherit; }
     button { border: none; cursor: pointer; background: none; }
@@ -647,10 +649,11 @@
     }
 
     @media (max-width: 520px) {
-      .product-grid,
-      .product-actions {
-        grid-template-columns: 1fr;
-      }
+      .product-grid { gap: 10px; }
+      .product-body { padding: 10px; }
+      .product-meta { flex-direction: column; align-items: flex-start; gap: 6px; }
+      .product-price-stack { flex-wrap: wrap; gap: 2px 6px; }
+      .product-actions { grid-template-columns: 1fr; gap: 4px; }
 
       .category-chip {
         flex-basis: calc((100% - 15px) / 3.5);
@@ -872,6 +875,10 @@
 
     function applyTheme() {
       document.body.className = theme;
+      const background = getComputedStyle(document.body).getPropertyValue('--bg').trim();
+      document.documentElement.style.backgroundColor = background;
+      document.documentElement.style.colorScheme = theme === 'light' ? 'light' : 'dark';
+      document.querySelector('meta[name="theme-color"]').content = background;
       const label = document.getElementById('theme-label');
       const icon = document.getElementById('theme-icon');
       if (label) label.textContent = theme === 'dark' ? 'Light' : 'Dark';
@@ -1108,7 +1115,7 @@ if (showSignupPopup) {
 }
 </script>
   <script src="image-performance.js?v=2026-08-13-1" defer></script>
-  <script type="module" src="firebase-products.js?v=2026-06-30-app-check-1"></script>
+  <script type="module" src="firebase-products.js?v=2026-11-22-mobile-grid"></script>
   <script type="module" src="site-analytics.js?v=2026-06-30-app-check-1"></script>
 </body>
 </html>

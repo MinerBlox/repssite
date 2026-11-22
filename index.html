@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0a0b">
   <title>Reps Central</title>
   <link rel="icon" href="systemimages/repscentrallogo.png">
   <link rel="shortcut icon" href="systemimages/repscentrallogo.png">
@@ -14,7 +15,8 @@
   <style>
     /* ── RESET & BASE ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'DM Sans', sans-serif; min-height: 100vh; }
+    html { background: #0a0a0b; color-scheme: dark; }
+    body { font-family: 'DM Sans', sans-serif; min-height: 100vh; background: var(--bg, #0a0a0b); }
     a { text-decoration: none; }
     button { border: none; cursor: pointer; font-family: inherit; background: none; }
 
@@ -954,6 +956,10 @@ const tools = [
 let theme = localStorage.getItem("rc-theme") || "dark";
 function applyTheme() {
   document.body.className = theme;
+  const background = getComputedStyle(document.body).getPropertyValue('--bg').trim();
+  document.documentElement.style.backgroundColor = background;
+  document.documentElement.style.colorScheme = theme === 'light' ? 'light' : 'dark';
+  document.querySelector('meta[name="theme-color"]').content = background;
   const label = document.getElementById("theme-label");
   const icon = document.getElementById("theme-icon");
   if (label) label.textContent = theme === "dark" ? "Light" : "Dark";
