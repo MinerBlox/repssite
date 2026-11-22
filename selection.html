@@ -113,12 +113,26 @@
       font-size: 13px;
       text-align: center;
     }
-    @media (max-width: 640px) {
-      main.selection { padding: 24px 12px 18px; gap: 18px; }
+    @media (max-width: 820px) {
+      #root { min-height: 100svh; }
+      #banner, #root > nav, #root > footer { display: none; }
+      main.selection {
+        grid-template-rows: auto auto auto;
+        align-content: center;
+        padding: 12px;
+        gap: 12px;
+      }
       .selection-heading { font-size: clamp(16px, 6.25vw, 32px); white-space: nowrap; }
-      .selection-grid { grid-template-columns: 1fr; justify-items: center; align-content: start; gap: 14px; }
-      .selection-card { width: min(100%, 300px); aspect-ratio: 1; padding: 14px 12px 16px; gap: 12px; border-radius: 14px; }
-      .selection-image { min-height: clamp(132px, 40vw, 200px); border-radius: 8px; }
+      .selection-grid { grid-template-columns: 1fr; justify-items: center; gap: 10px; }
+      .selection-card {
+        width: min(100%, 300px);
+        width: min(100%, 300px, max(160px, calc((100svh - 136px) / 2)));
+        aspect-ratio: 1;
+        padding: 12px;
+        gap: 8px;
+        border-radius: 14px;
+      }
+      .selection-image { min-height: 64px; border-radius: 8px; }
       .selection-title {
         min-height: 0;
         font-size: clamp(17px, 4.6vw, 22px);
@@ -126,6 +140,7 @@
         text-wrap: balance;
       }
       .selection-description { padding: 0; font-size: 13px; line-height: 1.45; }
+      .selection-note { font-size: 12px; line-height: 1.4; }
     }
     @media (prefers-reduced-motion: reduce) {
       a.selection-card { transition: none; }
@@ -133,7 +148,6 @@
     }
     footer { width: min(1380px, 100%); margin: 0 auto; padding: 0 40px 36px; }
     .footer-box { border-top: 1px solid var(--border); padding-top: 24px; color: var(--muted); font-size: 12px; }
-    @media (max-width: 820px) { #banner { display: none; } nav { height: 56px; padding: 0 14px; } .nav-logo { flex: 1; min-width: 0; margin-right: 0; font-size: 16px; } .nav-links { display: none; } .mobile-nav { display: block; } .nav-theme { width: 36px; height: 36px; padding: 0; } #theme-label { display: none; } footer { padding: 0 16px 28px; } }
   </style>
 </head>
 <body class="dark">
