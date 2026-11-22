@@ -42,6 +42,12 @@ export async function onRequestGet({ request, env }) {
     );
   }
 
+  const url = new URL(request.url);
+  const ids = url.searchParams.getAll("ids");
+  if (ids.length > 50 || ids.some(id => !id || id.length > 256)) {
+    return json({ error: "Request up to 50 valid product IDs." }, 400, { "Cache-Control": "no-store" });
+  }
+
   let catalog;
   try {
     catalog = await readCatalog(env.CATALOG_INDEX_BUCKET);
@@ -61,7 +67,16 @@ export async function onRequestGet({ request, env }) {
     );
   }
 
-  const url = new URL(request.url);
+  if (ids.length) {
+    const requestedIds = new Set(ids);
+    const products = catalog.products.filter(item => requestedIds.has(String(item?.id || "")));
+    return json(
+      { products, generatedAt: catalog.generatedAt, version: catalog.version },
+      200,
+      { "Cache-Control": "public, max-age=300, s-maxage=900" }
+    );
+  }
+
   const requested = String(url.searchParams.get("id") || "").trim();
 
   if (requested) {

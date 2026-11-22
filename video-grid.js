@@ -59,7 +59,7 @@ export function gridMessage(grid, message) {
 }
 
 const coverObservers = new WeakMap();
-const pendingCovers = new Map();
+const pendingMetadata = new Map();
 
 function expiredCover(url) {
   const params = new URL(url).searchParams;
@@ -80,25 +80,25 @@ function addCoverImage(cover, url, failure) {
   cover.insertBefore(image, cover.querySelector(".video-tile-count"));
 }
 
-function loadCover(url) {
-  if (pendingCovers.has(url)) return pendingCovers.get(url);
+export function fetchVideoMetadata(url) {
+  if (pendingMetadata.has(url)) return pendingMetadata.get(url);
   const endpoint = new URL("/api/tiktok-meta", location.origin);
   endpoint.searchParams.set("url", url);
   const request = fetch(endpoint)
     .then(response => response.ok ? response.json() : null)
-    .then(metadata => assetUrl(metadata?.thumbnailUrl))
-    .catch(() => "")
-    .finally(() => pendingCovers.delete(url));
-  pendingCovers.set(url, request);
+    .catch(() => null)
+    .finally(() => pendingMetadata.delete(url));
+  pendingMetadata.set(url, request);
   return request;
 }
 
 async function refreshCover(cover, url) {
-  const image = await loadCover(url);
+  const metadata = await fetchVideoMetadata(url);
+  const image = assetUrl(metadata?.thumbnailUrl);
   if (image && cover.isConnected) addCoverImage(cover, image);
 }
 
-export function renderVideoGrid(grid, videos, emptyMessage) {
+export function renderVideoGrid(grid, videos, emptyMessage, { showTitle = true } = {}) {
   coverObservers.get(grid)?.disconnect();
   coverObservers.delete(grid);
   if (!videos.length) {
@@ -138,10 +138,16 @@ export function renderVideoGrid(grid, videos, emptyMessage) {
       missingCovers.set(cover, source);
     }
 
-    const title = document.createElement("span");
-    title.className = "video-tile-title";
-    title.textContent = video.title || "Untitled video";
-    button.append(cover, title);
+    const label = video.title || "Untitled video";
+    button.append(cover);
+    if (showTitle) {
+      const title = document.createElement("span");
+      title.className = "video-tile-title";
+      title.textContent = label;
+      button.append(title);
+    } else {
+      button.setAttribute("aria-label", label + ", " + count.textContent);
+    }
     fragment.append(button);
   }
   grid.replaceChildren(fragment);

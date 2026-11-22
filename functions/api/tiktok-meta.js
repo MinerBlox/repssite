@@ -114,6 +114,7 @@ async function fetchOEmbed(tiktokUrl) {
 
   return {
     source: "oembed",
+    postId: /^\d+$/.test(String(data.embed_product_id || "")) ? String(data.embed_product_id) : "",
     caption: typeof data.title === "string" ? data.title.trim() : "",
     title: typeof data.title === "string" ? data.title.trim() : "",
     thumbnailUrl: safeCoverUrl(data.thumbnail_url),
@@ -161,6 +162,9 @@ function readHtmlMeta(html, pageUrl) {
     meta.get("og:image"), meta.get("twitter:image")].map(safeCoverUrl).find(Boolean) || "";
   return {
     source: post ? "post-metadata" : "html",
+    postId: postId || "",
+    authorAvatar: [post?.author?.avatarLarger, post?.author?.avatarMedium, post?.author?.avatarThumb].map(safeCoverUrl).find(Boolean) || "",
+    authorHandle: typeof post?.author?.uniqueId === "string" ? post.author.uniqueId : "",
     caption,
     title: cleanCaption(meta.get("og:title") || ""),
     thumbnailUrl,
@@ -208,7 +212,13 @@ export async function onRequest(context) {
   const caption = resolved?.caption || oembed?.caption || page?.caption || "";
   const thumbnailUrl = resolved?.thumbnailUrl || oembed?.thumbnailUrl || page?.thumbnailUrl || "";
   if (caption || thumbnailUrl) {
-    return json({ ...preferred, ok: true, url: page?.url || tiktokUrl, caption, thumbnailUrl });
+    return json({
+      ...preferred, ok: true, url: page?.url || tiktokUrl, caption, thumbnailUrl,
+      postId: page?.postId || resolved?.postId || oembed?.postId || "",
+      authorAvatar: page?.authorAvatar || "",
+      authorHandle: page?.authorHandle || "",
+      authorName: page?.authorName || preferred?.authorName || ""
+    });
   }
 
   return json({

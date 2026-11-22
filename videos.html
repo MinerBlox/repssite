@@ -39,19 +39,75 @@
     .eyebrow { width: max-content; margin-bottom: 14px; padding: 6px 10px; border: 1px solid rgba(77,166,255,0.28); border-radius: 999px; background: rgba(77,166,255,0.12); color: var(--blue); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
     .page-title { font-family: 'Syne', sans-serif; font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(34px, 6vw, 58px); line-height: 0.95; letter-spacing: -1.2px; margin-bottom: 10px; }
     .hero-copy { max-width: 520px; color: var(--muted); font-size: 15px; line-height: 1.7; }
-    .video-details { width: min(620px, calc(100% - 32px)); max-height: 85vh; margin: auto; padding: clamp(16px, 4vw, 26px); border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--text); }
-    .video-details::backdrop { background: rgba(0, 0, 0, .66); }
-    .video-details-head { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
-    .video-details h2 { font: 800 24px / 1.2 'Syne', sans-serif; }
-    .video-details h3 { margin-bottom: 10px; font-size: 15px; }
-    .details-caption { margin: 12px 0; color: var(--muted); line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
-    .details-action { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); color: var(--text); font-size: 13px; font-weight: 700; }
-    .details-watch { margin: 4px 0 18px; color: var(--blue); }
-    .details-items { display: grid; gap: 7px; list-style: none; }
-    .details-item { min-height: 44px; display: flex; align-items: center; gap: 9px; padding: 5px 9px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
-    .details-item:hover { border-color: var(--blue); }
-    .details-item img { width: 32px; height: 32px; object-fit: contain; }
+    .video-details {
+      --player-height: min(79vh, 720px);
+      width: min(1150px, calc(100% - 32px));
+      max-height: calc(100dvh - 32px);
+      margin: auto;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--surface);
+      color: var(--text);
+    }
+    .video-details::backdrop { background: rgba(0, 0, 0, .76); }
+    .details-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+    .details-close { position: absolute; top: 12px; right: 12px; z-index: 2; }
+    .details-close button { width: 38px; height: 38px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); color: var(--text); font-size: 23px; line-height: 1; }
+    .details-stage { display: grid; place-items: center; padding: 14px; background: #0a0b0e; }
+    .details-player {
+      position: relative;
+      width: min(100%, calc(var(--player-height) * 9 / 16));
+      aspect-ratio: 9 / 16;
+      overflow: hidden;
+      border-radius: 12px;
+      background: #14161d;
+    }
+    .details-player iframe, .details-poster, .details-poster img { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .details-player iframe { border: 0; }
+    .details-poster { display: grid; place-items: center; }
+    .details-poster img { object-fit: cover; }
+    .details-play {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      background: #121823db;
+      color: #fff;
+      font-size: 24px;
+    }
+    .details-play:hover { background: #223c5c; }
+    .details-player-message { position: absolute; bottom: 0; inset-inline: 0; padding: 10px 12px; text-align: center; color: #fff; background: #090a0bdb; font-size: 13px; }
+    .details-panel { min-width: 0; max-height: calc(var(--player-height) + 28px); overflow: auto; padding: 20px; }
+    .details-author { display: flex; align-items: center; gap: 10px; padding-right: 38px; }
+    .details-avatar { flex: none; width: 42px; height: 42px; border-radius: 50%; background: var(--surface2); object-fit: cover; }
+    .details-author-name { font-weight: 800; }
+    .details-handle { margin-top: 2px; color: var(--muted); font-size: 13px; }
+    .details-panel h2 { margin-top: 17px; font: 800 clamp(19px, 2vw, 26px) / 1.2 'Syne', sans-serif; overflow-wrap: anywhere; }
+    .details-caption { margin-top: 9px; color: var(--muted); line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .details-watch { display: inline-block; margin-top: 11px; color: var(--blue); font-size: 13px; font-weight: 700; }
+    .details-items-section { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .details-items-section h3 { margin-bottom: 12px; font-size: 15px; }
+    .details-items { display: grid; gap: 8px; list-style: none; }
+    .details-item { display: grid; grid-template-columns: 50px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); }
+    .details-item-image { width: 50px; height: 50px; overflow: hidden; border-radius: 8px; background: var(--surface); }
+    .details-item-image img { display: block; width: 100%; height: 100%; object-fit: contain; }
+    .details-item-name { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+    .details-item-price { margin-top: 3px; color: var(--muted); font-size: 13px; }
+    .details-item-link { display: inline-grid; place-items: center; min-height: 40px; padding: 0 12px; border-radius: 8px; background: var(--blue); color: #081722; font-size: 12px; font-weight: 800; }
+    .details-item-link:hover { filter: brightness(1.12); }
+    .details-item-link[aria-disabled="true"] { opacity: .55; }
+    .details-empty, .details-loading { color: var(--muted); font-size: 14px; }
+    .video-details :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
     [hidden] { display: none !important; }
+    @media (max-width: 700px) {
+      .video-details { --player-height: min(53vh, 460px); width: calc(100% - 20px); max-height: calc(100dvh - 20px); }
+      .details-layout { grid-template-columns: 1fr; }
+      .details-stage { padding: 12px; }
+      .details-panel { max-height: none; overflow: visible; padding: 16px; }
+    }
     footer { max-width: 1380px; margin: 0 auto; padding: 0 40px 36px; }
     .footer-box { border-top: 1px solid var(--border); padding-top: 24px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
     @media (max-width: 820px) { #banner { padding: 9px 14px; font-size: 12px; line-height: 1.35; } nav { height: 56px; padding: 0 14px; } .nav-logo { flex: 1; min-width: 0; margin-right: 0; font-size: 16px; } .nav-links { display: none; } .mobile-nav { display: block; } .nav-theme { width: 36px; height: 36px; padding: 0; } #theme-label { display: none; } main { padding: 34px 16px 56px; } .hero { display: block; } .hero-copy { margin-top: 16px; } footer { padding: 0 16px 28px; } }
@@ -91,17 +147,39 @@
         </div>
         <p class="hero-copy">Find the exact items from each TikTok video. Open a video, then jump straight to every linked item.</p>
       </section>
-      <section class="video-grid" id="video-grid" aria-label="Videos"><p class="video-grid-message">Loading videos…</p></section>
+      <section class="video-grid video-grid--public" id="video-grid" aria-label="Videos"><p class="video-grid-message">Loading videos…</p></section>
       <dialog class="video-details" id="video-details" aria-labelledby="details-title">
-        <div class="video-details-head">
-          <h2 id="details-title"></h2>
-          <form method="dialog"><button class="details-action" type="submit">Close</button></form>
+        <form class="details-close" method="dialog">
+          <button type="submit" aria-label="Close video" autofocus>×</button>
+        </form>
+        <div class="details-layout">
+          <div class="details-stage">
+            <div class="details-player" id="details-player">
+              <div class="details-poster" id="details-poster">
+                <img id="details-cover" alt="" hidden>
+                <button class="details-play" id="details-play" type="button" aria-label="Play video" hidden>▶</button>
+                <p class="details-player-message" id="details-player-message" role="status" hidden></p>
+              </div>
+            </div>
+          </div>
+          <section class="details-panel">
+            <div class="details-author">
+              <img class="details-avatar" id="details-avatar" src="/systemimages/repscentrallogo.png" alt="">
+              <div>
+                <p class="details-author-name" id="details-author">Reps Central</p>
+                <p class="details-handle" id="details-handle" hidden></p>
+              </div>
+            </div>
+            <h2 id="details-title"></h2>
+            <p class="details-caption" id="details-caption" hidden></p>
+            <a class="details-watch" id="details-watch" target="_blank" rel="noopener noreferrer" hidden>Watch on TikTok ↗</a>
+            <section class="details-items-section" aria-labelledby="details-items-title">
+              <h3 id="details-items-title">Items in this video</h3>
+              <p class="details-empty" id="details-empty" hidden>No items have been linked yet.</p>
+              <ul class="details-items" id="details-items"></ul>
+            </section>
+          </section>
         </div>
-        <p class="details-caption" id="details-caption"></p>
-        <a class="details-action details-watch" id="details-watch" target="_blank" rel="noopener noreferrer">Watch on TikTok ↗</a>
-        <h3>Items in this video</h3>
-        <p id="details-empty" hidden>No items have been linked yet.</p>
-        <ul class="details-items" id="details-items"></ul>
       </dialog>
     </main>
     <footer><div class="footer-box"><span>© 2026 repscentral. All rights reserved.</span><span>Videos powered by TikTok links and linked spreadsheet items.</span></div></footer>

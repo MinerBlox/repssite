@@ -158,6 +158,7 @@ function productSnapshot(item) {
     name: String(item.name || item.title || "Unnamed item"),
     category: String(item.category || ""),
     imageUrl: String(item.imageUrl || item.image || ""),
+    agentUrl: assetUrl(item.agentUrl || item.agentLink),
     price: item.price ?? item.priceCny ?? ""
   };
 }
