@@ -38,7 +38,7 @@
       display: grid;
       grid-template-rows: auto 1fr auto;
       gap: 20px;
-      width: min(1380px, 100%);
+      width: min(1140px, 100%);
       margin: 0 auto;
       padding: clamp(24px, 3vw, 40px) 40px 20px;
     }
@@ -114,11 +114,18 @@
       text-align: center;
     }
     @media (max-width: 640px) {
-      main.selection { padding: 24px 16px 18px; gap: 18px; }
-      .selection-grid { grid-template-columns: 1fr; gap: 16px; }
-      .selection-card { padding: 20px 14px 24px; gap: 16px; }
-      .selection-image { flex: none; min-height: 0; aspect-ratio: 4 / 3; }
-      .selection-title { min-height: 0; }
+      main.selection { padding: 24px 12px 18px; gap: 18px; }
+      .selection-heading { font-size: clamp(16px, 6.25vw, 32px); white-space: nowrap; }
+      .selection-grid { gap: 10px; }
+      .selection-card { padding: 14px 8px 16px; gap: 12px; border-radius: 14px; }
+      .selection-image { min-height: clamp(104px, 30vw, 176px); border-radius: 8px; }
+      .selection-title {
+        min-height: 2.3em;
+        font-size: clamp(12px, 3.5vw, 20px);
+        line-height: 1.15;
+        text-wrap: balance;
+      }
+      .selection-description { padding: 0; font-size: 13px; line-height: 1.45; }
     }
     @media (prefers-reduced-motion: reduce) {
       a.selection-card { transition: none; }
