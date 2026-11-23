@@ -40,8 +40,10 @@
     .page-title { font-family: 'Syne', sans-serif; font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(34px, 6vw, 58px); line-height: 0.95; letter-spacing: -1.2px; margin-bottom: 10px; }
     .hero-copy { max-width: 520px; color: var(--muted); font-size: 15px; line-height: 1.7; }
     .video-details {
-      --player-height: min(79vh, 720px);
-      width: min(1150px, calc(100% - 32px));
+      --player-height: min(calc(100dvh - 62px), 720px);
+      --player-width: calc(var(--player-height) * 9 / 16);
+      --stage-width: calc(var(--player-width) + 28px);
+      width: min(calc(var(--stage-width) + 510px), calc(100% - 32px));
       max-height: calc(100dvh - 32px);
       margin: auto;
       overflow: auto;
@@ -55,13 +57,13 @@
       -webkit-backdrop-filter: blur(12px);
       backdrop-filter: blur(12px);
     }
-    .details-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+    .details-layout { display: grid; grid-template-columns: var(--stage-width) minmax(0, 1fr); }
     .details-close { position: absolute; top: 12px; right: 12px; z-index: 2; }
     .details-close button { width: 38px; height: 38px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); color: var(--text); font-size: 23px; line-height: 1; }
     .details-stage { display: grid; place-items: center; padding: 14px; background: #0a0b0e; }
     .details-player {
       position: relative;
-      width: min(100%, calc(var(--player-height) * 9 / 16));
+      width: min(100%, var(--player-width));
       aspect-ratio: 9 / 16;
       overflow: hidden;
       border-radius: 12px;
@@ -69,18 +71,55 @@
     }
     .details-player iframe, .details-poster, .details-poster img { position: absolute; inset: 0; width: 100%; height: 100%; }
     .details-player iframe { border: 0; }
-    .native-player, .native-player video { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .native-player, .native-player video, .player-photo { position: absolute; inset: 0; width: 100%; height: 100%; }
     .native-player { background: #090a0c; }
-    .native-player video { object-fit: contain; cursor: pointer; }
-    .native-controls {
-      position: absolute; inset: auto 0 0; display: grid; gap: 6px;
-      padding: 14px 10px 9px; color: #fff; background: linear-gradient(transparent, #05060aea);
+    .native-player video, .player-photo { object-fit: contain; }
+    .native-player video { cursor: pointer; }
+    .player-photo { touch-action: pan-y; }
+    .player-logo {
+      position: absolute; top: 15px; left: 12px; z-index: 1;
+      display: flex; align-items: center; gap: 6px; pointer-events: none;
+      color: #fff; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 800;
+      text-shadow: 0 1px 5px #000, 0 0 12px #000;
     }
-    .native-controls input { width: 100%; accent-color: #4da6ff; }
-    .native-control-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
-    .native-control-bar button:disabled { opacity: .55; cursor: default; }
-    .native-control-bar button { padding: 6px; min-height: 34px; color: inherit; font-size: 12px; font-weight: 700; }
-    .native-time { margin-right: auto; color: #e2e6ee; font: 11px/1.2 'DM Sans', sans-serif; white-space: nowrap; }
+    .player-logo img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+    .player-progress {
+      --progress: 0%;
+      position: absolute; inset: 0 0 auto; z-index: 1; width: 100%; height: 12px; margin: 0;
+      appearance: none; cursor: pointer;
+      background: linear-gradient(to right, #fff var(--progress), #ffffff52 var(--progress)) top / 100% 3px no-repeat;
+    }
+    .player-progress::-webkit-slider-thumb { appearance: none; width: 7px; height: 8px; background: transparent; }
+    .player-progress::-moz-range-thumb { width: 7px; height: 8px; border: 0; background: transparent; }
+    .player-progress:disabled { cursor: default; }
+    .native-player:has(video)::after {
+      content: ""; position: absolute; inset: auto 0 0; height: 70px;
+      background: linear-gradient(transparent, #08090ba6); pointer-events: none;
+    }
+    .player-icon {
+      display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: #fff;
+      filter: drop-shadow(0 1px 3px #000a);
+    }
+    .player-icon svg { width: 24px; height: 24px; }
+    .player-icon:is(:hover, :focus-visible) { background: #16191e66; }
+    .player-toggle { position: absolute; left: 50%; bottom: 7px; z-index: 1; transform: translateX(-50%); }
+    .player-volume { position: absolute; right: 7px; bottom: 7px; z-index: 1; display: grid; justify-items: center; }
+    .player-volume-slider {
+      position: absolute; bottom: 100%; width: 40px; height: 112px; padding: 10px 0;
+      display: grid; place-items: center; border-radius: 18px; background: #11151ddd;
+      opacity: 0; visibility: hidden; transform: translateY(8px);
+      transition: opacity 160ms, transform 160ms, visibility 160ms;
+    }
+    .player-volume:is(:hover, .is-open) .player-volume-slider { opacity: 1; visibility: visible; transform: translateY(0); }
+    .player-volume-slider input { writing-mode: vertical-lr; direction: rtl; width: 24px; height: 100%; accent-color: #fff; cursor: pointer; touch-action: none; }
+    .player-previous, .player-next { position: absolute; top: 50%; transform: translateY(-50%); background: #11151d88; }
+    .player-previous { left: 8px; }
+    .player-next { right: 8px; }
+    .player-photo-count {
+      position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+      padding: 5px 10px; border-radius: 16px; background: #11151dcc; color: #fff; font-size: 12px;
+    }
+    @media (prefers-reduced-motion: reduce) { .player-volume-slider { transition: none; } }
     @keyframes rc-question-pop {
       0%, 100% { opacity: 0.08; transform: translateY(7px) scale(0.72); }
       45% { opacity: 0.52; transform: translateY(-7px) scale(1.08); }
@@ -223,6 +262,10 @@
         <div class="details-layout">
           <div class="details-stage">
             <div class="details-player" id="details-player">
+              <div class="player-logo" aria-hidden="true">
+                <img src="/systemimages/repscentrallogo.png" alt="">
+                <span>repscentral</span>
+              </div>
               <div class="loading-question-card" id="details-loader" role="status" hidden>
                 <span aria-hidden="true" class="loading-question" style="--x:10%;--y:16%;--size:18px;--duration:3.2s;--delay:-.4s">?</span>
                 <span aria-hidden="true" class="loading-question" style="--x:72%;--y:12%;--size:28px;--duration:3.8s;--delay:-1.6s">?</span>
@@ -268,6 +311,6 @@
     applyTheme();
   </script>
 
-  <script type="module" src="/videos-page.js?v=tikwm-browser"></script>
+  <script type="module" src="/videos-page.js?v=player-controls"></script>
 </body>
 </html>

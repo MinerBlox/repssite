@@ -3,7 +3,8 @@ import { getApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.
 import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js";
 
-import { createNativePlayer, createTikTokPlayer } from "/native-video-player.js?v=tikwm";
+import { createNativePlayer, createSlideshow, createTikTokPlayer } from "/native-video-player.js?v=controls";
+import { forgetTikTokMedia, lookupTikTokMedia, mediaCacheKey, readTikTokMedia } from "/tiktok-playback-cache.js";
 
 const get = id => document.getElementById(id);
 const grid = get("video-grid");
@@ -18,7 +19,6 @@ const avatar = get("details-avatar");
 const list = get("details-items");
 const defaultAvatar = "/systemimages/repscentrallogo.png";
 const maxProducts = 50;
-const tikwmOrigin = "https://www.tikwm.com";
 let videosById = new Map();
 let detail = null;
 let activePlayer = null;
@@ -265,39 +265,16 @@ function renderDetails(video, initialCover = "") {
   renderItems(video, session);
 }
 
-function tikwmMediaUrl(value) {
-  if (typeof value !== "string" || !value.trim()) return "";
-  try {
-    const url = new URL(value, tikwmOrigin);
-    return url.protocol === "https:" && !url.username && !url.password && !url.port ? url.href : "";
-  } catch {
-    return "";
-  }
-}
-
-async function resolvePlayback(session) {
-  if (session.mediaUrl || session.slideshow && session.postId) return session.mediaUrl;
-
+async function resolvePlayback(session, key) {
   const resolution = new AbortController();
   session.resolution = resolution;
   poster.hidden = true;
   loader.hidden = false;
   const timeout = setTimeout(() => resolution.abort(), 8000);
   try {
-    const url = new URL(session.url);
-    url.search = "";
-    const response = await fetch(tikwmOrigin + "/api/", {
-      method: "POST",
-      body: new URLSearchParams({ url: url.href, hd: "1" }),
-      credentials: "omit",
-      signal: resolution.signal
-    });
-    if (response.ok) {
-      const result = await response.json();
-      if (result.code === 0) return tikwmMediaUrl(result.data?.hdplay) || tikwmMediaUrl(result.data?.play);
-    }
+    return await lookupTikTokMedia(key, resolution.signal);
   } catch {
-    // Closing the dialog cancels the request. A failed lookup restores the poster.
+    return null;
   } finally {
     clearTimeout(timeout);
     if (session.resolution === resolution) {
@@ -305,13 +282,14 @@ async function resolvePlayback(session) {
       loader.hidden = true;
     }
   }
-  return "";
 }
 
-async function startPlayback() {
+async function startPlayback(allowCached = true) {
   const session = detail;
   if (!session || activePlayer || session.resolution || !dialog.open || !(session.mediaUrl || session.url)) return;
-  const mediaUrl = await resolvePlayback(session);
+  const key = !session.mediaUrl && session.url ? mediaCacheKey(session.url) : "";
+  const cached = key && allowCached ? readTikTokMedia(key) : null;
+  const media = cached || (key ? await resolvePlayback(session, key) : null);
   if (detail !== session || !dialog.open) return;
   const title = get("details-title").textContent;
   const finish = () => {
@@ -329,21 +307,42 @@ async function startPlayback() {
     play.focus();
   };
 
-  if (mediaUrl) {
-    activePlayer = createNativePlayer(mediaUrl, title, fail, finish);
+  function handleMediaError() {
+    if (detail !== session || !dialog.open) return;
+    if (media && key) forgetTikTokMedia(key, media);
+    if (cached) {
+      stopPlayback();
+      void startPlayback(false);
+    } else if (session.slideshow && session.postId) {
+      stopPlayback();
+      mount(createTikTokPlayer(session.postId, title, { onEnded: finish, onError: fail, slideshow: true }));
+    } else {
+      fail();
+    }
+  }
+
+  function mount(current) {
+    activePlayer = current;
+    session.ended = false;
+    poster.hidden = true;
+    player.append(current.element);
+    current.start();
+  }
+
+  const videoUrl = session.mediaUrl || media?.videoUrl;
+  if (media?.images.length) {
+    session.slideshow = true;
+    mount(createSlideshow(media.images, title, handleMediaError));
+  } else if (videoUrl) {
+    mount(createNativePlayer(videoUrl, title, handleMediaError, finish));
   } else if (session.slideshow && session.postId) {
-    activePlayer = createTikTokPlayer(session.postId, title, { onEnded: finish, onError: fail, slideshow: true });
+    mount(createTikTokPlayer(session.postId, title, { onEnded: finish, onError: fail, slideshow: true }));
   } else {
     fail();
-    return;
   }
-  session.ended = false;
-  poster.hidden = true;
-  player.append(activePlayer.element);
-  activePlayer.start();
 }
 
-play.addEventListener("click", startPlayback);
+play.addEventListener("click", () => void startPlayback());
 
 avatar.addEventListener("error", () => {
   if (avatar.getAttribute("src") !== defaultAvatar) setImage(avatar, defaultAvatar);

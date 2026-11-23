@@ -1,3 +1,18 @@
+const icons = {
+  play: '<path fill="currentColor" d="M8 5v14l11-7z"/>',
+  pause: '<path fill="currentColor" d="M7 5h4v14H7zm6 0h4v14h-4z"/>',
+  volume: '<path d="M3 9v6h4l5 4V5L7 9H3zm13 0a4 4 0 0 1 0 6m2-8a7 7 0 0 1 0 10"/>',
+  muted: '<path d="M3 9v6h4l5 4V5L7 9H3zm13 1 5 5m0-5-5 5"/>',
+  previous: '<path d="m15 5-7 7 7 7"/>',
+  next: '<path d="m9 5 7 7-7 7"/>'
+};
+
+function setIcon(button, icon) {
+  if (button.dataset.icon === icon) return;
+  button.dataset.icon = icon;
+  button.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + icons[icon] + '</svg>';
+}
+
 function control(label, action) {
   const button = document.createElement("button");
   button.type = "button";
@@ -6,23 +21,36 @@ function control(label, action) {
   return button;
 }
 
+function iconControl(label, icon, action) {
+  const button = control(label, action);
+  button.className = "player-icon";
+  button.setAttribute("aria-label", label);
+  setIcon(button, icon);
+  return button;
+}
+
 function formatTime(seconds) {
   const total = Number.isFinite(seconds) ? Math.floor(seconds) : 0;
   return Math.floor(total / 60) + ":" + String(total % 60).padStart(2, "0");
 }
 
-export function createNativePlayer(url, title, onError, onEnded) {
+function playerSurface(label) {
   const element = document.createElement("div");
   element.className = "native-player";
   element.setAttribute("role", "group");
-  element.setAttribute("aria-label", title + " video player");
+  element.setAttribute("aria-label", label);
+  return element;
+}
 
+export function createNativePlayer(url, title, onError, onEnded) {
+  const element = playerSurface(title + " video player");
   const video = document.createElement("video");
   video.playsInline = true;
   video.preload = "metadata";
+  video.volume = 0.75;
   video.src = url;
   video.addEventListener("error", onError, { once: true });
-  if (onEnded) video.addEventListener("ended", onEnded, { once: true });
+  video.addEventListener("ended", onEnded, { once: true });
 
   function start() {
     video.play().catch(error => {
@@ -31,33 +59,81 @@ export function createNativePlayer(url, title, onError, onEnded) {
       video.play().catch(() => {});
     });
   }
+
   function togglePlayback() {
-    if (video.paused || video.ended) start();
-    else video.pause();
+    if (!video.paused) {
+      video.pause();
+      return;
+    }
+    if (video.muted && Number(volume.value) > 0) video.muted = false;
+    start();
   }
 
-  const playback = control("Play", togglePlayback);
-  const sound = control("Mute", () => { video.muted = !video.muted; });
-  const fullscreen = control("Fullscreen", () => {
-    if (document.fullscreenElement) void document.exitFullscreen();
-    else if (element.requestFullscreen) void element.requestFullscreen().catch(() => {});
-    else video.webkitEnterFullscreen?.();
+  const playback = iconControl("Play", "play", togglePlayback);
+  playback.classList.add("player-toggle");
+  const volumeControl = document.createElement("div");
+  volumeControl.className = "player-volume";
+  const sound = iconControl("Volume", "volume", () => {
+    volumeControl.classList.toggle("is-open");
+    updateVolumeVisibility();
   });
-  const time = document.createElement("span");
-  time.className = "native-time";
+  sound.setAttribute("aria-controls", "video-volume-slider");
+
+  const volumePanel = document.createElement("div");
+  volumePanel.className = "player-volume-slider";
+  const volume = document.createElement("input");
+  volume.id = "video-volume-slider";
+  volume.type = "range";
+  volume.min = "0";
+  volume.max = "100";
+  volume.value = "75";
+  volume.setAttribute("aria-label", "Video volume");
+  volumePanel.append(volume);
+  volumeControl.append(volumePanel, sound);
+  function updateVolumeVisibility() {
+    const open = volumeControl.classList.contains("is-open") || volumeControl.matches(":hover");
+    sound.setAttribute("aria-expanded", String(open));
+    volume.tabIndex = open ? 0 : -1;
+  }
+  volumeControl.addEventListener("pointerenter", updateVolumeVisibility);
+  volumeControl.addEventListener("pointerleave", updateVolumeVisibility);
+  volumeControl.addEventListener("focusout", event => {
+    if (volumeControl.contains(event.relatedTarget)) return;
+    volumeControl.classList.remove("is-open");
+    updateVolumeVisibility();
+  });
+  volumeControl.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    if (!volumeControl.classList.contains("is-open")) return;
+    event.stopPropagation();
+    volumeControl.classList.remove("is-open");
+    sound.focus();
+    updateVolumeVisibility();
+  });
+  volume.addEventListener("input", () => {
+    const level = Number(volume.value) / 100;
+    video.volume = level;
+    video.muted = level === 0;
+  });
+  video.addEventListener("volumechange", () => {
+    setIcon(sound, video.muted || video.volume === 0 ? "muted" : "volume");
+  });
+  updateVolumeVisibility();
+
   const timeline = document.createElement("input");
+  timeline.className = "player-progress";
   timeline.type = "range";
   timeline.min = "0";
   timeline.max = "0";
-  timeline.step = "0.1";
+  timeline.step = "any";
   timeline.value = "0";
   timeline.disabled = true;
   timeline.setAttribute("aria-label", "Seek video");
-
   function showPosition() {
-    time.textContent = formatTime(video.currentTime) + " / " + formatTime(video.duration);
     timeline.value = String(video.currentTime);
-    timeline.setAttribute("aria-valuetext", time.textContent);
+    const percent = video.duration > 0 ? Math.min(100, video.currentTime / video.duration * 100) : 0;
+    timeline.style.setProperty("--progress", percent + "%");
+    timeline.setAttribute("aria-valuetext", formatTime(video.currentTime) + " / " + formatTime(video.duration));
   }
   function showDuration() {
     timeline.disabled = !(Number.isFinite(video.duration) && video.duration > 0);
@@ -65,31 +141,71 @@ export function createNativePlayer(url, title, onError, onEnded) {
     showPosition();
   }
   function showPlayback() {
-    playback.textContent = video.paused || video.ended ? "Play" : "Pause";
+    const paused = video.paused || video.ended;
+    setIcon(playback, paused ? "play" : "pause");
+    playback.setAttribute("aria-label", paused ? "Play" : "Pause");
   }
   for (const event of ["loadedmetadata", "durationchange"]) video.addEventListener(event, showDuration);
   for (const event of ["play", "pause", "ended"]) video.addEventListener(event, showPlayback);
   video.addEventListener("timeupdate", showPosition);
   video.addEventListener("click", togglePlayback);
-  video.addEventListener("volumechange", () => { sound.textContent = video.muted ? "Unmute" : "Mute"; });
   timeline.addEventListener("input", () => { video.currentTime = Number(timeline.value); });
-
-  const bar = document.createElement("div");
-  bar.className = "native-control-bar";
-  bar.append(playback, time, sound, fullscreen);
-  const controls = document.createElement("div");
-  controls.className = "native-controls";
-  controls.append(timeline, bar);
-  element.append(video, controls);
-  showPosition();
-  playback.addEventListener("keydown", event => {
+  timeline.addEventListener("keydown", event => {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
-    if (timeline.disabled) return;
     event.preventDefault();
     const offset = event.key === "ArrowRight" ? 5 : -5;
     video.currentTime = Math.min(video.duration, Math.max(0, video.currentTime + offset));
   });
+  element.append(video, timeline, playback, volumeControl);
   return { element, start() { playback.focus(); start(); } };
+}
+
+export function createSlideshow(images, title, onError) {
+  const element = playerSurface(title + " slideshow");
+  const photo = document.createElement("img");
+  photo.className = "player-photo";
+  photo.draggable = false;
+  const status = document.createElement("span");
+  status.className = "player-photo-count";
+  status.setAttribute("aria-live", "polite");
+  let index = 0;
+  let touchStart = null;
+
+  const previous = iconControl("Previous photo", "previous", () => show(index - 1));
+  const next = iconControl("Next photo", "next", () => show(index + 1));
+  previous.classList.add("player-previous");
+  next.classList.add("player-next");
+  previous.hidden = next.hidden = images.length < 2;
+
+  function show(position) {
+    index = (position + images.length) % images.length;
+    photo.alt = "Slide " + (index + 1) + " of " + images.length;
+    photo.src = images[index];
+    status.textContent = (index + 1) + " / " + images.length;
+  }
+
+  photo.addEventListener("error", onError, { once: true });
+  element.addEventListener("keydown", event => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    show(index + (event.key === "ArrowLeft" ? -1 : 1));
+  });
+  photo.addEventListener("touchstart", event => {
+    const { clientX, clientY } = event.changedTouches[0];
+    touchStart = { x: clientX, y: clientY };
+  }, { passive: true });
+  photo.addEventListener("touchend", event => {
+    if (!touchStart) return;
+    const { clientX, clientY } = event.changedTouches[0];
+    const distance = clientX - touchStart.x;
+    if (Math.abs(distance) > 35 && Math.abs(distance) > Math.abs(clientY - touchStart.y)) {
+      show(index + (distance < 0 ? 1 : -1));
+    }
+    touchStart = null;
+  }, { passive: true });
+  element.append(photo, previous, status, next);
+  element.tabIndex = 0;
+  return { element, start() { show(0); element.focus(); } };
 }
 
 export function createTikTokPlayer(id, title, { onEnded, onError, slideshow = false }) {
