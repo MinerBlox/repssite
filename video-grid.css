@@ -59,10 +59,16 @@
   padding: 0;
   border: 0;
   border-radius: 13px;
-  background: var(--surface2);
+  background: transparent;
 }
-.video-grid--public .video-tile:hover { box-shadow: 0 0 0 2px var(--blue); }
-.video-grid--public .video-tile-cover { aspect-ratio: 3 / 4; }
+.video-grid--public .video-tile-cover {
+  aspect-ratio: 3 / 4;
+  border-radius: inherit;
+  transition: transform 150ms ease;
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .video-grid--public .video-tile:hover .video-tile-cover { transform: scale(.97); }
+}
 .video-grid--public .video-tile-cover::after {
   content: "";
   position: absolute;
