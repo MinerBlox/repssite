@@ -18,6 +18,7 @@ const avatar = get("details-avatar");
 const list = get("details-items");
 const defaultAvatar = "/systemimages/repscentrallogo.png";
 const maxProducts = 50;
+const tikwmOrigin = "https://www.tikwm.com";
 let videosById = new Map();
 let detail = null;
 let activePlayer = null;
@@ -104,7 +105,6 @@ function openMedia(video, url, initialCover) {
     session.postId ||= (/^\d+$/.test(resolvedId) ? resolvedId : postId(tiktokUrl(metadata?.url)));
     if (cover.hidden || !cover.getAttribute("src")) setImage(cover, assetUrl(metadata?.thumbnailUrl));
     if (metadata?.url) session.slideshow ||= Boolean(tiktokUrl(metadata.url) && new URL(metadata.url).pathname.includes("/photo/"));
-    if (!poster.hidden) setPlayerAvailability();
     const current = videosById.get(session.id);
     if (current) showProfile(current, session);
   });
@@ -265,6 +265,16 @@ function renderDetails(video, initialCover = "") {
   renderItems(video, session);
 }
 
+function tikwmMediaUrl(value) {
+  if (typeof value !== "string" || !value.trim()) return "";
+  try {
+    const url = new URL(value, tikwmOrigin);
+    return url.protocol === "https:" && !url.username && !url.password && !url.port ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
 async function resolvePlayback(session) {
   if (session.mediaUrl || session.slideshow && session.postId) return session.mediaUrl;
 
@@ -272,17 +282,24 @@ async function resolvePlayback(session) {
   session.resolution = resolution;
   poster.hidden = true;
   loader.hidden = false;
+  const timeout = setTimeout(() => resolution.abort(), 8000);
   try {
-    const response = await fetch("/api/tikwm-video", {
+    const url = new URL(session.url);
+    url.search = "";
+    const response = await fetch(tikwmOrigin + "/api/", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: session.url }),
+      body: new URLSearchParams({ url: url.href, hd: "1" }),
+      credentials: "omit",
       signal: resolution.signal
     });
-    if (response.ok) return (await response.json()).videoUrl || "";
+    if (response.ok) {
+      const result = await response.json();
+      if (result.code === 0) return tikwmMediaUrl(result.data?.hdplay) || tikwmMediaUrl(result.data?.play);
+    }
   } catch {
     // Closing the dialog cancels the request. A failed lookup restores the poster.
   } finally {
+    clearTimeout(timeout);
     if (session.resolution === resolution) {
       session.resolution = null;
       loader.hidden = true;
