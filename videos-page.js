@@ -3,7 +3,7 @@ import { getApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.
 import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js";
 
-import { createNativePlayer } from "/native-video-player.js";
+import { createNativePlayer, createTikTokPlayer } from "/native-video-player.js";
 
 const get = id => document.getElementById(id);
 const grid = get("video-grid");
@@ -16,10 +16,10 @@ const cover = get("details-cover");
 const avatar = get("details-avatar");
 const list = get("details-items");
 const defaultAvatar = "/systemimages/repscentrallogo.png";
-const playerOrigin = "https://www.tiktok.com";
 const maxProducts = 50;
 let videosById = new Map();
 let detail = null;
+let activePlayer = null;
 let ratesPromise;
 let rates = {};
 
@@ -49,15 +49,18 @@ function setPlayerMessage(text = "") {
 }
 
 function stopPlayback() {
-  player.querySelector("iframe")?.remove();
-  const local = player.querySelector(".native-player");
-  local?.querySelector("video")?.pause();
-  local?.remove();
+  activePlayer?.destroy?.();
+  activePlayer?.element.querySelector("video")?.pause();
+  activePlayer?.element.remove();
+  activePlayer = null;
   poster.hidden = false;
 }
 
 function setPlayerAvailability() {
   play.hidden = !(detail?.mediaUrl || detail?.postId);
+  const label = detail?.ended ? "Replay video" : "Play video";
+  play.setAttribute("aria-label", label);
+  play.textContent = detail?.ended ? "↻ Replay" : "▶";
   setPlayerMessage(!play.hidden ? "" : detail?.url && !detail.resolved
     ? "Loading TikTok player…" : "This video is available on TikTok.");
 }
@@ -84,7 +87,7 @@ function openMedia(video, url, initialCover) {
   stopPlayback();
   const session = {
     id: video.id, url, postId: postId(url), mediaUrl: assetUrl(video.mediaUrl), savedThumbnail: video.thumbnailUrl,
-    productKey: "", products: new Map(), resolved: !url
+    productKey: "", products: new Map(), resolved: !url, slideshow: Boolean(url && new URL(url).pathname.includes("/photo/"))
   };
   detail = session;
   setImage(cover, initialCover || assetUrl(video.thumbnailUrl));
@@ -98,7 +101,9 @@ function openMedia(video, url, initialCover) {
     const resolvedId = String(metadata?.postId || "");
     session.postId ||= (/^\d+$/.test(resolvedId) ? resolvedId : postId(tiktokUrl(metadata?.url)));
     if (cover.hidden || !cover.getAttribute("src")) setImage(cover, assetUrl(metadata?.thumbnailUrl));
+    if (metadata?.url) session.slideshow ||= Boolean(tiktokUrl(metadata.url) && new URL(metadata.url).pathname.includes("/photo/"));
     if (!poster.hidden) setPlayerAvailability();
+    if (session.startWhenReady && session.postId) startPlayback();
     const current = videosById.get(session.id);
     if (current) showProfile(current, session);
   });
@@ -259,44 +264,39 @@ function renderDetails(video, initialCover = "") {
   renderItems(video, session);
 }
 
-play.addEventListener("click", () => {
-  if (!detail || player.querySelector("iframe, .native-player")) return;
-  if (detail.mediaUrl) {
-    const session = detail;
-    const native = createNativePlayer(detail.mediaUrl, get("details-title").textContent, () => {
-      if (detail !== session) return;
-      stopPlayback();
-      setPlayerMessage(session.postId ? "The video file could not load. Use Watch on TikTok." : "This video file could not load.");
-      play.focus();
-    });
-    poster.hidden = true;
-    player.append(native.element);
-    native.start();
+function startPlayback() {
+  const session = detail;
+  if (!session || activePlayer || !dialog.open) return;
+  if (!session.mediaUrl && !session.postId) {
+    session.startWhenReady = !session.resolved;
     return;
   }
-  if (!detail.postId) return;
-  const src = new URL("/player/v1/" + detail.postId, playerOrigin);
-  src.search = new URLSearchParams({ autoplay: "1", rel: "0" });
-  const iframe = document.createElement("iframe");
-  iframe.title = get("details-title").textContent + " on TikTok";
-  iframe.allow = "autoplay; fullscreen; encrypted-media; picture-in-picture";
-  iframe.allowFullscreen = true;
-  iframe.src = src.href;
+  session.startWhenReady = false;
+  session.ended = false;
+  const title = get("details-title").textContent;
+  const finish = () => {
+    if (detail !== session || !dialog.open) return;
+    session.ended = true;
+    stopPlayback();
+    setPlayerAvailability();
+    play.focus();
+  };
+  const fail = () => {
+    if (detail !== session || !dialog.open) return;
+    stopPlayback();
+    setPlayerAvailability();
+    setPlayerMessage(session.url ? "Playback is unavailable here. Use Watch on TikTok." : "This video file could not load.");
+    play.focus();
+  };
+  activePlayer = session.mediaUrl
+    ? createNativePlayer(session.mediaUrl, title, fail, finish)
+    : createTikTokPlayer(session.postId, title, { onEnded: finish, onError: fail, slideshow: session.slideshow });
   poster.hidden = true;
-  player.append(iframe);
-  iframe.focus();
-});
+  player.append(activePlayer.element);
+  activePlayer.start();
+}
 
-window.addEventListener("message", event => {
-  const iframe = player.querySelector("iframe");
-  if (event.origin !== playerOrigin || !iframe || event.source !== iframe.contentWindow ||
-    event.data?.["x-tiktok-player"] !== true || event.data?.type !== "onPlayerError") return;
-  const code = Number(event.data.value?.errorCode ?? event.data.value);
-  if (code === 3002) return;
-  stopPlayback();
-  setPlayerMessage("Playback is unavailable here. Use Watch on TikTok.");
-  play.focus();
-});
+play.addEventListener("click", startPlayback);
 
 avatar.addEventListener("error", () => {
   if (avatar.getAttribute("src") !== defaultAvatar) setImage(avatar, defaultAvatar);
@@ -316,6 +316,7 @@ grid.addEventListener("click", event => {
   if (!video) return;
   renderDetails(video, tile.querySelector("img")?.currentSrc);
   dialog.showModal();
+  startPlayback();
 });
 
 dialog.addEventListener("close", () => {

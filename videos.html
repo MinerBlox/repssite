@@ -78,6 +78,7 @@
     }
     .native-controls input { width: 100%; accent-color: #4da6ff; }
     .native-control-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
+    .native-control-bar button:disabled { opacity: .55; cursor: default; }
     .native-control-bar button { padding: 6px; min-height: 34px; color: inherit; font-size: 12px; font-weight: 700; }
     .native-time { margin-right: auto; color: #e2e6ee; font: 11px/1.2 'DM Sans', sans-serif; white-space: nowrap; }
     .details-poster { display: grid; place-items: center; }
@@ -93,6 +94,7 @@
       color: #fff;
       font-size: 24px;
     }
+    .details-play[aria-label="Replay video"] { width: auto; height: 48px; padding: 0 16px; border-radius: 24px; font-size: 15px; font-weight: 800; }
     .details-play:hover { background: #223c5c; }
     .details-player-message { position: absolute; bottom: 0; inset-inline: 0; padding: 10px 12px; text-align: center; color: #fff; background: #090a0bdb; font-size: 13px; }
     .details-panel { min-width: 0; max-height: calc(var(--player-height) + 28px); overflow: auto; padding: 20px; }
