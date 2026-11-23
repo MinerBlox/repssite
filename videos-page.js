@@ -3,7 +3,7 @@ import { getApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.
 import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js";
 
-import { createNativePlayer, createTikTokPlayer } from "/native-video-player.js";
+import { createNativePlayer, createTikTokPlayer } from "/native-video-player.js?v=tikwm";
 
 const get = id => document.getElementById(id);
 const grid = get("video-grid");
@@ -11,6 +11,7 @@ const dialog = get("video-details");
 const player = get("details-player");
 const poster = get("details-poster");
 const play = get("details-play");
+const loader = get("details-loader");
 const message = get("details-player-message");
 const cover = get("details-cover");
 const avatar = get("details-avatar");
@@ -49,6 +50,9 @@ function setPlayerMessage(text = "") {
 }
 
 function stopPlayback() {
+  detail?.resolution?.abort();
+  if (detail) detail.resolution = null;
+  loader.hidden = true;
   activePlayer?.destroy?.();
   activePlayer?.element.querySelector("video")?.pause();
   activePlayer?.element.remove();
@@ -57,12 +61,11 @@ function stopPlayback() {
 }
 
 function setPlayerAvailability() {
-  play.hidden = !(detail?.mediaUrl || detail?.postId);
+  play.hidden = !(detail?.mediaUrl || detail?.url);
   const label = detail?.ended ? "Replay video" : "Play video";
   play.setAttribute("aria-label", label);
   play.textContent = detail?.ended ? "↻ Replay" : "▶";
-  setPlayerMessage(!play.hidden ? "" : detail?.url && !detail.resolved
-    ? "Loading TikTok player…" : "This video is available on TikTok.");
+  setPlayerMessage(play.hidden ? "This video has no playback source." : "");
 }
 
 function showProfile(video, session) {
@@ -87,7 +90,7 @@ function openMedia(video, url, initialCover) {
   stopPlayback();
   const session = {
     id: video.id, url, postId: postId(url), mediaUrl: assetUrl(video.mediaUrl), savedThumbnail: video.thumbnailUrl,
-    productKey: "", products: new Map(), resolved: !url, slideshow: Boolean(url && new URL(url).pathname.includes("/photo/"))
+    productKey: "", products: new Map(), slideshow: Boolean(url && new URL(url).pathname.includes("/photo/"))
   };
   detail = session;
   setImage(cover, initialCover || assetUrl(video.thumbnailUrl));
@@ -97,13 +100,11 @@ function openMedia(video, url, initialCover) {
   void fetchVideoMetadata(url).then(metadata => {
     if (detail !== session || !dialog.open) return;
     session.metadata = metadata;
-    session.resolved = true;
     const resolvedId = String(metadata?.postId || "");
     session.postId ||= (/^\d+$/.test(resolvedId) ? resolvedId : postId(tiktokUrl(metadata?.url)));
     if (cover.hidden || !cover.getAttribute("src")) setImage(cover, assetUrl(metadata?.thumbnailUrl));
     if (metadata?.url) session.slideshow ||= Boolean(tiktokUrl(metadata.url) && new URL(metadata.url).pathname.includes("/photo/"));
     if (!poster.hidden) setPlayerAvailability();
-    if (session.startWhenReady && session.postId) startPlayback();
     const current = videosById.get(session.id);
     if (current) showProfile(current, session);
   });
@@ -264,15 +265,37 @@ function renderDetails(video, initialCover = "") {
   renderItems(video, session);
 }
 
-function startPlayback() {
-  const session = detail;
-  if (!session || activePlayer || !dialog.open) return;
-  if (!session.mediaUrl && !session.postId) {
-    session.startWhenReady = !session.resolved;
-    return;
+async function resolvePlayback(session) {
+  if (session.mediaUrl || session.slideshow && session.postId) return session.mediaUrl;
+
+  const resolution = new AbortController();
+  session.resolution = resolution;
+  poster.hidden = true;
+  loader.hidden = false;
+  try {
+    const response = await fetch("/api/tikwm-video", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: session.url }),
+      signal: resolution.signal
+    });
+    if (response.ok) return (await response.json()).videoUrl || "";
+  } catch {
+    // Closing the dialog cancels the request. A failed lookup restores the poster.
+  } finally {
+    if (session.resolution === resolution) {
+      session.resolution = null;
+      loader.hidden = true;
+    }
   }
-  session.startWhenReady = false;
-  session.ended = false;
+  return "";
+}
+
+async function startPlayback() {
+  const session = detail;
+  if (!session || activePlayer || session.resolution || !dialog.open || !(session.mediaUrl || session.url)) return;
+  const mediaUrl = await resolvePlayback(session);
+  if (detail !== session || !dialog.open) return;
   const title = get("details-title").textContent;
   const finish = () => {
     if (detail !== session || !dialog.open) return;
@@ -288,9 +311,16 @@ function startPlayback() {
     setPlayerMessage(session.url ? "Playback is unavailable here. Use Watch on TikTok." : "This video file could not load.");
     play.focus();
   };
-  activePlayer = session.mediaUrl
-    ? createNativePlayer(session.mediaUrl, title, fail, finish)
-    : createTikTokPlayer(session.postId, title, { onEnded: finish, onError: fail, slideshow: session.slideshow });
+
+  if (mediaUrl) {
+    activePlayer = createNativePlayer(mediaUrl, title, fail, finish);
+  } else if (session.slideshow && session.postId) {
+    activePlayer = createTikTokPlayer(session.postId, title, { onEnded: finish, onError: fail, slideshow: true });
+  } else {
+    fail();
+    return;
+  }
+  session.ended = false;
   poster.hidden = true;
   player.append(activePlayer.element);
   activePlayer.start();
@@ -321,8 +351,8 @@ grid.addEventListener("click", event => {
 
 dialog.addEventListener("close", () => {
   const closedId = detail?.id;
-  detail = null;
   stopPlayback();
+  detail = null;
   const previous = [...grid.querySelectorAll("[data-video-id]")].find(button => button.dataset.videoId === closedId);
   previous?.focus();
 });

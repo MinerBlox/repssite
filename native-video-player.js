@@ -25,7 +25,11 @@ export function createNativePlayer(url, title, onError, onEnded) {
   if (onEnded) video.addEventListener("ended", onEnded, { once: true });
 
   function start() {
-    video.play().catch(() => {});
+    video.play().catch(error => {
+      if (error.name !== "NotAllowedError" || video.muted || !element.isConnected) return;
+      video.muted = true;
+      video.play().catch(() => {});
+    });
   }
   function togglePlayback() {
     if (video.paused || video.ended) start();

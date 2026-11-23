@@ -81,6 +81,57 @@
     .native-control-bar button:disabled { opacity: .55; cursor: default; }
     .native-control-bar button { padding: 6px; min-height: 34px; color: inherit; font-size: 12px; font-weight: 700; }
     .native-time { margin-right: auto; color: #e2e6ee; font: 11px/1.2 'DM Sans', sans-serif; white-space: nowrap; }
+    @keyframes rc-question-pop {
+      0%, 100% { opacity: 0.08; transform: translateY(7px) scale(0.72); }
+      45% { opacity: 0.52; transform: translateY(-7px) scale(1.08); }
+    }
+    .loading-question-card {
+      position: absolute;
+      inset: 0;
+      isolation: isolate;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      background: var(--surface);
+      pointer-events: none;
+    }
+    .loading-question-card::before {
+      content: "";
+      position: absolute;
+      z-index: -2;
+      inset: -20px;
+      background: radial-gradient(circle at 50% 45%, rgba(77,166,255,0.13), transparent 60%), var(--surface2);
+      filter: blur(14px);
+    }
+    .loading-question-card::after {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      inset: 0;
+      background: rgba(10,10,11,0.38);
+      backdrop-filter: blur(4px);
+    }
+    body.light .loading-question-card::after { background: rgba(255,255,255,0.38); }
+    .loading-question {
+      position: absolute;
+      z-index: 1;
+      left: var(--x);
+      top: var(--y);
+      color: #4da6ff;
+      font-family: 'Syne', sans-serif;
+      font-size: var(--size);
+      font-weight: 800;
+      animation: rc-question-pop var(--duration) ease-in-out var(--delay) infinite;
+    }
+    .loading-items-label {
+      position: relative;
+      z-index: 2;
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    @media (prefers-reduced-motion: reduce) { .loading-question { animation: none; opacity: .25; } }
     .details-poster { display: grid; place-items: center; }
     .details-poster img { object-fit: cover; }
     .details-play {
@@ -172,6 +223,14 @@
         <div class="details-layout">
           <div class="details-stage">
             <div class="details-player" id="details-player">
+              <div class="loading-question-card" id="details-loader" role="status" hidden>
+                <span aria-hidden="true" class="loading-question" style="--x:10%;--y:16%;--size:18px;--duration:3.2s;--delay:-.4s">?</span>
+                <span aria-hidden="true" class="loading-question" style="--x:72%;--y:12%;--size:28px;--duration:3.8s;--delay:-1.6s">?</span>
+                <span aria-hidden="true" class="loading-question" style="--x:38%;--y:60%;--size:22px;--duration:3.5s;--delay:-2.3s">?</span>
+                <span aria-hidden="true" class="loading-question" style="--x:80%;--y:70%;--size:16px;--duration:4s;--delay:-.9s">?</span>
+                <span aria-hidden="true" class="loading-question" style="--x:14%;--y:78%;--size:25px;--duration:3.6s;--delay:-2.7s">?</span>
+                <span class="loading-items-label">Loading Video...</span>
+              </div>
               <div class="details-poster" id="details-poster">
                 <img id="details-cover" alt="" hidden>
                 <button class="details-play" id="details-play" type="button" aria-label="Play video" hidden>▶</button>
@@ -209,6 +268,6 @@
     applyTheme();
   </script>
 
-  <script type="module" src="/videos-page.js"></script>
+  <script type="module" src="/videos-page.js?v=tikwm"></script>
 </body>
 </html>
