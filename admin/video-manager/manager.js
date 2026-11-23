@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
-  getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, runTransaction, serverTimestamp
+  getFirestore, collection, addDoc, doc, onSnapshot, runTransaction, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { enableAppCheck } from "/firebase-app-check.js?v=2026-07-01-preview-skip";
 import { assetUrl, escapeHtml, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js";
@@ -560,7 +560,20 @@ get("delete-video").addEventListener("click", async () => {
         else transaction.delete(ref);
       });
     } else {
-      await deleteDoc(doc(videosRef, deletingDraft.id));
+      const ref = doc(videosRef, deletingDraft.id);
+      const sourceId = tiktokId(deletingDraft);
+      await runTransaction(db, async transaction => {
+        const entry = await transaction.get(ref);
+        if (!entry.exists() || !sameVersion(deletingDraft.version, entry.data().updatedAt)) {
+          throw new Error("This video changed elsewhere. Reopen it before deleting.");
+        }
+        if (/^\d+$/.test(sourceId)) {
+          transaction.set(doc(draftsRef, "tiktok-" + sourceId), {
+            tiktokId: sourceId, status: "dismissed", updatedAt: serverTimestamp()
+          }, { merge: true });
+        }
+        transaction.delete(ref);
+      });
     }
     editDrafts.delete(deletingDraft.id);
     if (draft === deletingDraft) showEditor(null, deletingDraft.awaiting ? "Draft dismissed." : "Video deleted.");

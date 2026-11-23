@@ -3,7 +3,7 @@ import { getApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.
 import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js";
 
-import { createNativePlayer, createSlideshow, createTikTokPlayer } from "/native-video-player.js?v=controls";
+import { createNativePlayer, createSlideshow, createTikTokPlayer } from "/native-video-player.js?v=player-polish";
 import { forgetTikTokMedia, lookupTikTokMedia, mediaCacheKey, readTikTokMedia } from "/tiktok-playback-cache.js";
 
 const get = id => document.getElementById(id);
@@ -365,7 +365,24 @@ grid.addEventListener("click", event => {
   startPlayback();
 });
 
+function isBackdrop(event) {
+  if (event.target !== dialog) return false;
+  const frame = dialog.getBoundingClientRect();
+  return event.clientX < frame.left || event.clientX > frame.right
+    || event.clientY < frame.top || event.clientY > frame.bottom;
+}
+
+let pointerStartedOutside = false;
+dialog.addEventListener("pointerdown", event => {
+  pointerStartedOutside = isBackdrop(event);
+});
+dialog.addEventListener("click", event => {
+  if (pointerStartedOutside && isBackdrop(event)) dialog.close();
+  pointerStartedOutside = false;
+});
+
 dialog.addEventListener("close", () => {
+  pointerStartedOutside = false;
   const closedId = detail?.id;
   stopPlayback();
   detail = null;

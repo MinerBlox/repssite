@@ -1,6 +1,6 @@
 const icons = {
   play: '<path fill="currentColor" d="M8 5v14l11-7z"/>',
-  pause: '<path fill="currentColor" d="M7 5h4v14H7zm6 0h4v14h-4z"/>',
+  pause: '<path d="M9 7v10m6-10v10" stroke-width="2.4"/>',
   volume: '<path d="M3 9v6h4l5 4V5L7 9H3zm13 0a4 4 0 0 1 0 6m2-8a7 7 0 0 1 0 10"/>',
   muted: '<path d="M3 9v6h4l5 4V5L7 9H3zm13 1 5 5m0-5-5 5"/>',
   previous: '<path d="m15 5-7 7 7 7"/>',
@@ -112,6 +112,7 @@ export function createNativePlayer(url, title, onError, onEnded) {
   });
   volume.addEventListener("input", () => {
     const level = Number(volume.value) / 100;
+    volume.style.setProperty("--volume", volume.value + "%");
     video.volume = level;
     video.muted = level === 0;
   });
