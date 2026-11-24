@@ -28,7 +28,7 @@ function decodeCodePoint(original, codePoint) {
   return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : original;
 }
 
-function validateTikTokUrl(input, base) {
+export function validateTikTokUrl(input, base) {
   let parsed;
 
   try {

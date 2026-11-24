@@ -4,7 +4,7 @@ import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/fi
 import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js";
 
 import { createNativePlayer, createSlideshow, createTikTokPlayer } from "/native-video-player.js?v=player-polish";
-import { forgetTikTokMedia, lookupTikTokMedia, mediaCacheKey, readTikTokMedia } from "/tiktok-playback-cache.js";
+import { forgetTikTokMedia, lookupSharedTikTokMedia, lookupTikTokMedia, mediaCacheKey, readTikTokMedia } from "/tiktok-playback-cache.js?v=shared";
 
 const get = id => document.getElementById(id);
 const grid = get("video-grid");
@@ -265,17 +265,23 @@ function renderDetails(video, initialCover = "") {
   renderItems(video, session);
 }
 
-async function resolvePlayback(session, key) {
+async function resolvePlayback(session, key, allowCached) {
   const resolution = new AbortController();
   session.resolution = resolution;
-  poster.hidden = true;
-  loader.hidden = false;
-  const timeout = setTimeout(() => resolution.abort(), 8000);
+  const loaderDelay = setTimeout(() => {
+    if (session.resolution !== resolution) return;
+    poster.hidden = true;
+    loader.hidden = false;
+  }, 180);
+  const timeout = setTimeout(() => resolution.abort(), 13000);
   try {
-    return await lookupTikTokMedia(key, resolution.signal);
+    return await (allowCached
+      ? lookupSharedTikTokMedia(session.id, key, resolution.signal)
+      : lookupTikTokMedia(key, resolution.signal));
   } catch {
     return null;
   } finally {
+    clearTimeout(loaderDelay);
     clearTimeout(timeout);
     if (session.resolution === resolution) {
       session.resolution = null;
@@ -289,7 +295,7 @@ async function startPlayback(allowCached = true) {
   if (!session || activePlayer || session.resolution || !dialog.open || !(session.mediaUrl || session.url)) return;
   const key = !session.mediaUrl && session.url ? mediaCacheKey(session.url) : "";
   const cached = key && allowCached ? readTikTokMedia(key) : null;
-  const media = cached || (key ? await resolvePlayback(session, key) : null);
+  const media = cached || (key ? await resolvePlayback(session, key, allowCached) : null);
   if (detail !== session || !dialog.open) return;
   const title = get("details-title").textContent;
   const finish = () => {
@@ -320,7 +326,7 @@ async function startPlayback(allowCached = true) {
   function handleMediaError() {
     if (detail !== session || !dialog.open) return;
     if (media && key) forgetTikTokMedia(key, media);
-    if (cached) {
+    if (allowCached && (cached || media?.shared)) {
       stopPlayback();
       void startPlayback(false);
     } else if (session.slideshow && session.postId) {

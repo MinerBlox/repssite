@@ -1,7 +1,6 @@
-const origin = "https://www.tikwm.com";
+import { normalizeTikTokMedia, tikwmOrigin } from "/lib/tiktok-media.js";
+
 const storageKey = "rc-tiktok-media-v1";
-const unknownLifetime = 15 * 60 * 1000;
-const refreshBuffer = 60 * 1000;
 const maxEntries = 32;
 const memory = new Map();
 
@@ -37,36 +36,8 @@ export function forgetTikTokMedia(key, entry) {
   } catch {}
 }
 
-function safeUrl(value) {
-  if (typeof value !== "string" || !value.trim()) return "";
-  try {
-    const url = new URL(value, origin);
-    return url.protocol === "https:" && !url.username && !url.password && !url.port ? url.href : "";
-  } catch {
-    return "";
-  }
-}
-
-function expiry(value, now) {
-  const url = new URL(value);
-  for (const key of ["x-expires", "Expires", "expires", "expire"]) {
-    const seconds = url.searchParams.get(key);
-    if (/^\d{10}$/.test(seconds)) return Number(seconds) * 1000;
-  }
-  // Signed TikTok MP4 routes put Unix seconds in hex after the path signature.
-  const signedPath = /(?:^|\.)tiktokcdn(?:-[a-z]+)?\.com$/i.test(url.hostname)
-    && url.pathname.match(/^\/[a-f\d]{32}\/([a-f\d]{8})\/video\//i);
-  return signedPath ? parseInt(signedPath[1], 16) * 1000 : now + unknownLifetime;
-}
-
-export function cacheTikTokMedia(key, data, now = Date.now()) {
-  const images = Array.isArray(data?.images) ? data.images.map(safeUrl).filter(Boolean) : [];
-  const isPhoto = new URL(key).pathname.includes("/photo/") || Boolean(data?.images?.length);
-  const videoUrl = images.length || isPhoto ? "" : safeUrl(data?.hdplay) || safeUrl(data?.play);
-  const links = videoUrl ? [videoUrl] : images;
-  if (!links.length) return null;
-  const expiresAt = Math.min(...links.map(url => expiry(url, now))) - refreshBuffer;
-  const entry = { videoUrl, images, expiresAt };
+function remember(key, entry, now = Date.now()) {
+  const { expiresAt } = entry;
   if (expiresAt <= now) return entry;
 
   memory.delete(key);
@@ -80,7 +51,7 @@ export function cacheTikTokMedia(key, data, now = Date.now()) {
 }
 
 export async function lookupTikTokMedia(key, signal) {
-  const response = await fetch(origin + "/api/", {
+  const response = await fetch(tikwmOrigin + "/api/", {
     method: "POST",
     body: new URLSearchParams({ url: key, hd: "1" }),
     credentials: "omit",
@@ -89,5 +60,22 @@ export async function lookupTikTokMedia(key, signal) {
   if (!response.ok) return null;
   const result = await response.json();
   if (result.code !== 0) return null;
-  return cacheTikTokMedia(key, result.data);
+  const entry = normalizeTikTokMedia(key, result.data);
+  return entry && remember(key, entry);
+}
+
+export async function lookupSharedTikTokMedia(id, key, signal) {
+  try {
+    const query = new URLSearchParams({ id, url: key });
+    const response = await fetch("/api/tiktok-playback?" + query, { signal });
+    if (response.ok) {
+      const entry = await response.json();
+      if (entry.expiresAt > Date.now() && (entry.videoUrl || entry.images?.length)) {
+        return remember(key, { ...entry, shared: true });
+      }
+    }
+  } catch (error) {
+    if (signal.aborted) throw error;
+  }
+  return lookupTikTokMedia(key, signal);
 }
