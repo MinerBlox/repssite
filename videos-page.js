@@ -366,13 +366,45 @@ list.addEventListener("click", event => {
   if (outbound) window.rcTrackProductInteraction?.(outbound.dataset.outboundItem, "outboundClicks");
 });
 
+const videoParam = "videoid";
+const linkedVideoId = () => new URL(location.href).searchParams.get(videoParam);
+let videosLoaded = false;
+
+function updateVideoUrl(id, push = false) {
+  const url = new URL(location.href);
+  if (id) url.searchParams.set(videoParam, id);
+  else url.searchParams.delete(videoParam);
+  if (url.href === location.href) return;
+  history[push ? "pushState" : "replaceState"](history.state, "", url);
+}
+
+function openVideo(video, initialCover = "") {
+  if (dialog.open && detail?.id === video.id) return;
+  renderDetails(video, initialCover);
+  if (!dialog.open) dialog.showModal();
+  dialog.scrollTop = 0;
+  void startPlayback();
+}
+
+function syncVideoFromUrl() {
+  if (!videosLoaded) return;
+  const id = linkedVideoId();
+  const video = id && videosById.get(id);
+  if (video) {
+    openVideo(video);
+  } else if (dialog.open) {
+    dialog.close();
+  }
+}
+
+window.addEventListener("popstate", syncVideoFromUrl);
+
 grid.addEventListener("click", event => {
   const tile = event.target.closest("[data-video-id]");
   const video = videosById.get(tile?.dataset.videoId);
   if (!video) return;
-  renderDetails(video, tile.querySelector("img")?.currentSrc);
-  dialog.showModal();
-  startPlayback();
+  updateVideoUrl(video.id, true);
+  openVideo(video, tile.querySelector("img")?.currentSrc);
 });
 
 function isBackdrop(event) {
@@ -393,7 +425,9 @@ dialog.addEventListener("click", event => {
 
 dialog.addEventListener("close", () => {
   pointerStartedOutside = false;
+  if (dialog.open) return;
   const closedId = detail?.id;
+  if (closedId && linkedVideoId() === closedId) updateVideoUrl(null);
   stopPlayback();
   detail = null;
   const previous = [...grid.querySelectorAll("[data-video-id]")].find(button => button.dataset.videoId === closedId);
@@ -405,10 +439,13 @@ onSnapshot(collection(db, "videos"), snapshot => {
   const videos = sortVideos(snapshot.docs.map(entry => ({ ...entry.data(), id: entry.id }))
     .filter(video => video.isActive !== false));
   videosById = new Map(videos.map(video => [video.id, video]));
+  videosLoaded = true;
   renderVideoGrid(grid, videos, "No videos have been added yet.", { showTitle: false });
   if (dialog.open) {
     const current = videosById.get(detail?.id);
     if (current) renderDetails(current);
     else dialog.close();
+  } else {
+    syncVideoFromUrl();
   }
 }, () => gridMessage(grid, "Couldn’t load videos. Try refreshing the page."));
