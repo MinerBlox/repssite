@@ -217,11 +217,24 @@
     .details-empty, .details-loading { color: var(--muted); font-size: 14px; }
     .video-details :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
     [hidden] { display: none !important; }
+    .details-items-title-mobile { display: none; }
     @media (max-width: 700px) {
-      .video-details { --player-height: min(53vh, 460px); width: calc(100% - 20px); max-height: calc(100dvh - 20px); }
+      .video-details { --player-height: 82dvh; width: calc(100% - 16px); max-height: calc(100dvh - 16px); }
       .details-layout { grid-template-columns: 1fr; }
-      .details-stage { padding: 12px; }
-      .details-panel { max-height: none; overflow: visible; padding: 16px; }
+      .details-stage { padding: 4px; }
+      .details-player { border-radius: 13px; }
+      .details-close { top: 10px; right: 10px; }
+      .details-panel { max-height: none; overflow: visible; padding: 14px 12px 16px; }
+      .details-author, .details-panel > h2, .details-caption, .details-watch { display: none; }
+      .details-items-section { margin-top: 0; padding-top: 0; border-top: 0; }
+      .details-items-section h3 { font: 800 19px / 1.2 'Syne', sans-serif; letter-spacing: -.3px; }
+      .details-items-title-desktop { display: none; }
+      .details-items-title-mobile { display: inline; }
+      .video-details .player-toggle, .video-details .details-play { -webkit-tap-highlight-color: transparent; }
+      .video-details .player-toggle:focus-visible, .video-details .details-play:focus-visible { outline: 1px solid #fff; outline-offset: -4px; }
+    }
+    @media (max-width: 700px) and (hover: none) and (pointer: coarse) {
+      .video-details .player-toggle:focus, .video-details .details-play:focus { outline: none; }
     }
     footer { max-width: 1380px; margin: 0 auto; padding: 0 40px 36px; }
     .footer-box { border-top: 1px solid var(--border); padding-top: 24px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
@@ -298,7 +311,7 @@
             <p class="details-caption" id="details-caption" hidden></p>
             <a class="details-watch" id="details-watch" target="_blank" rel="noopener noreferrer" hidden>Watch on TikTok ↗</a>
             <section class="details-items-section" aria-labelledby="details-items-title">
-              <h3 id="details-items-title">Items in this video</h3>
+              <h3 id="details-items-title"><span class="details-items-title-desktop">Items in this video</span><span class="details-items-title-mobile">VIDEO ITEMS</span></h3>
               <p class="details-empty" id="details-empty" hidden>No items have been linked yet.</p>
               <ul class="details-items" id="details-items"></ul>
             </section>
