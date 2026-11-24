@@ -297,14 +297,24 @@ async function startPlayback(allowCached = true) {
     session.ended = true;
     stopPlayback();
     setPlayerAvailability();
-    play.focus();
+    if (window.matchMedia("(max-width: 700px)").matches) {
+      // Do not pull the modal away from the items when playback ends or fails.
+      play.focus({ preventScroll: true });
+    } else {
+      play.focus();
+    }
   };
   const fail = () => {
     if (detail !== session || !dialog.open) return;
     stopPlayback();
     setPlayerAvailability();
     setPlayerMessage(session.url ? "Playback is unavailable here. Use Watch on TikTok." : "This video file could not load.");
-    play.focus();
+    if (window.matchMedia("(max-width: 700px)").matches) {
+      // Do not pull the modal away from the items when playback ends or fails.
+      play.focus({ preventScroll: true });
+    } else {
+      play.focus();
+    }
   };
 
   function handleMediaError() {
