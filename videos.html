@@ -217,24 +217,31 @@
     .details-empty, .details-loading { color: var(--muted); font-size: 14px; }
     .video-details :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
     [hidden] { display: none !important; }
-    .details-items-title-mobile { display: none; }
+    .details-items-title-mobile, .details-info-toggle { display: none; }
     @media (max-width: 700px) {
       .video-details { --player-height: 82dvh; width: calc(100% - 16px); max-height: calc(100dvh - 16px); }
       .details-layout { grid-template-columns: 1fr; }
       .details-stage { padding: 4px; }
-      .details-player { border-radius: 13px; }
-      .details-close { top: 10px; right: 10px; }
-      .details-panel { max-height: none; overflow: visible; padding: 14px 12px 16px; }
-      .details-author, .details-panel > h2, .details-caption, .details-watch { display: none; }
+      .details-player { width: 100%; border-radius: 13px; }
+      .details-close { top: 4px; right: 4px; }
+      .details-close button { width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; color: #fff; font-size: 30px; font-weight: 500; text-shadow: 0 1px 4px #000, 0 0 8px #000; -webkit-tap-highlight-color: transparent; }
+      .video-details .details-close button:focus-visible { outline: 1px solid #fff; outline-offset: -5px; }
+      .details-panel { display: flex; flex-direction: column; max-height: none; overflow: visible; padding: 14px 12px 16px; }
+      .details-info { display: none; order: 2; }
+      .details-panel:has(.details-info-toggle[aria-expanded="true"]) .details-info { display: block; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+      .details-info .details-author { padding-right: 0; }
+      .details-info-toggle { display: flex; order: 1; align-items: center; justify-content: center; gap: 7px; min-height: 44px; margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); color: var(--text); font-size: 13px; font-weight: 700; -webkit-tap-highlight-color: transparent; }
+      .details-info-toggle svg { width: 15px; height: 15px; }
+      .details-info-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
       .details-items-section { margin-top: 0; padding-top: 0; border-top: 0; }
-      .details-items-section h3 { font: 800 19px / 1.2 'Syne', sans-serif; letter-spacing: -.3px; }
+      .details-items-section h3 { font: 800 19px / 1.2 'Syne', sans-serif; letter-spacing: -.3px; text-align: center; }
       .details-items-title-desktop { display: none; }
       .details-items-title-mobile { display: inline; }
       .video-details .player-toggle, .video-details .details-play { -webkit-tap-highlight-color: transparent; }
       .video-details .player-toggle:focus-visible, .video-details .details-play:focus-visible { outline: 1px solid #fff; outline-offset: -4px; }
     }
     @media (max-width: 700px) and (hover: none) and (pointer: coarse) {
-      .video-details .player-toggle:focus, .video-details .details-play:focus { outline: none; }
+      .video-details .player-toggle:focus, .video-details .details-play:focus, .video-details .details-close button:focus { outline: none; }
     }
     footer { max-width: 1380px; margin: 0 auto; padding: 0 40px 36px; }
     .footer-box { border-top: 1px solid var(--border); padding-top: 24px; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
@@ -300,6 +307,7 @@
             </div>
           </div>
           <section class="details-panel">
+            <div class="details-info" id="details-info">
             <div class="details-author">
               <img class="details-avatar" id="details-avatar" src="/systemimages/repscentrallogo.png" alt="">
               <div>
@@ -310,11 +318,13 @@
             <h2 id="details-title"></h2>
             <p class="details-caption" id="details-caption" hidden></p>
             <a class="details-watch" id="details-watch" target="_blank" rel="noopener noreferrer" hidden>Watch on TikTok ↗</a>
+            </div>
             <section class="details-items-section" aria-labelledby="details-items-title">
               <h3 id="details-items-title"><span class="details-items-title-desktop">Items in this video</span><span class="details-items-title-mobile">VIDEO ITEMS</span></h3>
               <p class="details-empty" id="details-empty" hidden>No items have been linked yet.</p>
               <ul class="details-items" id="details-items"></ul>
             </section>
+            <button class="details-info-toggle" id="details-info-toggle" type="button" aria-expanded="false" aria-controls="details-info"><span>Show video details</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
           </section>
         </div>
       </dialog>
@@ -327,6 +337,13 @@
     function applyTheme() { document.body.className = theme; const label = document.getElementById("theme-label"); if (label) label.textContent = theme === "dark" ? "Light" : "Dark"; }
     function toggleTheme() { theme = theme === "dark" ? "light" : "dark"; localStorage.setItem("rc-theme", theme); applyTheme(); }
     applyTheme();
+    const videoDetailsToggle = document.getElementById("details-info-toggle");
+    function setVideoDetailsExpanded(expanded) {
+      videoDetailsToggle.setAttribute("aria-expanded", String(expanded));
+      videoDetailsToggle.querySelector("span").textContent = expanded ? "Hide video details" : "Show video details";
+    }
+    videoDetailsToggle.addEventListener("click", () => setVideoDetailsExpanded(videoDetailsToggle.getAttribute("aria-expanded") !== "true"));
+    document.getElementById("video-details").addEventListener("close", () => setVideoDetailsExpanded(false));
   </script>
 
   <script type="module" src="/videos-page.js?v=player-polish"></script>
