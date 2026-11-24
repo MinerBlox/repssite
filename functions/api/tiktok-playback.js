@@ -31,18 +31,31 @@ async function publishedVideo(id, source) {
   return fields?.isActive?.booleanValue !== false && canonical(fields?.tiktokUrl?.stringValue) === source;
 }
 
+async function fetchProvider(url, options) {
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: AbortSignal.timeout(3000),
+      headers: { Accept: "application/json" }
+    });
+    if (!response.ok) return { code: "http-" + response.status };
+    const data = await response.json().catch(() => null);
+    if (data?.code !== 0) return { code: data ? "provider-error" : "invalid-response" };
+    return { data: data.data };
+  } catch (error) {
+    console.error("TikWM playback fetch failed", error);
+    return { code: error?.name === "TimeoutError" ? "provider-timeout" : "request-failed" };
+  }
+}
+
 async function fetchLink(source) {
-  const url = new URL("/api/", tikwmOrigin);
-  url.search = new URLSearchParams({ url: source, hd: "1" });
-  const response = await fetch(url.href, {
-    signal: AbortSignal.timeout(upstreamTimeout),
-    redirect: "error",
-    headers: { Accept: "application/json" }
-  });
-  if (!response.ok) return { code: "http-" + response.status };
-  const data = await response.json().catch(() => null);
-  if (data?.code !== 0) return { code: data ? "provider-error" : "invalid-response" };
-  return { media: normalizeTikTokMedia(source, data.data) };
+  const url = tikwmOrigin + "/api/";
+  const body = new URLSearchParams({ url: source, hd: "1" });
+  const get = await fetchProvider(url + "?" + body);
+  if (get.data) return { media: normalizeTikTokMedia(source, get.data) };
+  if (get.code === "http-403" || get.code === "http-429") return get;
+  const post = await fetchProvider(url, { method: "POST", body });
+  return post.data ? { media: normalizeTikTokMedia(source, post.data) } : post;
 }
 
 function valid(record, source) {
@@ -79,12 +92,12 @@ export async function onRequestGet({ request, env }) {
     stage = "video-verification";
     if (!(await publishedVideo(id, source))) return json({ error: "Published video not found." }, 404);
     stage = "refresh-lease";
-    const lease = await bucket.put(key, JSON.stringify({ source, pendingUntil: Date.now() + 7000 }), {
+    const lease = await bucket.put(key, JSON.stringify({ source, pendingUntil: Date.now() + 8000 }), {
       onlyIf: new Headers(etag ? { "If-Match": etag } : { "If-None-Match": "*" })
     });
     if (!lease) return waitForLink(bucket, key, source);
 
-    const result = await fetchLink(source).catch(() => ({ code: "request-failed" }));
+    const result = await fetchLink(source);
     const media = result.media;
     const entry = media?.expiresAt > Date.now()
       ? { source, media }
