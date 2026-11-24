@@ -68,6 +68,7 @@ function queueUpsert(key, item) {
 function installSpreadsheetAdminSync() {
   const root = document.getElementById("products-list");
   if (!root) return requestAnimationFrame(installSpreadsheetAdminSync);
+  if (root.hasAttribute("data-explicit-catalog-sync")) return;
 
   const observer = new MutationObserver(records => {
     for (const record of records) {

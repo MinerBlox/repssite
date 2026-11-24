@@ -80,6 +80,7 @@ async function readCatalogWithQuotaRetry() {
   throw new Error("Firestore quota did not reset within the retry window.");
 }
 
+const snapshotStartedAt = new Date().toISOString();
 const snapshot = await readCatalogWithQuotaRetry();
 
 console.log(`Firebase project: ${serviceAccount.project_id || "(unknown)"}`);
@@ -104,6 +105,7 @@ const products = snapshot.docs
 const payload = {
   version: Date.now(),
   generatedAt: new Date().toISOString(),
+  snapshotStartedAt,
   count: products.length,
   products
 };
@@ -117,6 +119,7 @@ await r2.send(new PutObjectCommand({
   Key: "catalog/products.json",
   Body: body,
   ContentType: "application/json; charset=utf-8",
+  Metadata: { snapshotstartedat: snapshotStartedAt },
   CacheControl: "public, max-age=3600, s-maxage=86400"
 }));
 

@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
-  getFirestore, collection, addDoc, doc, onSnapshot, runTransaction, serverTimestamp
+  getFirestore, collection, addDoc, doc, getDocs, onSnapshot, runTransaction, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { enableAppCheck } from "/firebase-app-check.js?v=2026-07-01-preview-skip";
 import { assetUrl, escapeHtml, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js";
@@ -41,9 +41,10 @@ let metadataTimer;
 let metadataRequest;
 let pickerSource = "all";
 let visibleLimit = pageSize;
-let catalogue;
-let cataloguePromise;
-let catalogueError;
+const catalogues = new Map();
+const catalogueRequests = new Map();
+const catalogueErrors = new Map();
+const availableCatalogue = () => catalogues.get(pickerSource);
 
 function newDraft(video = {}) {
   return {
@@ -173,13 +174,14 @@ function onUrlInput() {
   if (tiktokUrl(fields.tiktokUrl.value)) metadataTimer = setTimeout(() => void fillMetadata(), 450);
 }
 
-function productSnapshot(item) {
+function productSnapshot(item, source) {
   return {
     id: String(item.id),
+    ...(source === "video" ? { collection: "videoproducts" } : {}),
     name: String(item.name || item.title || "Unnamed item"),
     category: String(item.category || ""),
     imageUrl: String(item.imageUrl || item.image || ""),
-    agentUrl: assetUrl(item.agentUrl || item.agentLink),
+    agentUrl: assetUrl(item.agentUrl || item.agentLink || item.productUrl),
     price: item.price ?? item.priceCny ?? ""
   };
 }
@@ -188,36 +190,44 @@ function renderSelected() {
   const count = draft.items.size;
   get("selected-count").textContent = count === 1 ? "1 item selected" : count + " items selected";
   get("selected-items").innerHTML = [...draft.items.values()].map(item => {
-    const name = item.name || catalogue?.byId.get(item.id)?.name || item.id;
+    const name = item.name || availableCatalogue()?.byId.get(item.id)?.name || item.id;
     return '<button class="btn" type="button" data-unadd="' + escapeHtml(item.id) +
       '" aria-label="Unadd ' + escapeHtml(name) + '">' + escapeHtml(name) + ' ×</button>';
   }).join("");
 }
 
-async function loadCatalogue() {
-  if (catalogue || cataloguePromise) return;
-  catalogueError = "";
-  cataloguePromise = (async () => {
-    const response = await fetch("/api/catalog", { cache: "no-store" });
-    if (!response.ok) throw new Error("Catalogue returned " + response.status);
-    const data = await response.json();
-    if (!Array.isArray(data.products)) throw new Error("Invalid catalogue");
-    const products = data.products.filter(item => item?.id && item.isActive !== false &&
+async function loadCatalogue(source = pickerSource) {
+  if (catalogues.has(source) || catalogueRequests.has(source)) return;
+  catalogueErrors.delete(source);
+  const pending = (async () => {
+    let records;
+    if (source === "video") {
+      const snapshot = await getDocs(collection(db, "videoproducts"));
+      records = snapshot.docs.map(entry => ({ ...entry.data(), id: entry.id }));
+    } else {
+      const response = await fetch("/api/catalog?ts=" + Date.now(), { cache: "no-store" });
+      if (!response.ok) throw new Error("Catalogue returned " + response.status);
+      records = (await response.json()).products;
+    }
+    if (!Array.isArray(records)) throw new Error("Invalid catalogue");
+    const products = records.filter(item => item?.id && item.isActive !== false &&
       String(item.category || "").trim().toLowerCase() !== "uncategorised");
     products.sort((left, right) => (Number(left.sortOrder) || 0) - (Number(right.sortOrder) || 0));
-    catalogue = {
+    catalogues.set(source, {
       products: products.map(item => ({ item, search: [item.name, item.brand, item.category, item.id, ...(Array.isArray(item.tags) ? item.tags : [])].join(" ").toLowerCase() })),
       byId: new Map(products.map(item => [String(item.id), item]))
-    };
+    });
   })();
+  catalogueRequests.set(source, pending);
   renderCatalogue();
   try {
-    await cataloguePromise;
+    await pending;
     if (draft) renderSelected();
   } catch {
-    catalogueError = "Couldn’t load the spreadsheet catalogue. Try again.";
+    catalogueErrors.set(source, source === "video" ? "Couldn’t load Video Items. Check Firestore rules for videoproducts." :
+      "Couldn’t load the spreadsheet catalogue. Try again.");
   } finally {
-    cataloguePromise = null;
+    catalogueRequests.delete(source);
     renderCatalogue();
   }
 }
@@ -231,24 +241,23 @@ function setPicker(open) {
 
 function chooseSource(source) {
   pickerSource = source;
+  visibleLimit = pageSize;
   renderCatalogue();
-  if (source === "all") void loadCatalogue();
+  void loadCatalogue(source);
 }
 
 function renderCatalogue() {
   get("all-items").setAttribute("aria-pressed", String(pickerSource === "all"));
   get("video-items").setAttribute("aria-pressed", String(pickerSource === "video"));
-  get("catalog-search").hidden = pickerSource !== "all";
+  get("catalog-search").hidden = false;
   get("more-items").hidden = true;
   get("retry-catalog").hidden = true;
   results.replaceChildren();
   if (!draft || get("picker").hidden) return;
-  if (pickerSource === "video") {
-    setStatus("catalog-status", "Video Items will appear here when its Firestore collection is ready.");
-    return;
-  }
+  const catalogue = availableCatalogue();
+  const catalogueError = catalogueErrors.get(pickerSource);
   if (!catalogue) {
-    setStatus("catalog-status", catalogueError || "Loading spreadsheet items…", Boolean(catalogueError));
+    setStatus("catalog-status", catalogueError || "Loading items…", Boolean(catalogueError));
     get("retry-catalog").hidden = !catalogueError;
     return;
   }
@@ -259,7 +268,7 @@ function renderCatalogue() {
   results.innerHTML = matches.slice(0, visibleLimit).map(({ item }) => {
     const name = item.name || "Unnamed item";
     const thumbnail = assetUrl(item.imageUrl || item.image);
-    const add = draft.items.has(String(item.id)) ? "UNADD" : "ADD";
+    const add = pickerAction(item.id);
     const price = item.price == null || item.price === "" ? "" : String(item.price);
     const priceLabel = price && !price.startsWith("¥") ? "¥" + price : price;
     return '<article class="product-card"><div class="product-top">' +
@@ -272,8 +281,14 @@ function renderCatalogue() {
   get("more-items").hidden = matches.length <= visibleLimit;
 }
 
+function pickerAction(id) {
+  const current = draft.items.get(String(id));
+  if (!current) return "ADD";
+  return (current.collection === "videoproducts") === (pickerSource === "video") ? "UNADD" : "USE THIS VERSION";
+}
+
 function syncPickButton(button, item) {
-  const label = draft.items.has(String(item.id)) ? "UNADD" : "ADD";
+  const label = pickerAction(item.id);
   button.textContent = label;
   button.setAttribute("aria-label", label + " " + (item.name || "Unnamed item"));
 }
@@ -607,11 +622,11 @@ get("item-search").addEventListener("input", () => { visibleLimit = pageSize; re
 get("more-items").addEventListener("click", () => { visibleLimit += pageSize; renderCatalogue(); });
 results.addEventListener("click", event => {
   const button = event.target.closest("[data-pick]");
-  const item = catalogue?.byId.get(button?.dataset.pick);
+  const item = availableCatalogue()?.byId.get(button?.dataset.pick);
   if (!item || saving) return;
   const id = String(item.id);
-  if (draft.items.has(id)) draft.items.delete(id);
-  else draft.items.set(id, productSnapshot(item));
+  if (pickerAction(id) === "UNADD") draft.items.delete(id);
+  else draft.items.set(id, productSnapshot(item, pickerSource));
   syncPickButton(button, item);
   renderSelected();
 });
@@ -622,7 +637,7 @@ get("selected-items").addEventListener("click", event => {
   draft.items.delete(id);
   renderSelected();
   const cardButton = [...results.querySelectorAll("[data-pick]")].find(result => result.dataset.pick === id);
-  if (cardButton) syncPickButton(cardButton, catalogue.byId.get(id));
+  if (cardButton) syncPickButton(cardButton, availableCatalogue().byId.get(id));
   get("toggle-items").focus();
 });
 get("sign-out").addEventListener("click", () => {
@@ -635,6 +650,8 @@ onAuthStateChanged(auth, user => {
   get("manager").hidden = !allowed;
   get("sign-out").hidden = !allowed;
   if (allowed) {
+    catalogues.clear();
+    catalogueErrors.clear();
     showEditor();
     resubscribe();
   } else {

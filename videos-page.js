@@ -1,6 +1,6 @@
 import "/site-analytics.js?v=2026-07-07-videos-firestore";
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, documentId, getDocs, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js";
 
 import { createNativePlayer, createSlideshow, createTikTokPlayer } from "/native-video-player.js?v=avc";
@@ -147,15 +147,22 @@ function loadRates() {
   return ratesPromise;
 }
 
-async function loadProducts(ids) {
+async function loadProducts(items) {
   const requests = [];
-  for (let start = 0; start < ids.length; start += maxProducts) {
+  const spreadsheetIds = items.filter(item => item.collection !== "videoproducts").map(item => item.id);
+  for (let start = 0; start < spreadsheetIds.length; start += maxProducts) {
     const endpoint = new URL("/api/catalog", location.origin);
-    for (const id of ids.slice(start, start + maxProducts)) endpoint.searchParams.append("ids", id);
-    requests.push(fetch(endpoint)
+    for (const id of spreadsheetIds.slice(start, start + maxProducts)) endpoint.searchParams.append("ids", id);
+    requests.push(fetch(endpoint, { cache: "no-store" })
       .then(response => response.ok ? response.json() : null)
       .then(data => Array.isArray(data?.products) ? data.products : [])
       .catch(() => []));
+  }
+  const videoIds = items.filter(item => item.collection === "videoproducts").map(item => item.id);
+  for (let start = 0; start < videoIds.length; start += 30) {
+    const selection = query(collection(db, "videoproducts"), where(documentId(), "in", videoIds.slice(start, start + 30)));
+    requests.push(getDocs(selection).then(snapshot =>
+      snapshot.docs.map(entry => ({ ...entry.data(), id: entry.id }))).catch(() => []));
   }
   const products = (await Promise.all(requests)).flat();
   return new Map(products.map(product => [String(product.id), product]));
@@ -199,7 +206,7 @@ function drawItems(items, session) {
     price.textContent = priceLabel(product.price ?? product.priceCny ?? item.price);
     copy.append(name, price);
 
-    const outbound = productHref(current ? current.agentUrl : item.agentUrl);
+    const outbound = productHref(current ? current.agentUrl || current.productUrl : item.agentUrl);
     const target = outbound || "/items/" + encodeURIComponent(item.id) + "/";
     const link = document.createElement("a");
     link.className = "details-item-link";
@@ -224,13 +231,13 @@ function drawItems(items, session) {
 
 function renderItems(video, session) {
   const items = linkedItems(video).filter(item => item.id !== "." && item.id !== "..");
-  const ids = items.map(item => item.id).filter(id => id.length <= 256);
-  const key = JSON.stringify(ids);
+  const sources = items.filter(item => item.id.length <= 256 && !item.id.includes("/"));
+  const key = JSON.stringify(sources.map(item => [item.id, item.collection || ""]));
   if (session.productKey !== key) {
     session.productKey = key;
-    session.loadingProducts = ids.length > 0;
-    if (ids.length) {
-      void loadProducts(ids).then(products => {
+    session.loadingProducts = sources.length > 0;
+    if (sources.length) {
+      void loadProducts(sources).then(products => {
         if (detail !== session || session.productKey !== key || !dialog.open) return;
         session.products = products;
         session.loadingProducts = false;
