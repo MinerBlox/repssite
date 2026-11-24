@@ -153,14 +153,14 @@ async function fetchHtmlMeta(tiktokUrl, read = readHtmlMeta) {
   throw new Error("Too many TikTok redirects.");
 }
 
-export async function fetchTikTokMediaKeys(source) {
+export async function fetchTikTokAvcKeys(source) {
   const result = await fetchHtmlMeta(source, (html, url) => {
     const id = new URL(url).pathname.match(/\/video\/(\d+)\/?$/)?.[1];
     const video = id ? readPostPayload(html, id)?.video : null;
-    if (!video) return { keys: [] };
-    const qualities = Array.isArray(video.bitrateInfo) ? video.bitrateInfo : [];
-    const addresses = [video.playAddr, video.downloadAddr, ...qualities.flatMap(item =>
-      Array.isArray(item?.PlayAddr?.UrlList) ? item.PlayAddr.UrlList : [])];
+    const qualities = Array.isArray(video?.bitrateInfo) ? video.bitrateInfo : [];
+    const addresses = qualities.flatMap(item =>
+      /^(h264|avc1?)$/i.test(item?.CodecType || "") && Array.isArray(item?.PlayAddr?.UrlList)
+        ? item.PlayAddr.UrlList : []);
     return { keys: addresses.map(officialVideoKey).filter(Boolean) };
   });
   return new Set(result.keys);

@@ -3,8 +3,8 @@ import { getApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.
 import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js";
 
-import { createNativePlayer, createSlideshow, createTikTokPlayer } from "/native-video-player.js?v=player-polish";
-import { forgetTikTokMedia, lookupSharedTikTokMedia, lookupTikTokMedia, mediaCacheKey, readTikTokMedia } from "/tiktok-playback-cache.js?v=shared-verified";
+import { createNativePlayer, createSlideshow, createTikTokPlayer } from "/native-video-player.js?v=avc";
+import { forgetTikTokMedia, lookupSharedTikTokMedia, lookupTikTokMedia, mediaCacheKey, readTikTokMedia } from "/tiktok-playback-cache.js?v=avc";
 
 const get = id => document.getElementById(id);
 const grid = get("video-grid");

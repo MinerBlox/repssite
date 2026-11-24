@@ -49,7 +49,17 @@ export function createNativePlayer(url, title, onError, onEnded) {
   video.preload = "metadata";
   video.volume = 0.75;
   video.src = url;
-  video.addEventListener("error", onError, { once: true });
+  let failed = false;
+  function showMediaError() {
+    if (failed || !element.isConnected) return;
+    failed = true;
+    video.pause();
+    onError();
+  }
+  video.addEventListener("error", showMediaError);
+  video.addEventListener("playing", () => {
+    if (!video.videoWidth || !video.videoHeight) showMediaError();
+  }, { once: true });
   video.addEventListener("ended", onEnded, { once: true });
 
   function start() {

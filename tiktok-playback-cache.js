@@ -1,6 +1,6 @@
-import { normalizeTikTokMedia, tikwmOrigin } from "/lib/tiktok-media.js";
+import { normalizeTikTokMedia, tikwmOrigin } from "/lib/tiktok-media.js?v=avc";
 
-const storageKey = "rc-tiktok-media-v2";
+const storageKey = "rc-tiktok-media-v3";
 const maxEntries = 32;
 const memory = new Map();
 

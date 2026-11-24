@@ -1,8 +1,8 @@
-import { fetchTikTokMediaKeys, validateTikTokUrl } from "./tiktok-meta.js";
+import { fetchTikTokAvcKeys, validateTikTokUrl } from "./tiktok-meta.js";
 import { normalizeTikTokMedia, signedVideoKey } from "../../lib/tiktok-media.js";
 
 const firestore = "https://firestore.googleapis.com/v1/projects/reps-central/databases/(default)/documents/videos/";
-const prefix = "tiktok-playback/v2/";
+const prefix = "tiktok-playback/v3/";
 
 function canonical(value) {
   const validated = validateTikTokUrl(value);
@@ -82,8 +82,8 @@ export async function onRequestPost({ request, env }) {
     stage = "published-record";
     if (!(await publishedVideo(body.id, source))) return json({ error: "Published video not found." }, 404);
     stage = "post-media-verification";
-    if (!(await fetchTikTokMediaKeys(source)).has(mediaKey)) {
-      return json({ error: "The media link could not be matched to the public TikTok post." }, 422);
+    if (!(await fetchTikTokAvcKeys(source)).has(mediaKey)) {
+      return json({ error: "The media link is not a verified H.264 version of the public TikTok post." }, 422);
     }
     stage = "cdn-verification";
     const check = await fetch(media.videoUrl, { method: "HEAD", signal: AbortSignal.timeout(3500) });
