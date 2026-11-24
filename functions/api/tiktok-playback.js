@@ -25,7 +25,7 @@ async function getCache(bucket, key) {
 async function publishedVideo(id, source) {
   const uri = new URL(firestore + encodeURIComponent(id));
   for (const field of ["tiktokUrl", "isActive"]) uri.searchParams.append("mask.fieldPaths", field);
-  const response = await fetch(uri, { signal: AbortSignal.timeout(2200), redirect: "error" });
+  const response = await fetch(uri.href, { signal: AbortSignal.timeout(3000), headers: { Accept: "application/json" } });
   if (!response.ok) return false;
   const { fields } = await response.json();
   return fields?.isActive?.booleanValue !== false && canonical(fields?.tiktokUrl?.stringValue) === source;
@@ -34,7 +34,7 @@ async function publishedVideo(id, source) {
 async function fetchLink(source) {
   const url = new URL("/api/", tikwmOrigin);
   url.search = new URLSearchParams({ url: source, hd: "1" });
-  const response = await fetch(url, {
+  const response = await fetch(url.href, {
     signal: AbortSignal.timeout(upstreamTimeout),
     redirect: "error",
     headers: { Accept: "application/json" }
@@ -68,6 +68,7 @@ export async function onRequestGet({ request, env }) {
   if (!bucket) return json({ error: "Shared video storage is unavailable." }, 503);
 
   const key = prefix + id + ".json";
+  let stage = "cache-read";
   try {
     const { etag, record } = await getCache(bucket, key);
     if (valid(record, source)) return json(record.media);
@@ -75,7 +76,9 @@ export async function onRequestGet({ request, env }) {
       return json({ error: "Shared provider is temporarily unavailable." }, 503);
     }
     if (record?.source === source && record.pendingUntil > Date.now()) return waitForLink(bucket, key, source);
+    stage = "video-verification";
     if (!(await publishedVideo(id, source))) return json({ error: "Published video not found." }, 404);
+    stage = "refresh-lease";
     const lease = await bucket.put(key, JSON.stringify({ source, pendingUntil: Date.now() + 7000 }), {
       onlyIf: new Headers(etag ? { "If-Match": etag } : { "If-None-Match": "*" })
     });
@@ -86,10 +89,12 @@ export async function onRequestGet({ request, env }) {
     const entry = media?.expiresAt > Date.now()
       ? { source, media }
       : { source, retryAt: Date.now() + 30000 };
+    stage = "cache-write";
     await bucket.put(key, JSON.stringify(entry), { onlyIf: new Headers({ "If-Match": lease.httpEtag }) });
     if (entry.media) return json(media);
     return json({ error: "Shared provider could not resolve video.", reason: result.code || "no-media" }, 502);
-  } catch {
-    return json({ error: "Shared video lookup failed." }, 502);
+  } catch (error) {
+    console.error("TikTok playback " + stage + " failed", error);
+    return json({ error: "Shared video lookup failed.", reason: stage }, 502);
   }
 }
