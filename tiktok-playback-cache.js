@@ -1,6 +1,6 @@
 import { normalizeTikTokMedia, tikwmOrigin } from "/lib/tiktok-media.js";
 
-const storageKey = "rc-tiktok-media-v1";
+const storageKey = "rc-tiktok-media-v2";
 const maxEntries = 32;
 const memory = new Map();
 
@@ -77,5 +77,14 @@ export async function lookupSharedTikTokMedia(id, key, signal) {
   } catch (error) {
     if (signal.aborted) throw error;
   }
-  return lookupTikTokMedia(key, signal);
+  const media = await lookupTikTokMedia(key, signal);
+  if (media?.videoUrl) {
+    void fetch("/api/tiktok-playback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, url: key, videoUrl: media.videoUrl }),
+      keepalive: true
+    }).catch(() => {});
+  }
+  return media;
 }

@@ -1,3 +1,5 @@
+import { officialVideoKey } from "../../lib/tiktok-media.js";
+
 const JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "access-control-allow-origin": "*",
@@ -124,7 +126,7 @@ async function fetchOEmbed(tiktokUrl) {
   };
 }
 
-async function fetchHtmlMeta(tiktokUrl) {
+async function fetchHtmlMeta(tiktokUrl, read = readHtmlMeta) {
   const options = {
     redirect: "manual",
     signal: AbortSignal.timeout(7000),
@@ -146,9 +148,22 @@ async function fetchHtmlMeta(tiktokUrl) {
       continue;
     }
     if (!response.ok) throw new Error("TikTok page returned " + response.status);
-    return { url, ...readHtmlMeta(await response.text(), url) };
+    return { url, ...read(await response.text(), url) };
   }
   throw new Error("Too many TikTok redirects.");
+}
+
+export async function fetchTikTokMediaKeys(source) {
+  const result = await fetchHtmlMeta(source, (html, url) => {
+    const id = new URL(url).pathname.match(/\/video\/(\d+)\/?$/)?.[1];
+    const video = id ? readPostPayload(html, id)?.video : null;
+    if (!video) return { keys: [] };
+    const qualities = Array.isArray(video.bitrateInfo) ? video.bitrateInfo : [];
+    const addresses = [video.playAddr, video.downloadAddr, ...qualities.flatMap(item =>
+      Array.isArray(item?.PlayAddr?.UrlList) ? item.PlayAddr.UrlList : [])];
+    return { keys: addresses.map(officialVideoKey).filter(Boolean) };
+  });
+  return new Set(result.keys);
 }
 
 function readHtmlMeta(html, pageUrl) {

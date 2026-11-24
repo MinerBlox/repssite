@@ -4,7 +4,7 @@ import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/fi
 import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js";
 
 import { createNativePlayer, createSlideshow, createTikTokPlayer } from "/native-video-player.js?v=player-polish";
-import { forgetTikTokMedia, lookupSharedTikTokMedia, lookupTikTokMedia, mediaCacheKey, readTikTokMedia } from "/tiktok-playback-cache.js?v=shared";
+import { forgetTikTokMedia, lookupSharedTikTokMedia, lookupTikTokMedia, mediaCacheKey, readTikTokMedia } from "/tiktok-playback-cache.js?v=shared-verified";
 
 const get = id => document.getElementById(id);
 const grid = get("video-grid");
