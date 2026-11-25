@@ -1,5 +1,6 @@
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { refreshSpreadsheetCache } from "./catalog-cache-sync.js";
 import { getFirestore, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const ADMIN_UID = "3jC9pWkF5ZeHIDtd1LrPR1Ptvbz1";
@@ -90,7 +91,8 @@ async function deleteItem(card, button) {
 
     await deleteDoc(doc(db, "liveproducts", productId));
     card.remove();
-    showStatus(`Deleted ${name} from Firebase and GitHub.`, false, 5500);
+    const synced = await refreshSpreadsheetCache(db, user, productId);
+    showStatus(synced ? `Deleted ${name}.` : "Item deleted. The catalogue will update after the next cache rebuild.", !synced, 5500);
   } catch (error) {
     button.disabled = false;
     button.textContent = "DELETE ITEM";

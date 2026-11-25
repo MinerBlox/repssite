@@ -1,7 +1,15 @@
 import { isAdmin } from "./catalog-index.js";
 
-const CATALOG_KEY = "catalog/products.json";
-const CHANGES_KEY = "catalog/admin-changes.json";
+const albums = {
+  spreadsheet: { snapshot: "catalog/products.json", changes: "catalog/admin-changes.json" },
+  video: { snapshot: "catalog/video-products.json", changes: "catalog/video-admin-changes.json" }
+};
+const INTERACTIONS_KEY = "catalog/interactions.json";
+
+function selectAlbum(request) {
+  const name = new URL(request.url).searchParams.get("album") || "spreadsheet";
+  return Object.hasOwn(albums, name) ? albums[name] : null;
+}
 
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
@@ -21,8 +29,8 @@ function slugify(value) {
     .replace(/^-+|-+$/g, "");
 }
 
-async function readChanges(bucket) {
-  const object = await bucket.get(CHANGES_KEY);
+async function readChanges(bucket, album) {
+  const object = await bucket.get(album.changes);
   return { etag: object?.httpEtag, changes: object ? await object.json() : {} };
 }
 
@@ -30,11 +38,11 @@ function applicableChanges(changes, cutoff) {
   return Object.entries(changes).filter(([, entry]) => entry.updatedAt > cutoff);
 }
 
-async function readCatalog(bucket) {
-  const [object, { changes }] = await Promise.all([bucket.get(CATALOG_KEY), readChanges(bucket)]);
-  if (!object) return null;
+async function readCatalog(bucket, album) {
+  const [object, { changes }] = await Promise.all([bucket.get(album.snapshot), readChanges(bucket, album)]);
+  if (!object && album === albums.spreadsheet) return null;
 
-  const parsed = JSON.parse(await object.text());
+  const parsed = object ? await object.json() : {};
   let products = Array.isArray(parsed?.products) ? parsed.products : [];
   const cutoff = Date.parse(parsed.snapshotStartedAt || parsed.generatedAt) || 0;
   const applicable = applicableChanges(changes, cutoff);
@@ -56,6 +64,7 @@ async function readCatalog(bucket) {
     version: parsed?.version || null,
     generatedAt: parsed?.generatedAt || null,
     count: products.length,
+    categories: Array.isArray(parsed.categories) ? parsed.categories : [],
     products
   };
 }
@@ -70,6 +79,16 @@ export async function onRequestGet({ request, env }) {
   }
 
   const url = new URL(request.url);
+  if (url.searchParams.get("metrics") === "interactions") {
+    const headers = { "Cache-Control": "no-store" };
+    if (!(await isAdmin(request))) return json({ error: "Admin sign-in required." }, 401, headers);
+    const metrics = await env.CATALOG_INDEX_BUCKET.get(INTERACTIONS_KEY);
+    return metrics ? json(await metrics.json(), 200, headers) :
+      json({ error: "Run Build Product Cache to export interaction totals." }, 404, headers);
+  }
+
+  const album = selectAlbum(request);
+  if (!album) return json({ error: "Unknown catalogue." }, 400, { "Cache-Control": "no-store" });
   const ids = url.searchParams.getAll("ids");
   if (ids.length > 50 || ids.some(id => !id || id.length > 256)) {
     return json({ error: "Request up to 50 valid product IDs." }, 400, { "Cache-Control": "no-store" });
@@ -77,7 +96,7 @@ export async function onRequestGet({ request, env }) {
 
   let catalog;
   try {
-    catalog = await readCatalog(env.CATALOG_INDEX_BUCKET);
+    catalog = await readCatalog(env.CATALOG_INDEX_BUCKET, album);
   } catch (error) {
     return json(
       { error: "Catalog cache could not be read.", detail: String(error?.message || error) },
@@ -137,6 +156,8 @@ export async function onRequestPost({ request, env }) {
   if (!(await isAdmin(request))) return json({ error: "Admin sign-in required." }, 401, noCache);
   const bucket = env.CATALOG_INDEX_BUCKET;
   if (!bucket) return json({ error: "Catalogue cache is unavailable." }, 503, noCache);
+  const album = selectAlbum(request);
+  if (!album) return json({ error: "Unknown catalogue." }, 400, noCache);
   const raw = await request.text();
   if (raw.length > 32768) return json({ error: "Item exceeds the cache request limit." }, 413, noCache);
   let data;
@@ -149,18 +170,20 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Invalid catalogue change." }, 400, noCache);
   }
 
-  const base = await bucket.head(CATALOG_KEY);
-  if (!base) return json({ error: "Catalogue cache has not been generated yet." }, 503, noCache);
+  const base = await bucket.head(album.snapshot);
+  if (!base && album === albums.spreadsheet) {
+    return json({ error: "Catalogue cache has not been generated yet." }, 503, noCache);
+  }
   // The writer publishes this metadata with the snapshot, so mutations avoid downloading the full catalogue.
-  const cutoff = Date.parse(base.customMetadata?.snapshotstartedat || "") || 0;
+  const cutoff = Date.parse(base?.customMetadata?.snapshotstartedat || "") || 0;
   if (updatedAt <= cutoff) return json({ ok: true }, 200, noCache);
 
   for (let attempt = 0; attempt < 5; attempt++) {
-    const { etag, changes } = await readChanges(bucket);
+    const { etag, changes } = await readChanges(bucket, album);
     const entries = new Map(applicableChanges(changes, cutoff));
     if (entries.get(id)?.updatedAt > updatedAt) return json({ ok: true }, 200, noCache);
     entries.set(id, { product, updatedAt });
-    const stored = await bucket.put(CHANGES_KEY, JSON.stringify(Object.fromEntries(entries)), {
+    const stored = await bucket.put(album.changes, JSON.stringify(Object.fromEntries(entries)), {
       onlyIf: new Headers(etag ? { "If-Match": etag } : { "If-None-Match": "*" }),
       httpMetadata: { contentType: "application/json" }
     });

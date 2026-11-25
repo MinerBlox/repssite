@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { enableAppCheck } from "../firebase-app-check.js?v=2026-06-30-app-check-1";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore, collection, doc, getDocs, getDocFromServer, setDoc, runTransaction, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, doc, getDocFromServer, setDoc, runTransaction, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = { apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA", authDomain: "reps-central.firebaseapp.com", projectId: "reps-central", storageBucket: "reps-central.firebasestorage.app", messagingSenderId: "812299387060", appId: "1:812299387060:web:1c93d1e7bf30b05653d7e1", measurementId: "G-8T7F9F1FZ9" };
 const defaultCategories = ["Shoes", "Hoodies", "Tees", "Shorts", "Sweats", "Jeans", "Jackets", "Puffer", "Sweaters", "Sets", "Jerseys", "Accessories", "Uncategorised"];
@@ -226,7 +226,12 @@ async function showEditScope(card) {
   const scope = card.querySelector("[data-update-scope]");
   const draft = productDraft(card);
   try {
-    draft.inBoth ??= (await getDocFromServer(productRef(otherAlbum(source), card.dataset.productId))).exists();
+    if (draft.inBoth === undefined) {
+      const url = catalogueUrl(otherAlbum(source)) + "&ids=" + encodeURIComponent(card.dataset.productId);
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) return;
+      draft.inBoth = (await response.json()).products?.some(item => item.id === card.dataset.productId) === true;
+    }
   } catch {
     return;
   }
@@ -235,29 +240,38 @@ async function showEditScope(card) {
   scope.querySelector("select").value = draft.scope;
 }
 
-async function syncSpreadsheet(id, product, updatedAt = Date.now()) {
+function catalogueUrl(source) {
+  return "/api/catalog?album=" + (source === videoAlbum ? "video" : "spreadsheet");
+}
+
+function changeKey({ source, id }) {
+  return source + "/" + id;
+}
+
+async function syncCatalogue(source, id, product, updatedAt = Date.now()) {
   const token = await auth.currentUser.getIdToken();
   const request = (url, body) => fetch(url, {
     method: "POST", headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
     body: JSON.stringify(body)
   });
-  const [cache, index] = await Promise.allSettled([
-    request("/api/catalog", { id, product, updatedAt }),
-    request("/api/catalog-index", product ? { action: "upsert", item: { ...product, id } } : { action: "remove", id })
-  ]);
-  if ([cache, index].some(result => result.status !== "fulfilled" || !result.value.ok)) {
+  const updates = [request(catalogueUrl(source), { id, product, updatedAt })];
+  if (source === spreadsheet) {
+    updates.push(request("/api/catalog-index", product ? { action: "upsert", item: { ...product, id } } : { action: "remove", id }));
+  }
+  const results = await Promise.allSettled(updates);
+  if (results.some(result => result.status !== "fulfilled" || !result.value.ok)) {
     throw new Error("Firestore saved. Catalogue cache sync failed.");
   }
 }
 
-async function syncSpreadsheetSafely(change) {
+async function syncCatalogueSafely(change) {
   try {
-    await syncSpreadsheet(change.id, change.product, change.updatedAt);
-    pendingCacheChanges.delete(change.id);
+    await syncCatalogue(change.source, change.id, change.product, change.updatedAt);
+    pendingCacheChanges.delete(changeKey(change));
     document.getElementById("retry-cache").hidden = !pendingCacheChanges.size;
     return "";
   } catch {
-    pendingCacheChanges.set(change.id, change);
+    pendingCacheChanges.set(changeKey(change), change);
     document.getElementById("retry-cache").hidden = false;
     return " Firestore saved. Retry catalogue sync to update the public cache.";
   }
@@ -303,7 +317,7 @@ async function saveProduct(card) {
     const quick = card.querySelector("[data-quick-category]");
     if (quick) quick.value = existing.category;
     productStatus(id, "Saved", "saved");
-    const message = source === spreadsheet || both ? await refreshSpreadsheetItem(id) : "";
+    const message = await refreshCatalogues(both ? [source, otherAlbum(source)] : [source], id);
     catalogueStatus.textContent = (both ? "Saved to both catalogues." : "Saved to " + albumNames[source] + ".") + message;
   } catch (error) {
     productStatus(id, "Save failed", "error");
@@ -313,27 +327,23 @@ async function saveProduct(card) {
   }
 }
 
-async function refreshSpreadsheetItem(id) {
+async function refreshCatalogueItem(source, id) {
   let snapshot;
   try {
-    snapshot = await getDocFromServer(productRef(spreadsheet, id));
+    snapshot = await getDocFromServer(productRef(source, id));
   } catch {
-    pendingCacheChanges.set(id, { id, reread: true });
+    const change = { source, id, reread: true };
+    pendingCacheChanges.set(changeKey(change), change);
     document.getElementById("retry-cache").hidden = false;
     return " Firestore saved. Retry catalogue sync to update the public cache.";
   }
   const raw = snapshot.exists() ? snapshot.data() : null;
-  return syncSpreadsheetSafely({ id, product: raw && normalizeProduct(raw), updatedAt: raw?.updatedAt?.toMillis?.() || Date.now() });
+  return syncCatalogueSafely({ source, id, product: raw && normalizeProduct(raw), updatedAt: raw?.updatedAt?.toMillis?.() || Date.now() });
 }
 
-async function loadCategories() {
-  try {
-    const snapshot = await getDocs(collection(db, "categories"));
-    categories = [...categories, ...snapshot.docs.map(categoryDoc => categoryDoc.data().name || categoryDoc.id)];
-  } catch {
-    categories.push(...defaultCategories);
-  }
-  renderCategories();
+async function refreshCatalogues(sources, id) {
+  const results = await Promise.all(sources.map(source => refreshCatalogueItem(source, id)));
+  return results.find(Boolean) || "";
 }
 
 async function loadCatalogue() {
@@ -344,18 +354,13 @@ async function loadCatalogue() {
   catalogueRetry.hidden = true;
   renderProducts();
   try {
-    let records;
-    if (source === spreadsheet) {
-      const response = await fetch("/api/catalog?ts=" + Date.now(), { cache: "no-store" });
-      if (!response.ok) throw new Error("Couldn’t load the spreadsheet cache.");
-      records = (await response.json()).products;
-      if (!Array.isArray(records)) throw new Error("Couldn’t read the spreadsheet cache.");
-    } else {
-      const snapshot = await getDocs(collection(db, videoAlbum));
-      records = snapshot.docs.map(entry => ({ ...entry.data(), id: entry.id }));
-    }
+    const response = await fetch(catalogueUrl(source) + "&ts=" + Date.now(), { cache: "no-store" });
+    if (!response.ok) throw new Error("Couldn’t load the catalogue cache.");
+    const { products: records, categories: savedCategories } = await response.json();
+    if (!Array.isArray(records)) throw new Error("Couldn’t read the catalogue cache.");
     if (request !== catalogueRequest) return;
     products = records.filter(item => typeof item?.id === "string").map(item => ({ ...normalizeProduct(item), id: item.id }));
+    if (Array.isArray(savedCategories)) categories.push(...savedCategories);
     categories.push(...new Set(products.map(item => item.category).filter(Boolean)));
     renderCategories();
     catalogueLoading = false;
@@ -364,7 +369,7 @@ async function loadCatalogue() {
     if (request !== catalogueRequest) return;
     catalogueLoading = false;
     catalogueStatus.textContent = source === spreadsheet ? "Couldn’t load the spreadsheet cache." :
-      "Couldn’t load Video Items. Check Firestore rules for videoproducts.";
+      "Couldn’t load the Video Items cache.";
     catalogueRetry.hidden = false;
   }
 }
@@ -374,13 +379,19 @@ async function loadInteractions() {
   interactionsLoading = true;
   setStatus("Loading interaction totals…");
   try {
-    const snapshot = await getDocs(collection(db, "analyticsProducts"));
-    productInteractions = new Map(snapshot.docs.map(statsDoc => [statsDoc.id, Number(statsDoc.data().totalInteractions || 0)]));
+    const token = await auth.currentUser.getIdToken();
+    const response = await fetch("/api/catalog?metrics=interactions", {
+      cache: "no-store", headers: { Authorization: "Bearer " + token }
+    });
+    if (!response.ok) throw new Error("Interaction cache is unavailable.");
+    const { interactions } = await response.json();
+    productInteractions = new Map(Object.entries(interactions || {}));
     interactionsLoaded = true;
     renderProducts();
     setStatus("Interaction totals loaded");
   } catch {
     setStatus("Interaction totals could not be loaded");
+    catalogueStatus.textContent = "Run Build Product Cache to export interaction totals.";
   } finally {
     interactionsLoading = false;
   }
@@ -397,7 +408,7 @@ async function unlock(user) {
   setStatus(`Signed in as ${user.email}`);
   if (!hasLoaded) {
     hasLoaded = true;
-    await Promise.all([loadCategories(), loadCatalogue()]);
+    await loadCatalogue();
   }
 }
 
@@ -506,7 +517,7 @@ async function removeProduct(card) {
     await batch.commit();
     drafts.delete(source + "/" + id);
     products = products.filter(item => item.id !== id);
-    const message = source === spreadsheet ? await refreshSpreadsheetItem(id) : "";
+    const message = await refreshCatalogueItem(source, id);
     renderProducts();
     catalogueStatus.textContent = "Item deleted." + message;
   } catch (error) {
@@ -564,11 +575,12 @@ addForm.addEventListener("submit", async event => {
     if (file) data.imageUrl = await uploadItemImage(file);
     const id = doc(collection(db, spreadsheet)).id;
     const batch = writeBatch(db);
-    for (const source of input === "both" ? [spreadsheet, videoAlbum] : [input]) {
+    const sources = input === "both" ? [spreadsheet, videoAlbum] : [input];
+    for (const source of sources) {
       batch.set(productRef(source, id), { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
     }
     await batch.commit();
-    const message = input === videoAlbum ? "" : await refreshSpreadsheetItem(id);
+    const message = await refreshCatalogues(sources, id);
     resetAddFields();
     addStatus.textContent = "Item added to " + (input === "both" ? "both catalogues." : albumNames[input] + ".") + message;
   } catch (error) {
@@ -605,8 +617,8 @@ document.getElementById("retry-cache").addEventListener("click", async () => {
   setWritePending(true);
   try {
     for (const change of [...pendingCacheChanges.values()]) {
-      if (change.reread) await refreshSpreadsheetItem(change.id);
-      else await syncSpreadsheetSafely(change);
+      if (change.reread) await refreshCatalogueItem(change.source, change.id);
+      else await syncCatalogueSafely(change);
     }
     document.getElementById("cache-status").textContent = pendingCacheChanges.size ? "Some catalogue changes still need syncing." : "Catalogue cache updated.";
   } finally {

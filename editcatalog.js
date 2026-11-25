@@ -8,12 +8,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
   getFirestore,
-  collection,
-  getDocs,
   doc,
   updateDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+import { refreshSpreadsheetCache } from "./catalog-cache-sync.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA",
@@ -244,7 +244,8 @@ async function saveName(productId, card) {
     if (nameEl) nameEl.textContent = cleanName;
     const image = card.querySelector(".product-image");
     if (image) image.alt = cleanName;
-    showStatus(`Saved name: ${cleanName}`);
+    const synced = await refreshSpreadsheetCache(db, auth.currentUser, productId);
+    showStatus(synced ? `Saved name: ${cleanName}` : "Name saved. The catalogue will update after the next cache rebuild.", !synced);
   } catch (error) {
     showStatus(`Could not save name: ${error.message}`, true, 6000);
   }
@@ -263,7 +264,8 @@ async function savePrice(productId, card) {
     product.price = yuan;
     product.currency = "CNY";
     refreshCardPrice(card, yuan);
-    showStatus(`Saved price: ¥${yuan.toFixed(2)}`);
+    const synced = await refreshSpreadsheetCache(db, auth.currentUser, productId);
+    showStatus(synced ? `Saved price: ¥${yuan.toFixed(2)}` : "Price saved. The catalogue will update after the next cache rebuild.", !synced);
   } catch (error) {
     showStatus(`Could not save price: ${error.message}`, true, 6000);
   }
@@ -278,7 +280,8 @@ async function toggleMarked(productId, card) {
     await updateDoc(doc(db, "liveproducts", productId), { catalogMarked: nextMarked, updatedAt: serverTimestamp() });
     product.catalogMarked = nextMarked;
     setCardMarkedState(card, nextMarked);
-    showStatus(nextMarked ? "Item marked." : "Item unmarked.");
+    const synced = await refreshSpreadsheetCache(db, auth.currentUser, productId);
+    showStatus(synced ? nextMarked ? "Item marked." : "Item unmarked." : "Mark saved. The catalogue will update after the next cache rebuild.", !synced);
   } catch (error) {
     showStatus(`Could not update mark: ${error.message}`, true, 6000);
   }
@@ -468,8 +471,11 @@ function decorateAllCards() {
 
 async function loadProductsForEditing() {
   productMap.clear();
-  const snapshot = await getDocs(collection(db, "liveproducts"));
-  snapshot.forEach(snapshotDoc => productMap.set(snapshotDoc.id, { id: snapshotDoc.id, ...snapshotDoc.data() }));
+  const response = await fetch("/api/catalog?ts=" + Date.now(), { cache: "no-store" });
+  if (!response.ok) throw new Error("Could not load the spreadsheet cache.");
+  const { products } = await response.json();
+  if (!Array.isArray(products)) throw new Error("Invalid spreadsheet cache.");
+  for (const product of products) productMap.set(product.id, product);
 }
 
 async function startEditor() {

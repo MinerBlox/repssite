@@ -2,49 +2,36 @@ name: Build Product Cache
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: Catalogue export to run
+        type: choice
+        options: [video, spreadsheet, interactions, all]
+        default: video
   schedule:
-    # Firestore free quota resets around midnight Pacific time.
-    # Run at 00:02 Pacific year-round (07:02 UTC during PDT, 08:02 UTC during PST).
-    - cron: "2 7 * * *"
-    - cron: "2 8 * * *"
+    - cron: "17 0 * * *"
+      timezone: "America/Los_Angeles"
 
 permissions:
   contents: read
 
+concurrency:
+  group: product-cache-build
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check Pacific midnight
-        id: midnight
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          elif [ "$(TZ=America/Los_Angeles date +%H)" = "00" ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Checkout
-        if: steps.midnight.outputs.run == 'true'
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        if: steps.midnight.outputs.run == 'true'
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
-
       - name: Install cache dependencies
-        if: steps.midnight.outputs.run == 'true'
         run: npm install --no-save firebase-admin @aws-sdk/client-s3
-
-      - name: Export Firestore catalog to R2
-        if: steps.midnight.outputs.run == 'true'
+      - name: Export Firestore catalogues to R2
         env:
+          CATALOG_TARGET: ${{ inputs.target || 'all' }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}

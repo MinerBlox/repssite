@@ -1,6 +1,6 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 
 function required(name) {
   const value = process.env[name];
@@ -53,14 +53,14 @@ function serializable(value) {
   return value;
 }
 
-async function readCatalogWithQuotaRetry() {
+async function readWithQuotaRetry(query, collection) {
   const maxAttempts = 12;
   const retryMs = 2 * 60 * 1000;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      console.log(`Reading liveproducts from Firestore (attempt ${attempt}/${maxAttempts})...`);
-      return await db.collection("liveproducts").get();
+      console.log(`Reading ${collection} from Firestore (attempt ${attempt}/${maxAttempts})...`);
+      return await query.get();
     } catch (error) {
       const quotaExceeded =
         error?.code === 8 ||
@@ -80,47 +80,68 @@ async function readCatalogWithQuotaRetry() {
   throw new Error("Firestore quota did not reset within the retry window.");
 }
 
-const snapshotStartedAt = new Date().toISOString();
-const snapshot = await readCatalogWithQuotaRetry();
+async function writeCache(key, content, snapshotStartedAt) {
+  const body = JSON.stringify({ ...content, version: Date.now(), generatedAt: new Date().toISOString(), snapshotStartedAt });
+  await r2.send(new PutObjectCommand({
+    Bucket: bucketName,
+    Key: key,
+    Body: body,
+    ContentType: "application/json; charset=utf-8",
+    Metadata: { snapshotstartedat: snapshotStartedAt },
+    CacheControl: "public, max-age=3600, s-maxage=86400"
+  }));
+  console.log(`Saved ${key} (${content.count.toLocaleString()} entries).`);
+}
 
-console.log(`Firebase project: ${serviceAccount.project_id || "(unknown)"}`);
-console.log(`Products found: ${snapshot.size.toLocaleString()}`);
+async function exportProducts(collection, key, includeCategories = false) {
+  const snapshotStartedAt = new Date().toISOString();
+  const snapshot = await readWithQuotaRetry(db.collection(collection), collection);
+  const products = snapshot.docs
+    .map(doc => ({ ...serializable(doc.data()), id: doc.id }))
+    .sort((left, right) => Number(left.sortOrder || 0) - Number(right.sortOrder || 0));
+  const payload = { count: products.length, products };
+  if (includeCategories) {
+    const categories = await readWithQuotaRetry(db.collection("categories").select("name"), "categories");
+    payload.categories = categories.docs.map(doc => doc.data().name || doc.id);
+  }
+  await writeCache(key, payload, snapshotStartedAt);
+}
 
-const kroenById = snapshot.docs.find(doc => doc.id === "kroen-sweatshirt");
-const kroenByName = snapshot.docs.find(doc =>
-  String(doc.data()?.name || "").trim().toLowerCase() === "kroen sweatshirt"
-);
+async function exportInteractions() {
+  const key = "catalog/interactions.json";
+  let previous;
+  try {
+    const object = await r2.send(new GetObjectCommand({ Bucket: bucketName, Key: key }));
+    previous = JSON.parse(await object.Body.transformToString());
+  } catch (error) {
+    if (error.name !== "NoSuchKey" && error.$metadata?.httpStatusCode !== 404) throw error;
+  }
+  const snapshotStartedAt = new Date().toISOString();
+  const counts = new Map(Object.entries(previous?.interactions || {}));
+  let query = db.collection("analyticsProducts");
+  if (previous?.snapshotStartedAt) {
+    query = query.where("updatedAt", ">=", new Date(previous.snapshotStartedAt));
+  }
+  const snapshot = await readWithQuotaRetry(query.select("totalInteractions"), "analyticsProducts");
+  for (const doc of snapshot.docs) counts.set(doc.id, Number(doc.data().totalInteractions) || 0);
+  await writeCache(key, { count: counts.size, interactions: Object.fromEntries(counts) }, snapshotStartedAt);
+}
 
-console.log(`kroen-sweatshirt document ID found: ${kroenById ? "YES" : "NO"}`);
-console.log(`Kroen Sweatshirt name found: ${kroenByName ? "YES" : "NO"}`);
-if (kroenByName) console.log(`Kroen Sweatshirt document ID: ${kroenByName.id}`);
-
-const products = snapshot.docs
-  .map(doc => ({
-    id: doc.id,
-    ...serializable(doc.data())
-  }))
-  .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
-
-const payload = {
-  version: Date.now(),
-  generatedAt: new Date().toISOString(),
-  snapshotStartedAt,
-  count: products.length,
-  products
+const target = process.env.CATALOG_TARGET || "all";
+const exportsByTarget = {
+  spreadsheet: () => exportProducts("liveproducts", "catalog/products.json", true),
+  video: () => exportProducts("videoproducts", "catalog/video-products.json"),
+  interactions: exportInteractions
 };
-
-const body = JSON.stringify(payload);
-
-console.log(`Uploading ${products.length.toLocaleString()} products (${(Buffer.byteLength(body) / 1024 / 1024).toFixed(2)} MiB) to R2...`);
-
-await r2.send(new PutObjectCommand({
-  Bucket: bucketName,
-  Key: "catalog/products.json",
-  Body: body,
-  ContentType: "application/json; charset=utf-8",
-  Metadata: { snapshotstartedat: snapshotStartedAt },
-  CacheControl: "public, max-age=3600, s-maxage=86400"
-}));
-
-console.log("✅ catalog/products.json updated.");
+if (target !== "all" && !Object.hasOwn(exportsByTarget, target)) throw new Error("Unknown export target: " + target);
+const selected = target === "all" ? Object.entries(exportsByTarget) : [[target, exportsByTarget[target]]];
+let failed = false;
+for (const [name, run] of selected) {
+  try {
+    await run();
+  } catch (error) {
+    console.error(`Could not export ${name}:`, error);
+    failed = true;
+  }
+}
+if (failed) process.exitCode = 1;

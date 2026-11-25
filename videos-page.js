@@ -1,6 +1,6 @@
 import "/site-analytics.js?v=2026-07-07-videos-firestore";
 import { getApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getFirestore, collection, documentId, getDocs, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js";
 
 import { createNativePlayer, createSlideshow, createTikTokPlayer } from "/native-video-player.js?v=avc";
@@ -149,20 +149,17 @@ function loadRates() {
 
 async function loadProducts(items) {
   const requests = [];
-  const spreadsheetIds = items.filter(item => item.collection !== "videoproducts").map(item => item.id);
-  for (let start = 0; start < spreadsheetIds.length; start += maxProducts) {
-    const endpoint = new URL("/api/catalog", location.origin);
-    for (const id of spreadsheetIds.slice(start, start + maxProducts)) endpoint.searchParams.append("ids", id);
-    requests.push(fetch(endpoint, { cache: "no-store" })
-      .then(response => response.ok ? response.json() : null)
-      .then(data => Array.isArray(data?.products) ? data.products : [])
-      .catch(() => []));
-  }
-  const videoIds = items.filter(item => item.collection === "videoproducts").map(item => item.id);
-  for (let start = 0; start < videoIds.length; start += 30) {
-    const selection = query(collection(db, "videoproducts"), where(documentId(), "in", videoIds.slice(start, start + 30)));
-    requests.push(getDocs(selection).then(snapshot =>
-      snapshot.docs.map(entry => ({ ...entry.data(), id: entry.id }))).catch(() => []));
+  for (const album of ["spreadsheet", "video"]) {
+    const ids = items.filter(item => (item.collection === "videoproducts") === (album === "video")).map(item => item.id);
+    for (let start = 0; start < ids.length; start += maxProducts) {
+      const endpoint = new URL("/api/catalog", location.origin);
+      endpoint.searchParams.set("album", album);
+      for (const id of ids.slice(start, start + maxProducts)) endpoint.searchParams.append("ids", id);
+      requests.push(fetch(endpoint, { cache: "no-store" })
+        .then(response => response.ok ? response.json() : null)
+        .then(data => Array.isArray(data?.products) ? data.products : [])
+        .catch(() => []));
+    }
   }
   const products = (await Promise.all(requests)).flat();
   return new Map(products.map(product => [String(product.id), product]));

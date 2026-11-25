@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
-  getFirestore, collection, addDoc, doc, getDocs, onSnapshot, runTransaction, serverTimestamp
+  getFirestore, collection, addDoc, doc, onSnapshot, runTransaction, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { enableAppCheck } from "/firebase-app-check.js?v=2026-07-01-preview-skip";
 import { assetUrl, escapeHtml, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js";
@@ -200,15 +200,10 @@ async function loadCatalogue(source = pickerSource) {
   if (catalogues.has(source) || catalogueRequests.has(source)) return;
   catalogueErrors.delete(source);
   const pending = (async () => {
-    let records;
-    if (source === "video") {
-      const snapshot = await getDocs(collection(db, "videoproducts"));
-      records = snapshot.docs.map(entry => ({ ...entry.data(), id: entry.id }));
-    } else {
-      const response = await fetch("/api/catalog?ts=" + Date.now(), { cache: "no-store" });
-      if (!response.ok) throw new Error("Catalogue returned " + response.status);
-      records = (await response.json()).products;
-    }
+    const album = source === "video" ? "video" : "spreadsheet";
+    const response = await fetch("/api/catalog?album=" + album + "&ts=" + Date.now(), { cache: "no-store" });
+    if (!response.ok) throw new Error("Catalogue returned " + response.status);
+    const records = (await response.json()).products;
     if (!Array.isArray(records)) throw new Error("Invalid catalogue");
     const products = records.filter(item => item?.id && item.isActive !== false &&
       String(item.category || "").trim().toLowerCase() !== "uncategorised");
@@ -224,7 +219,7 @@ async function loadCatalogue(source = pickerSource) {
     await pending;
     if (draft) renderSelected();
   } catch {
-    catalogueErrors.set(source, source === "video" ? "Couldn’t load Video Items. Check Firestore rules for videoproducts." :
+    catalogueErrors.set(source, source === "video" ? "Couldn’t load the Video Items cache. Try again." :
       "Couldn’t load the spreadsheet catalogue. Try again.");
   } finally {
     catalogueRequests.delete(source);
