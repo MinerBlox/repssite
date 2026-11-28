@@ -38,3 +38,12 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
         run: node scripts/build-product-cache.mjs
+      - name: Warm playback on preview
+        if: github.event_name == 'workflow_dispatch' && github.ref_name == 'dev' && (inputs.target == 'playback' || inputs.target == 'all')
+        env:
+          PLAYBACK_ORIGIN: https://dev.repscentral.pages.dev
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+        run: node scripts/warm-video-playback.mjs

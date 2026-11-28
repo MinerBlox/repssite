@@ -72,6 +72,11 @@
       .link-row { grid-template-columns: 1fr; }
       .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
+    #reorder-videos { margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; }
+    #reorder-videos summary { cursor: pointer; font-weight: 700; }
+    #video-order-list { padding-left: 1.6rem; }
+    #video-order-list li { padding: 7px 0; border-bottom: 1px solid var(--border); }
+    .order-actions { display: inline-flex; gap: 6px; margin-left: 10px; vertical-align: middle; }
   </style>
 </head>
 <body>
@@ -104,6 +109,10 @@
         <div class="video-grid" id="pending-videos"><p class="video-grid-message">Loading drafts…</p></div>
       </div>
       <h2>Published videos</h2>
+      <details id="reorder-videos" hidden>
+        <summary>Reorder videos</summary>
+        <ol id="video-order-list"></ol>
+      </details>
       <div class="video-grid" id="saved-videos"><p class="video-grid-message">Loading videos…</p></div>
     </section>
 
@@ -116,13 +125,10 @@
             <label for="video-title">Name</label>
             <input id="video-title" name="title" required>
           </div>
-          <div class="field">
-            <label for="video-order">Sort order</label>
-            <input id="video-order" name="sortOrder" type="number" min="0" step="1" value="0">
-          </div>
+
         </div>
         <div class="field">
-          <label for="video-url">TikTok link</label>
+          <label for="video-url">TikTok video or slideshow link</label>
           <div class="link-row">
             <input id="video-url" name="tiktokUrl" type="url" placeholder="https://www.tiktok.com/@…/video/…">
             <button class="btn" id="fetch-metadata" type="button">Fetch from TikTok</button>
@@ -186,6 +192,6 @@
       <p class="status" id="editor-status" role="status"></p>
     </form>
   </main>
-  <script type="module" src="./manager.js?v=prewarm"></script>
+  <script type="module" src="./manager.js?v=slide-order"></script>
 </body>
 </html>

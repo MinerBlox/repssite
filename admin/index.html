@@ -677,10 +677,14 @@
       getFirestore,
       collection,
       doc,
+      documentId,
       onSnapshot,
-      runTransaction,
-      serverTimestamp
+      query,
+      Timestamp,
+      where
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    import { installTooltip } from "/admin/analytics-enhancements.js?v=read-once";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA",
@@ -708,6 +712,10 @@
 
     let analyticsUnsubscribers = [];
     let analyticsRefreshTimer = null;
+    let unsubscribePresence = null;
+    let unsubscribeChart = null;
+    let chartQueryRange = "";
+    let presenceQueryAt = 0;
 
     let pageVisits = new Map();
     let presenceDocs = [];
@@ -716,33 +724,37 @@
     let totalsSummary = {};
     let chartRange = "daily";
     let peakWriteInFlight = false;
+    let peakLoaded = false;
+    let viewerPeak = { count: 0, recordedAt: null };
 
+    async function peakRequest(user, value) {
+      const headers = { Authorization: "Bearer " + await user.getIdToken() };
+      const options = value ? {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify(value)
+      } : { headers };
+      const response = await fetch("/api/viewer-peak", { ...options, cache: "no-store" });
+      if (!response.ok) throw new Error("Peak update failed (" + response.status + ")");
+      return response.json();
+    }
 
-    async function persistAllTimeHigh(liveCount) {
-      if (peakWriteInFlight || liveCount <= Number(totalsSummary.allTimeHighLive || 0)) return;
+    async function persistAllTimeHigh(count, recordedAt = null) {
+      const user = auth.currentUser;
+      if (!user || !peakLoaded || peakWriteInFlight || count <= viewerPeak.count) return;
       peakWriteInFlight = true;
-
       try {
-        const summaryRef = doc(db, "analyticsTotals", "summary");
-
-        await runTransaction(db, async transaction => {
-          const snapshot = await transaction.get(summaryRef);
-          const storedHigh = Number(snapshot.exists() ? snapshot.data()?.allTimeHighLive || 0 : 0);
-
-          if (liveCount <= storedHigh) return;
-
-          transaction.set(summaryRef, {
-            allTimeHighLive: liveCount,
-            allTimeHighLiveAt: serverTimestamp()
-          }, { merge: true });
-        });
+        const stored = await peakRequest(user, { count, recordedAt });
+        if (auth.currentUser === user) viewerPeak = stored;
       } catch (error) {
         console.error("Could not persist all-time-high viewers.", error);
       } finally {
-        peakWriteInFlight = false;
+        if (auth.currentUser === user) {
+          peakWriteInFlight = false;
+          if (viewerPeak.count >= count) renderAnalytics();
+        }
       }
     }
-
 
     function escapeHtml(value) {
       return String(value || "")
@@ -980,17 +992,20 @@
       });
 
       const liveCount = activePresence.length;
-      const storedHigh = Number(totalsSummary.allTimeHighLive || 0);
+      const historicalHigh = Number(totalsSummary.allTimeHighLive || 0);
+      const storedHigh = Math.max(viewerPeak.count, historicalHigh);
       const high = Math.max(storedHigh, liveCount);
-
-      if (liveCount > storedHigh) void persistAllTimeHigh(liveCount);
+      const historicalTime = totalsSummary.allTimeHighLiveAt?.toDate?.().toISOString();
+      if (high > viewerPeak.count) void persistAllTimeHigh(high, high <= historicalHigh ? historicalTime : null);
 
       document.getElementById("live-viewers").textContent = formatNumber(liveCount);
       document.getElementById("all-time-high").textContent = formatNumber(high);
       document.getElementById("total-visits").textContent = formatNumber(totalsSummary.totalVisits || 0);
 
       const highNote = document.getElementById("all-time-high-note");
-      const highTime = formatDateTime(totalsSummary.allTimeHighLiveAt);
+      const highTime = viewerPeak.count === high && viewerPeak.recordedAt
+        ? new Date(viewerPeak.recordedAt).toLocaleString("en-GB")
+        : historicalHigh === high ? formatDateTime(totalsSummary.allTimeHighLiveAt) : "";
 
       highNote.textContent = highTime
         ? `Highest concurrent viewers recorded at ${highTime}`
@@ -1020,8 +1035,44 @@
       renderViewsChart();
     }
 
+    function subscribePresence() {
+      unsubscribePresence?.();
+      presenceQueryAt = Date.now();
+      const active = query(collection(db, "analyticsPresence"), where("lastSeen", ">=", Timestamp.fromMillis(presenceQueryAt - 65000)));
+      unsubscribePresence = onSnapshot(active, snapshot => {
+        presenceDocs = snapshot.docs.map(presenceDoc => presenceDoc.data());
+        renderAnalytics();
+      });
+    }
+
+    function subscribeChart() {
+      const mode = ["hourly", "daily", "monthly"].includes(chartRange) ? chartRange : "all";
+      if (mode === chartQueryRange) return;
+      chartQueryRange = mode;
+      unsubscribeChart?.();
+      const hourly = mode === "hourly";
+      const base = collection(db, hourly ? "analyticsHourly" : "analyticsDaily");
+      const now = new Date();
+      const cutoff = hourly ? new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString().slice(0, 13) :
+        mode === "daily" ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 29)).toISOString().slice(0, 10) :
+        mode === "monthly" ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1)).toISOString().slice(0, 10) : "";
+      unsubscribeChart = onSnapshot(cutoff ? query(base, where(documentId(), ">=", cutoff)) : base, snapshot => {
+        const entries = snapshot.docs.map(entry => ({ id: entry.id, ...entry.data() }));
+        if (hourly) hourlyViews = entries;
+        else dailyViews = entries;
+        renderViewsChart();
+      });
+    }
+
     function startAnalytics() {
       stopAnalytics();
+      const user = auth.currentUser;
+      void peakRequest(user).then(peak => {
+        if (auth.currentUser !== user) return;
+        viewerPeak = peak;
+        peakLoaded = true;
+        renderAnalytics();
+      }).catch(error => console.error("Viewer peak could not be loaded.", error));
 
       analyticsUnsubscribers.push(onSnapshot(doc(db, "analyticsTotals", "summary"), snapshot => {
         totalsSummary = snapshot.exists() ? snapshot.data() : {};
@@ -1033,28 +1084,26 @@
         renderAnalytics();
       }));
 
-      analyticsUnsubscribers.push(onSnapshot(collection(db, "analyticsPresence"), snapshot => {
-        presenceDocs = snapshot.docs.map(presenceDoc => presenceDoc.data());
+      subscribePresence();
+      subscribeChart();
+      analyticsRefreshTimer = window.setInterval(() => {
+        if (Date.now() - presenceQueryAt > 10 * 60 * 1000) subscribePresence();
         renderAnalytics();
-      }));
-
-      analyticsUnsubscribers.push(onSnapshot(collection(db, "analyticsDaily"), snapshot => {
-        dailyViews = snapshot.docs.map(dayDoc => ({ id: dayDoc.id, ...dayDoc.data() }));
-        renderAnalytics();
-      }));
-
-      analyticsUnsubscribers.push(onSnapshot(collection(db, "analyticsHourly"), snapshot => {
-        hourlyViews = snapshot.docs.map(hourDoc => ({ id: hourDoc.id, ...hourDoc.data() }));
-        renderAnalytics();
-      }));
-
-
-      analyticsRefreshTimer = window.setInterval(renderAnalytics, 15000);
+      }, 15000);
     }
 
     function stopAnalytics() {
       analyticsUnsubscribers.forEach(unsubscribe => unsubscribe());
       analyticsUnsubscribers = [];
+      unsubscribePresence?.();
+      unsubscribeChart?.();
+      unsubscribePresence = unsubscribeChart = null;
+      chartQueryRange = "";
+      peakLoaded = peakWriteInFlight = false;
+      viewerPeak = { count: 0, recordedAt: null };
+      presenceDocs = dailyViews = hourlyViews = [];
+      totalsSummary = {};
+      pageVisits.clear();
 
       if (analyticsRefreshTimer) {
         clearInterval(analyticsRefreshTimer);
@@ -1114,10 +1163,12 @@
           item.classList.toggle("active", item === button);
         });
 
+        if (auth.currentUser?.uid === ADMIN_UID && analyticsRefreshTimer) subscribeChart();
         renderViewsChart();
       });
     });
 
+    installTooltip(chartSeries);
     window.addEventListener("resize", () => renderViewsChart());
 
     onAuthStateChanged(auth, user => {

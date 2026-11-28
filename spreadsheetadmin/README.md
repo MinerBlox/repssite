@@ -34,3 +34,7 @@ The daily **Build Product Cache** job also saves a list of published TikTok vide
 After merging to `main`, run **Build Product Cache** with `all` to refresh the catalogues and build the manifest. You can choose `playback` to build just the manifest. Then run **Warm Video Playback** once and check the counts in its logs. The warmer defaults to `https://repscentral.pages.dev`. Set the `PLAYBACK_ORIGIN` Actions variable if your production API runs on a different origin.
 
 Video Manager also warms a TikTok link after publishing. During viewing, the site can reuse the signed URL from R2 and will look it up on demand if it is missing or expired. TikTok CDN buffering and browser autoplay settings still apply.
+
+### Test playback warming on the dev preview
+
+In **Actions → Build Product Cache → Run workflow**, select the `dev` branch and the `playback` target. This builds the playback manifest, then warms links through the dev API. The nightly jobs still use `main`. If you use GitHub CLI, run `gh workflow run build-product-cache.yml --ref dev -f target=playback`.

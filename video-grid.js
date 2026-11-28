@@ -43,12 +43,43 @@ export function linkedItems(video) {
   return [...items.values()];
 }
 
+export function videoSortOrder(video) {
+  const order = Number(video?.sortOrder);
+  return Number.isFinite(order) ? order : 0;
+}
+
 export function sortVideos(videos) {
   return videos.sort((left, right) =>
-    (Number(left.sortOrder) || 0) - (Number(right.sortOrder) || 0) ||
+    videoSortOrder(left) - videoSortOrder(right) ||
     (right.createdAt?.seconds || 0) - (left.createdAt?.seconds || 0) ||
+    (right.createdAt?.nanoseconds || 0) - (left.createdAt?.nanoseconds || 0) ||
     left.id.localeCompare(right.id)
   );
+}
+
+export function nextVideoSortOrder(videos) {
+  return Math.min(0, ...Array.from(videos, videoSortOrder)) - 1024;
+}
+
+export function moveVideoOrder(videos, id, delta) {
+  const old = videos.findIndex(video => video.id === id);
+  const index = old + delta;
+  if (old < 0 || index < 0 || index >= videos.length) return [];
+  const ordered = [...videos];
+  const [moved] = ordered.splice(old, 1);
+  ordered.splice(index, 0, moved);
+  const before = index > 0 ? videoSortOrder(ordered[index - 1]) : null;
+  const after = index < ordered.length - 1 ? videoSortOrder(ordered[index + 1]) : null;
+  const sortOrder = before === null ? after - 1024 : after === null ? before + 1024 : before + (after - before) / 2;
+  if ((before === null || sortOrder > before) && (after === null || sortOrder < after)) {
+    return [{ id, sortOrder }];
+  }
+
+  // Legacy entries may all have the same order. Give the displayed list space for future moves.
+  return ordered.flatMap((video, position) => {
+    const rank = position * 1024;
+    return rank === videoSortOrder(video) ? [] : [{ id: video.id, sortOrder: rank }];
+  });
 }
 
 export function gridMessage(grid, message) {

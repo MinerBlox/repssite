@@ -1,7 +1,5 @@
 import "/site-analytics.js?v=2026-07-07-videos-firestore";
-import { getApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js";
+import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js?v=order";
 
 import { createNativePlayer, createSlideshow, createTikTokPlayer } from "/native-video-player.js?v=avc";
 import { forgetTikTokMedia, lookupSharedTikTokMedia, lookupTikTokMedia, mediaCacheKey, readSharedTikTokMedia, readTikTokMedia } from "/tiktok-playback-cache.js?v=prewarm";
@@ -463,25 +461,49 @@ dialog.addEventListener("close", () => {
   previous?.focus();
 });
 
-const db = getFirestore(getApp());
-onSnapshot(collection(db, "videos"), snapshot => {
-  const videos = sortVideos(snapshot.docs.map(entry => ({ ...entry.data(), id: entry.id }))
-    .filter(video => video.isActive !== false));
-  videosById = new Map(videos.map(video => [video.id, video]));
-  if (!videosLoaded && !linkedVideoId() && !navigator.connection?.saveData) {
-    const fetchFirstLinks = () => {
-      if (!document.hidden) videos.slice(0, 4).forEach(prefetchVideoLink);
-    };
-    if (window.requestIdleCallback) window.requestIdleCallback(fetchFirstLinks, { timeout: 1000 });
-    else setTimeout(fetchFirstLinks, 500);
-  }
-  videosLoaded = true;
-  renderVideoGrid(grid, videos, "No videos have been added yet.", { showTitle: false });
-  if (dialog.open) {
-    const current = videosById.get(detail?.id);
-    if (current) renderDetails(current);
-    else dialog.close();
-  } else {
-    syncVideoFromUrl();
-  }
-}, () => gridMessage(grid, "Couldn’t load videos. Try refreshing the page."));
+let feedRequest;
+let feedCheckedAt = 0;
+let lastFeed = "";
+
+async function loadVideoFeed() {
+  if (feedRequest) return feedRequest;
+  feedRequest = (async () => {
+    let data;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await fetch("/api/videos-feed", { cache: "no-store" });
+      if (response.ok) { data = await response.json(); break; }
+      if (response.status !== 503 || attempt) throw new Error("Video feed lookup failed.");
+    }
+    if (!Array.isArray(data?.videos)) throw new Error("Invalid video feed.");
+    feedCheckedAt = Date.now();
+    const encoded = JSON.stringify(data.videos);
+    if (encoded === lastFeed) return;
+    lastFeed = encoded;
+    const videos = sortVideos(data.videos);
+    videosById = new Map(videos.map(video => [video.id, video]));
+    if (!videosLoaded && !linkedVideoId() && !navigator.connection?.saveData) {
+      const fetchFirstLinks = () => {
+        if (!document.hidden) videos.slice(0, 4).forEach(prefetchVideoLink);
+      };
+      if (window.requestIdleCallback) window.requestIdleCallback(fetchFirstLinks, { timeout: 1000 });
+      else setTimeout(fetchFirstLinks, 500);
+    }
+    videosLoaded = true;
+    renderVideoGrid(grid, videos, "No videos have been added yet.", { showTitle: false });
+    if (dialog.open) {
+      const current = videosById.get(detail?.id);
+      if (current) renderDetails(current);
+      else dialog.close();
+    } else {
+      syncVideoFromUrl();
+    }
+  })().catch(() => {
+    if (!videosLoaded) gridMessage(grid, "Couldn’t load videos. Try refreshing the page.");
+  }).finally(() => { feedRequest = null; });
+  return feedRequest;
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && Date.now() - feedCheckedAt > 60000) void loadVideoFeed();
+});
+void loadVideoFeed();

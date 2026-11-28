@@ -1,12 +1,13 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
-  getFirestore, collection, addDoc, doc, onSnapshot, runTransaction, serverTimestamp
+  getFirestore, collection, addDoc, doc, onSnapshot, runTransaction, serverTimestamp, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { enableAppCheck } from "/firebase-app-check.js?v=2026-07-01-preview-skip";
-import { assetUrl, escapeHtml, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js";
+import { assetUrl, escapeHtml, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl, nextVideoSortOrder, moveVideoOrder } from "/video-grid.js?v=order";
 
 import { lookupSharedTikTokMedia, mediaCacheKey } from "/tiktok-playback-cache.js?v=prewarm";
+import { normalizeTikTokMedia, tikwmOrigin } from "/lib/tiktok-media.js?v=avc";
 
 const firebaseConfig = { apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA", authDomain: "reps-central.firebaseapp.com", projectId: "reps-central", storageBucket: "reps-central.firebasestorage.app", messagingSenderId: "812299387060", appId: "1:812299387060:web:1c93d1e7bf30b05653d7e1", measurementId: "G-8T7F9F1FZ9" };
 const ADMIN_UID = "3jC9pWkF5ZeHIDtd1LrPR1Ptvbz1";
@@ -19,7 +20,7 @@ const videosRef = collection(db, "videos");
 const draftsRef = collection(db, "videoDrafts");
 const get = id => document.getElementById(id);
 const form = get("video-editor");
-const fields = Object.fromEntries(["title", "sortOrder", "tiktokUrl", "caption", "thumbnailUrl", "mediaUrl"]
+const fields = Object.fromEntries(["title", "tiktokUrl", "caption", "thumbnailUrl", "mediaUrl"]
   .map(name => [name, form.elements.namedItem(name)]));
 const grid = get("saved-videos");
 const pendingGrid = get("pending-videos");
@@ -27,6 +28,7 @@ const results = get("catalog-results");
 const pageSize = 24;
 
 let savedVideos = new Map();
+let reordering = false;
 let queuedVideos = new Map();
 let unsubscribeDrafts = null;
 let pollTimer;
@@ -58,7 +60,6 @@ function newDraft(video = {}) {
     mediaFile: null,
     version: video.updatedAt || null,
     title: video.title || "",
-    sortOrder: video.sortOrder ?? 0,
     tiktokUrl: video.tiktokUrl || "",
     caption: video.caption || "",
     thumbnailUrl: video.thumbnailUrl || "",
@@ -117,17 +118,56 @@ function showEditor(nextDraft = null, message = "") {
   fields.title.focus();
 }
 
+async function lookupPhotoMetadata(url, signal) {
+  const response = await fetch(tikwmOrigin + "/api/", {
+    method: "POST",
+    body: new URLSearchParams({ url }),
+    credentials: "omit",
+    signal
+  });
+  if (!response.ok) return null;
+  const result = await response.json();
+  if (result.code !== 0) return null;
+  const images = normalizeTikTokMedia(url, result.data)?.images;
+  if (!images?.length) return null;
+  const handle = String(result.data.author?.unique_id || "");
+  const id = String(result.data.id || result.data.video_id || "");
+  return {
+    ok: true,
+    url: /^[a-z\d_.]+$/i.test(handle) && /^\d+$/.test(id) ? "https://www.tiktok.com/@" + handle + "/photo/" + id : url,
+    caption: typeof result.data.title === "string" ? result.data.title : "",
+    thumbnailUrl: images[0]
+  };
+}
+
 function lookupMetadata(url, retry = false) {
   if (metadataRequest?.url === url && !retry) return metadataRequest.promise;
   cancelMetadata();
   const controller = new AbortController();
+  const { signal } = controller;
+  const readPhoto = () => lookupPhotoMetadata(url, signal).catch(() => null);
   const endpoint = new URL("/api/tiktok-meta", location.origin);
   endpoint.searchParams.set("url", url);
-  const promise = fetch(endpoint, { signal: controller.signal }).then(async response => {
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.ok) throw new Error(data.error || "TikTok metadata is unavailable.");
-    return data;
-  });
+  const promise = (async () => {
+    const directPhoto = new URL(url).pathname.includes("/photo/");
+    const photo = directPhoto ? await readPhoto() : null;
+    if (photo?.caption && photo.thumbnailUrl) return photo;
+    const meta = await fetch(endpoint, { signal }).then(async response => {
+      const data = await response.json().catch(() => ({}));
+      return response.ok && data.ok ? data : null;
+    }).catch(() => null);
+    if (signal.aborted) throw new DOMException("Request aborted", "AbortError");
+    if (meta?.caption && meta.thumbnailUrl && !photo) return meta;
+    const shortLink = !new URL(url).pathname.match(/\/(?:video|photo)\/\d+\/?$/);
+    const combinedPhoto = photo || (shortLink ? await readPhoto() : null);
+    if (combinedPhoto) return {
+      ...combinedPhoto,
+      caption: combinedPhoto.caption || meta?.caption || "",
+      thumbnailUrl: combinedPhoto.thumbnailUrl || meta?.thumbnailUrl || ""
+    };
+    if (meta) return meta;
+    throw new Error("TikTok metadata is unavailable.");
+  })();
   metadataRequest = { url, controller, promise };
   return promise;
 }
@@ -145,6 +185,10 @@ async function fillMetadata({ retry = false } = {}) {
   try {
     const metadata = await lookupMetadata(url, retry);
     if (draft !== currentDraft || tiktokUrl(fields.tiktokUrl.value) !== url) return "";
+    const canonical = tiktokUrl(metadata.url);
+    if (canonical && new URL(canonical).pathname.includes("/photo/") && canonical !== url) {
+      fields.tiktokUrl.value = currentDraft.tiktokUrl = canonical;
+    }
     if (!fields.caption.value.trim() && metadata.caption) {
       fields.caption.value = draft.caption = metadata.caption;
       draft.captionAuto = true;
@@ -368,13 +412,71 @@ async function syncTikTok(manual = false) {
   }
 }
 
+async function invalidateVideoFeed() {
+  try {
+    const token = await auth.currentUser.getIdToken();
+    const response = await fetch("/api/videos-feed", { method: "POST", headers: { Authorization: "Bearer " + token } });
+    if (response.ok) return "";
+  } catch {}
+  return " The public video cache couldn’t be refreshed.";
+}
+
+function publishedVideos() {
+  return sortVideos([...savedVideos.values()].filter(video => video.isActive !== false));
+}
+
+function drawPublishedVideos() {
+  const videos = publishedVideos();
+  renderVideoGrid(grid, videos, "No published videos yet.");
+  const list = get("video-order-list");
+  list.innerHTML = videos.map((video, index) =>
+    `<li><span>${escapeHtml(video.title || "Untitled video")}</span><div class="order-actions">
+      <button class="btn" type="button" data-move="-1" data-id="${escapeHtml(video.id)}" aria-label="Move up ${escapeHtml(video.title || "video")}" ${index === 0 || reordering ? "disabled" : ""}>↑</button>
+      <button class="btn" type="button" data-move="1" data-id="${escapeHtml(video.id)}" aria-label="Move down ${escapeHtml(video.title || "video")}" ${index === videos.length - 1 || reordering ? "disabled" : ""}>↓</button>
+    </div></li>`).join("");
+  get("reorder-videos").hidden = videos.length < 2;
+}
+
+get("video-order-list").addEventListener("click", async event => {
+  const button = event.target.closest("[data-move]");
+  if (!button || reordering || saving) return;
+  const { id, move } = button.dataset;
+  const changes = moveVideoOrder(publishedVideos(), id, Number(move));
+  if (!changes.length) return;
+  if (changes.length > 500) {
+    setStatus("view-status", "Too many entries share the same position to reorder in one save.", true);
+    return;
+  }
+
+  reordering = true;
+  for (const button of get("video-order-list").querySelectorAll("button")) button.disabled = true;
+  try {
+    const batch = writeBatch(db);
+    for (const change of changes) batch.update(doc(videosRef, change.id), { sortOrder: change.sortOrder });
+    await batch.commit();
+    for (const change of changes) {
+      const video = savedVideos.get(change.id);
+      if (video) video.sortOrder = change.sortOrder;
+    }
+    setStatus("view-status", "Video order saved." + await invalidateVideoFeed());
+  } catch {
+    setStatus("view-status", "Couldn’t save the video order.", true);
+  } finally {
+    reordering = false;
+    drawPublishedVideos();
+    const buttons = [...get("video-order-list").querySelectorAll("[data-move]")];
+    (buttons.find(button => button.dataset.id === id && button.dataset.move === move && !button.disabled)
+      || buttons.find(button => button.dataset.id === id && !button.disabled))?.focus();
+  }
+});
+
 function resubscribe() {
   unsubscribe?.();
   gridMessage(grid, "Loading videos…");
   unsubscribe = onSnapshot(videosRef, snapshot => {
     const videos = sortVideos(snapshot.docs.map(entry => ({ ...entry.data(), id: entry.id })));
     savedVideos = new Map(videos.map(video => [video.id, video]));
-    renderVideoGrid(grid, videos.filter(video => video.isActive !== false), "No published videos yet.");
+    drawPublishedVideos();
     publishedReady = true;
     startPolling();
   }, () => gridMessage(grid, "Couldn’t load videos. Refresh or check your Firestore permissions."));
@@ -448,7 +550,7 @@ form.addEventListener("submit", async event => {
   if (saving || !draft) return;
   const title = fields.title.value.trim();
   const rawUrl = fields.tiktokUrl.value.trim();
-  const url = tiktokUrl(rawUrl);
+  let url = tiktokUrl(rawUrl);
   const rawMedia = fields.mediaUrl.value.trim();
   const source = mediaSource(rawMedia);
   const pending = event.submitter?.id === "save-draft" && !(draft.id && !draft.awaiting);
@@ -458,6 +560,10 @@ form.addEventListener("submit", async event => {
   }
   if (rawMedia && !source) {
     setStatus("editor-status", "Enter an HTTPS video URL.", true);
+    return;
+  }
+  if (!pending && (!draft.id || draft.awaiting) && !publishedReady) {
+    setStatus("editor-status", "Wait for the published video list to load, then try again.", true);
     return;
   }
   if (!pending && (!title || !(url || source || draft.mediaFile))) {
@@ -475,6 +581,7 @@ form.addEventListener("submit", async event => {
   try {
     const metadataWarning = url ? await fillMetadata() : "";
     if (draft !== savingDraft) return;
+    url = tiktokUrl(fields.tiktokUrl.value);
     const thumbnail = fields.thumbnailUrl.value.trim();
     if (thumbnail && !assetUrl(thumbnail)) throw new Error("Enter a valid thumbnail URL.");
     const items = [...savingDraft.items.values()];
@@ -492,9 +599,10 @@ form.addEventListener("submit", async event => {
       title, tiktokUrl: url, mediaUrl,
       caption: fields.caption.value.trim(), thumbnailUrl: thumbnail,
       captionAuto: savingDraft.captionAuto, thumbnailAuto: savingDraft.thumbnailAuto,
-      sortOrder: Number(fields.sortOrder.value) || 0, itemIds: items.map(item => item.id), items,
+      itemIds: items.map(item => item.id), items,
       updatedAt: serverTimestamp()
     };
+    const newPosition = !pending && (!savingDraft.id || savingDraft.awaiting) ? nextVideoSortOrder(savedVideos.values()) : null;
     let publishedId = savingDraft.id;
     const fromDraft = savingDraft.awaiting ? doc(draftsRef, savingDraft.id) : null;
     if (pending && !fromDraft) {
@@ -514,7 +622,7 @@ form.addEventListener("submit", async event => {
           if (existing.exists()) throw new Error("This video is already published.");
           transaction.set(target, {
             ...changes, tiktokId: tiktokId({ ...savingDraft, tiktokUrl: url }),
-            isActive: true, createdAt: serverTimestamp()
+            sortOrder: newPosition, isActive: true, createdAt: serverTimestamp()
           });
           transaction.delete(fromDraft);
         }
@@ -531,17 +639,18 @@ form.addEventListener("submit", async event => {
       });
       editDrafts.delete(savingDraft.id);
     } else {
-      const entry = await addDoc(videosRef, { ...changes, tiktokId: tiktokId({ tiktokUrl: url }), isActive: true, createdAt: serverTimestamp() });
+      const entry = await addDoc(videosRef, { ...changes, sortOrder: newPosition, tiktokId: tiktokId({ tiktokUrl: url }), isActive: true, createdAt: serverTimestamp() });
       publishedId = entry.id;
       addDraft = newDraft();
     }
+    const cacheWarning = pending ? "" : await invalidateVideoFeed();
     if (!pending && publishedId && url && !mediaUrl && !new URL(url).pathname.includes("/photo/")) {
       void lookupSharedTikTokMedia(publishedId, mediaCacheKey(url), AbortSignal.timeout?.(12000)).catch(() => {});
     }
     if (draft === savingDraft) {
       const status = pending ? "Draft saved." : savingDraft.id && !savingDraft.awaiting ? "Video saved." : "Video is live.";
       const fileNote = pending && savingDraft.mediaFile ? " Select the original file again when you publish." : "";
-      showEditor(null, status + (metadataWarning ? " " + metadataWarning : "") + fileNote);
+      showEditor(null, status + (metadataWarning ? " " + metadataWarning : "") + fileNote + cacheWarning);
       get("view-tab").focus();
     }
   } catch (error) {
@@ -593,7 +702,8 @@ get("delete-video").addEventListener("click", async () => {
       });
     }
     editDrafts.delete(deletingDraft.id);
-    if (draft === deletingDraft) showEditor(null, deletingDraft.awaiting ? "Draft dismissed." : "Video deleted.");
+    const cacheWarning = deletingDraft.awaiting ? "" : await invalidateVideoFeed();
+    if (draft === deletingDraft) showEditor(null, (deletingDraft.awaiting ? "Draft dismissed." : "Video deleted.") + cacheWarning);
   } catch (error) {
     setStatus("editor-status", error.message || "Couldn’t delete the video.", true);
   } finally {

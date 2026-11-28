@@ -24,7 +24,10 @@ enableAppCheck(app);
 
 const db = getFirestore(app);
 
-const HEARTBEAT_MS = 20000;
+const HEARTBEAT_MS = 15000;
+const sharedHeartbeatKey = "rc-analytics-last-presence";
+let lastPresenceAt = 0;
+let supportsExpiry = true;
 const PRESENCE_WINDOW_MS = 65000;
 
 function ensureDefaultVisitorPreferences() {
@@ -213,6 +216,16 @@ async function recordVisit() {
 }
 
 async function heartbeat() {
+  if (document.visibilityState !== "visible") return;
+  const now = Date.now();
+  if (now - lastPresenceAt < 35000) return;
+  try {
+    const previous = JSON.parse(localStorage.getItem(sharedHeartbeatKey) || "null");
+    if (previous?.page === page.id && now - previous.at < 35000) return;
+    localStorage.setItem(sharedHeartbeatKey, JSON.stringify({ page: page.id, at: now }));
+  } catch {}
+  lastPresenceAt = now;
+
   const presence = {
     pageId: page.id,
     pageName: page.name,
@@ -221,18 +234,13 @@ async function heartbeat() {
   };
 
   try {
-    await setDoc(presenceRef, {
-      ...presence,
-      expiresAt: Timestamp.fromMillis(Date.now() + 5 * 60 * 1000)
-    }, { merge: true });
+    const fields = supportsExpiry ? { ...presence, expiresAt: Timestamp.fromMillis(now + 5 * 60 * 1000) } : presence;
+    await setDoc(presenceRef, fields, { merge: true });
   } catch (error) {
-    if (error?.code !== "permission-denied") throw error;
-
+    if (!supportsExpiry || error?.code !== "permission-denied") throw error;
+    supportsExpiry = false;
     await setDoc(presenceRef, presence, { merge: true });
   }
-
-  // Do not scan analyticsPresence on every heartbeat.
-  // Presence aggregation/all-time-high should be computed server-side or on demand.
 }
 
 function installGlobalSearchStyles() {

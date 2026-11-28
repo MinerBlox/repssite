@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { enableAppCheck } from "../firebase-app-check.js?v=2026-06-30-app-check-1";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore, collection, doc, getDocFromServer, setDoc, runTransaction, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, doc, getDocFromServer, setDoc, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = { apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA", authDomain: "reps-central.firebaseapp.com", projectId: "reps-central", storageBucket: "reps-central.firebasestorage.app", messagingSenderId: "812299387060", appId: "1:812299387060:web:1c93d1e7bf30b05653d7e1", measurementId: "G-8T7F9F1FZ9" };
 const defaultCategories = ["Shoes", "Hoodies", "Tees", "Shorts", "Sweats", "Jeans", "Jackets", "Puffer", "Sweaters", "Sets", "Jerseys", "Accessories", "Uncategorised"];
@@ -300,15 +300,11 @@ async function saveProduct(card) {
   setWritePending(true);
   productStatus(id, "Saving…", "saving");
   try {
-    await runTransaction(db, async transaction => {
-      const primary = productRef(source, id);
-      const secondary = productRef(otherAlbum(source), id);
-      const reads = await Promise.all([transaction.get(primary), ...(both ? [transaction.get(secondary)] : [])]);
-      if (reads.some(snapshot => !snapshot.exists())) throw new Error("An entry no longer exists. Reload the catalogue.");
-      const update = { ...patch, updatedAt: serverTimestamp() };
-      transaction.update(primary, update);
-      if (both) transaction.update(secondary, update);
-    });
+    const batch = writeBatch(db);
+    const update = { ...patch, updatedAt: serverTimestamp() };
+    batch.update(productRef(source, id), update);
+    if (both) batch.update(productRef(otherAlbum(source), id), update);
+    await batch.commit();
     Object.assign(existing, patch);
     drafts.delete(source + "/" + id);
     card.querySelector("[data-scope]").value = "selected";

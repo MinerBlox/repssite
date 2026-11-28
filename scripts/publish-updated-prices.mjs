@@ -20,7 +20,7 @@ const sourceCollection = "products";
 const liveCollection = "liveproducts";
 
 console.log(`Reading staged prices from ${sourceCollection}...`);
-const sourceSnapshot = await db.collection(sourceCollection).get();
+const sourceSnapshot = await db.collection(sourceCollection).select("price", "currency", "priceUpdatedAt").get();
 console.log(`Found ${sourceSnapshot.size} staged products.`);
 
 let scanned = 0;
@@ -29,6 +29,7 @@ let updated = 0;
 let missingLive = 0;
 let invalidPrice = 0;
 let nonCny = 0;
+let unchanged = 0;
 
 const liveRefs = [];
 const sourceById = new Map();
@@ -72,6 +73,13 @@ for (let i = 0; i < liveRefs.length; i += READ_BATCH) {
 
     const staged = sourceById.get(snap.id);
     if (!staged) continue;
+    const current = snap.data();
+    const sameTimestamp = !staged.priceUpdatedAt || staged.priceUpdatedAt.isEqual?.(current.priceUpdatedAt) ||
+      (typeof staged.priceUpdatedAt === "string" && staged.priceUpdatedAt === current.priceUpdatedAt);
+    if (current.price === staged.price && current.currency === "CNY" && sameTimestamp) {
+      unchanged += 1;
+      continue;
+    }
 
     writes.push({
       ref: snap.ref,
@@ -96,8 +104,8 @@ for (let i = 0; i < writes.length; i += WRITE_BATCH) {
 }
 
 console.log("\nPrice publish complete.");
-console.log(JSON.stringify({ scanned, eligible, updated, missingLive, invalidPrice, nonCny }, null, 2));
+console.log(JSON.stringify({ scanned, eligible, updated, unchanged, missingLive, invalidPrice, nonCny }, null, 2));
 
-if (!updated) {
+if (!updated && !unchanged) {
   throw new Error("No live product prices were updated. Refusing to report success.");
 }
