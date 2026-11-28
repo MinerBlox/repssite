@@ -1,4 +1,4 @@
-import { lookupTikTokMedia, mediaCacheKey, readTikTokMedia } from "/tiktok-playback-cache.js?v=slides";
+import { lookupTikTokMedia, mediaCacheKey, readTikTokMedia } from "/tiktok-playback-cache.js?v=slides-audio";
 
 export function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, character => ({

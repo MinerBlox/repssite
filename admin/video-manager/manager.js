@@ -4,9 +4,9 @@ import {
   getFirestore, collection, addDoc, doc, onSnapshot, runTransaction, serverTimestamp, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { enableAppCheck } from "/firebase-app-check.js?v=2026-07-01-preview-skip";
-import { assetUrl, escapeHtml, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl, nextVideoSortOrder, moveVideoOrder, videoSortOrder } from "/video-grid.js?v=slides";
+import { assetUrl, escapeHtml, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl, nextVideoSortOrder, moveVideoOrder, videoSortOrder } from "/video-grid.js?v=slides-audio";
 
-import { lookupSharedTikTokMedia, mediaCacheKey } from "/tiktok-playback-cache.js?v=slides";
+import { lookupSharedTikTokMedia, mediaCacheKey } from "/tiktok-playback-cache.js?v=slides-audio";
 import { normalizeTikTokMedia, tikwmOrigin } from "/lib/tiktok-media.js?v=slides";
 
 const firebaseConfig = { apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA", authDomain: "reps-central.firebaseapp.com", projectId: "reps-central", storageBucket: "reps-central.firebasestorage.app", messagingSenderId: "812299387060", appId: "1:812299387060:web:1c93d1e7bf30b05653d7e1", measurementId: "G-8T7F9F1FZ9" };

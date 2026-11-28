@@ -1,6 +1,6 @@
 import { normalizeTikTokMedia, tikwmOrigin } from "/lib/tiktok-media.js?v=slides";
 
-const storageKey = "rc-tiktok-media-v3";
+const storageKey = "rc-tiktok-media-v4";
 const maxEntries = 32;
 const memory = new Map();
 

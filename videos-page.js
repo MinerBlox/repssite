@@ -1,8 +1,8 @@
 import "/site-analytics.js?v=2026-07-07-videos-firestore";
-import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js?v=slides";
+import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js?v=slides-audio";
 
 import { createNativePlayer, createSlideshow, createTikTokPlayer, preloadSlideshow } from "/native-video-player.js?v=slides";
-import { forgetTikTokMedia, lookupSharedTikTokMedia, lookupTikTokMedia, mediaCacheKey, readSharedTikTokMedia, readTikTokMedia } from "/tiktok-playback-cache.js?v=slides";
+import { forgetTikTokMedia, lookupSharedTikTokMedia, lookupTikTokMedia, mediaCacheKey, readSharedTikTokMedia, readTikTokMedia } from "/tiktok-playback-cache.js?v=slides-audio";
 
 const get = id => document.getElementById(id);
 const grid = get("video-grid");
