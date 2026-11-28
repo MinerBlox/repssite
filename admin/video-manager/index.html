@@ -85,6 +85,7 @@
     #saved-videos .drop-target, .selected-item-card.drop-target { outline: 2px solid var(--blue); outline-offset: 2px; }
     .clone-items { margin: 12px 0; }
     .clone-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .clone-row .link-dead-name { flex: 1 1 200px; width: auto; min-width: 0; }
     .clone-row select { flex: 1 1 200px; min-width: 0; padding: 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
     #item-order-hint { margin-bottom: 7px; }
     .selected-item-card { display: inline-flex; align-items: center; gap: 8px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 9px; max-width: 100%; }
@@ -192,6 +193,13 @@
               <button class="btn" id="clone-items" type="button" disabled>Copy items</button>
             </div>
           </div>
+          <div class="field">
+            <label for="link-dead-name">Unavailable item name</label>
+            <div class="clone-row">
+              <input class="link-dead-name" id="link-dead-name" type="text" maxlength="160">
+              <button class="btn" id="add-link-dead" type="button">Add LINK DEAD item</button>
+            </div>
+          </div>
           <p class="hint" id="item-order-hint">Drag the item cards to reorder them.</p>
           <div class="selected" id="selected-items" role="list"></div>
         </div>
@@ -223,6 +231,6 @@
       <p class="status" id="editor-status" role="status"></p>
     </form>
   </main>
-  <script type="module" src="./manager.js?v=drag-items"></script>
+  <script type="module" src="./manager.js?v=link-dead"></script>
 </body>
 </html>

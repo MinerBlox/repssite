@@ -42,7 +42,16 @@ function playerSurface(label) {
   return element;
 }
 
+const volumePreferenceKey = "rc-player-volume";
+let volumePreference = 75;
+try {
+  const saved = localStorage.getItem(volumePreferenceKey);
+  if (saved !== null && /^\d+$/.test(saved) && Number(saved) <= 100) volumePreference = Number(saved);
+} catch {}
+
 function createVolumeControl(media, label, id) {
+  media.volume = volumePreference / 100;
+  media.muted = volumePreference === 0;
   const volumeControl = document.createElement("div");
   volumeControl.className = "player-volume";
   const sound = iconControl("Volume", "volume", () => {
@@ -58,7 +67,8 @@ function createVolumeControl(media, label, id) {
   volume.type = "range";
   volume.min = "0";
   volume.max = "100";
-  volume.value = String(Math.round(media.volume * 100));
+  volume.value = String(volumePreference);
+  volume.style.setProperty("--volume", volume.value + "%");
   volume.setAttribute("aria-label", label);
   volumePanel.append(volume);
   volumeControl.append(volumePanel, sound);
@@ -83,14 +93,20 @@ function createVolumeControl(media, label, id) {
     updateVolumeVisibility();
   });
   volume.addEventListener("input", () => {
-    const level = Number(volume.value) / 100;
+    const percent = Number(volume.value);
     volume.style.setProperty("--volume", volume.value + "%");
-    media.volume = level;
-    media.muted = level === 0;
+    media.volume = percent / 100;
+    media.muted = percent === 0;
+    if (percent !== volumePreference) {
+      volumePreference = percent;
+      try { localStorage.setItem(volumePreferenceKey, String(percent)); } catch {}
+    }
   });
-  media.addEventListener("volumechange", () => {
-    setIcon(sound, media.muted || media.volume === 0 ? "muted" : "volume");
-  });
+  function syncVolumeIcon() {
+    setIcon(sound, media.muted || Number(volume.value) === 0 ? "muted" : "volume");
+  }
+  media.addEventListener("volumechange", syncVolumeIcon);
+  syncVolumeIcon();
   updateVolumeVisibility();
   return volumeControl;
 }
@@ -100,7 +116,6 @@ export function createNativePlayer(url, title, onError, onEnded) {
   const video = document.createElement("video");
   video.playsInline = true;
   video.preload = "metadata";
-  video.volume = 0.75;
   video.src = url;
   let failed = false;
   function showMediaError() {
@@ -241,7 +256,6 @@ export function createSlideshow(images, title, onError, audioUrl = "") {
     if (audio) void audio.play().catch(() => {});
   }
   if (audio) {
-    audio.volume = 0.75;
     audio.preload = "auto";
     const sound = iconControl("Play slideshow audio", "play", () => {
       if (audio.paused) playAudio();

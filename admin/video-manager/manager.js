@@ -117,6 +117,7 @@ function showEditor(nextDraft = null, message = "") {
   get("save-draft").hidden = Boolean(draft.id && !draft.awaiting);
   get("save-video").textContent = draft.id && !draft.awaiting ? "SAVE" : "GO LIVE";
   get("item-search").value = "";
+  get("link-dead-name").value = "";
   visibleLimit = pageSize;
   setPicker(false);
   setStatus("editor-status");
@@ -289,7 +290,7 @@ function renderSelected() {
     const image = assetUrl(item?.imageUrl);
     return `<div class="selected-item-card" role="listitem" tabindex="0" data-selected-id="${escapeHtml(id)}" aria-label="${escapeHtml(name)}">
       <span aria-hidden="true">⠿</span>
-      ${image ? '<img alt="" loading="lazy" src="' + escapeHtml(image) + '">' : ""}
+      ${item?.linkDead === true ? '<span aria-hidden="true">🪦</span>' : image ? '<img alt="" loading="lazy" src="' + escapeHtml(image) + '">' : ""}
       <span>${escapeHtml(name)}</span><button class="btn remove-item" type="button" data-unadd="${escapeHtml(id)}" aria-label="Unadd ${escapeHtml(name)}">×</button>
     </div>`;
   }).join("");
@@ -963,6 +964,37 @@ get("fetch-metadata").addEventListener("click", () => {
   void fillMetadata({ retry: true });
 });
 get("thumbnail-preview").addEventListener("error", event => { event.currentTarget.hidden = true; });
+function selectItem(item) {
+  draft.items.set(item.id, item);
+  const slide = isPhotoLink(draft.tiktokUrl) || draft.photoMedia ? currentSlide() : null;
+  if (slide) {
+    slide.noItems = false;
+    if (!slide.itemIds.includes(item.id)) slide.itemIds.push(item.id);
+  }
+}
+
+function addLinkDeadItem() {
+  if (!draft || saving) return;
+  const input = get("link-dead-name");
+  const name = input.value.trim();
+  if (!name) {
+    setStatus("editor-status", "Enter the unavailable item’s name.", true);
+    input.focus();
+    return;
+  }
+  selectItem({ id: "unavailable-" + crypto.randomUUID(), name, linkDead: true });
+  input.value = "";
+  renderSelected();
+  setStatus("editor-status", "Unavailable item added. Save the video to keep it.");
+  input.focus();
+}
+
+get("add-link-dead").addEventListener("click", addLinkDeadItem);
+get("link-dead-name").addEventListener("keydown", event => {
+  if (event.key !== "Enter" || event.isComposing) return;
+  event.preventDefault();
+  addLinkDeadItem();
+});
 get("toggle-items").addEventListener("click", () => setPicker(get("picker").hidden));
 get("all-items").addEventListener("click", () => chooseSource("all"));
 get("video-items").addEventListener("click", () => chooseSource("video"));
@@ -975,14 +1007,7 @@ results.addEventListener("click", event => {
   if (!item || saving) return;
   const id = String(item.id);
   if (pickerAction(id) === "UNADD") removeSelectedItem(id);
-  else {
-    draft.items.set(id, productSnapshot(item, pickerSource));
-    const slide = isPhotoLink(draft.tiktokUrl) || draft.photoMedia ? currentSlide() : null;
-    if (slide) {
-      slide.noItems = false;
-      if (!slide.itemIds.includes(id)) slide.itemIds.push(id);
-    }
-  }
+  else selectItem(productSnapshot(item, pickerSource));
   syncPickButton(button, item);
   renderSelected();
 });

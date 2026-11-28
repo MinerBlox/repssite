@@ -1,7 +1,7 @@
 import "/site-analytics.js?v=2026-07-07-videos-firestore";
 import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js?v=slides-audio";
 
-import { createNativePlayer, createSlideshow, createTikTokPlayer, preloadSlideshow } from "/native-video-player.js?v=shared-volume";
+import { createNativePlayer, createSlideshow, createTikTokPlayer, preloadSlideshow } from "/native-video-player.js?v=volume-preference";
 import { forgetTikTokMedia, lookupSharedTikTokMedia, lookupTikTokMedia, mediaCacheKey, readSharedTikTokMedia, readTikTokMedia } from "/tiktok-playback-cache.js?v=slides-audio";
 
 const get = id => document.getElementById(id);
@@ -179,14 +179,19 @@ function drawItems(items, session) {
   const fragment = document.createDocumentFragment();
   const rows = new Map();
   for (const item of items) {
-    const current = session.products.get(item.id);
+    const linkDead = item.linkDead === true;
+    const current = linkDead ? null : session.products.get(item.id);
     const product = { ...item, ...current };
     const row = document.createElement("li");
     row.className = "details-item";
     const picture = document.createElement("span");
     picture.className = "details-item-image";
     const thumbnail = assetUrl(product.imageUrl || item.imageUrl);
-    if (thumbnail) {
+    if (linkDead) {
+      picture.classList.add("details-item-gravestone");
+      picture.textContent = "🪦";
+      picture.setAttribute("aria-hidden", "true");
+    } else if (thumbnail) {
       const image = document.createElement("img");
       image.alt = "";
       image.loading = "lazy";
@@ -201,8 +206,11 @@ function drawItems(items, session) {
     name.textContent = product.name || "Item " + item.id;
     const price = document.createElement("p");
     price.className = "details-item-price";
-    price.textContent = priceLabel(product.price ?? product.priceCny ?? item.price);
+    price.textContent = linkDead ? "Link Dead - No longer available" : priceLabel(product.price ?? product.priceCny ?? item.price);
     copy.append(name, price);
+    row.append(picture, copy);
+    rows.set(item.id, row);
+    if (linkDead) continue;
 
     const outbound = productHref(current ? current.agentUrl || current.productUrl : item.agentUrl);
     const target = outbound || "/items/" + encodeURIComponent(item.id) + "/";
@@ -220,8 +228,7 @@ function drawItems(items, session) {
       link.rel = "noopener noreferrer";
       link.dataset.outboundItem = item.id;
     }
-    row.append(picture, copy, link);
-    rows.set(item.id, row);
+    row.append(link);
   }
   const video = videosById.get(session.id);
   const slides = Array.isArray(video?.slides) ? video.slides : [];
@@ -254,7 +261,7 @@ function drawItems(items, session) {
 
 function renderItems(video, session) {
   const items = linkedItems(video).filter(item => item.id !== "." && item.id !== "..");
-  const sources = items.filter(item => item.id.length <= 256 && !item.id.includes("/"));
+  const sources = items.filter(item => item.linkDead !== true && item.id.length <= 256 && !item.id.includes("/"));
   const key = JSON.stringify(sources.map(item => [item.id, item.collection || ""]));
   if (session.productKey !== key) {
     session.productKey = key;
