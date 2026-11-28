@@ -64,7 +64,7 @@ export async function lookupTikTokMedia(key, signal) {
   return entry && remember(key, entry);
 }
 
-export async function lookupSharedTikTokMedia(id, key, signal) {
+export async function readSharedTikTokMedia(id, key, signal) {
   try {
     const query = new URLSearchParams({ id, url: key });
     const response = await fetch("/api/tiktok-playback?" + query, { signal });
@@ -75,8 +75,14 @@ export async function lookupSharedTikTokMedia(id, key, signal) {
       }
     }
   } catch (error) {
-    if (signal.aborted) throw error;
+    if (signal?.aborted) throw error;
   }
+  return null;
+}
+
+export async function lookupSharedTikTokMedia(id, key, signal) {
+  const cached = await readSharedTikTokMedia(id, key, signal);
+  if (cached) return cached;
   const media = await lookupTikTokMedia(key, signal);
   if (media?.videoUrl) {
     void fetch("/api/tiktok-playback", {

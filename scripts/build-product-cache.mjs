@@ -127,11 +127,31 @@ async function exportInteractions() {
   await writeCache(key, { count: counts.size, interactions: Object.fromEntries(counts) }, snapshotStartedAt);
 }
 
+async function exportPlaybackManifest() {
+  const snapshotStartedAt = new Date().toISOString();
+  const snapshot = await readWithQuotaRetry(db.collection("videos").select("isActive", "tiktokUrl", "mediaUrl"), "videos");
+  const posts = [];
+  for (const doc of snapshot.docs) {
+    const { tiktokUrl, isActive, mediaUrl } = doc.data();
+    if (isActive === false || mediaUrl || typeof tiktokUrl !== "string") continue;
+    try {
+      const url = new URL(tiktokUrl);
+      const tiktok = ["www.tiktok.com", "m.tiktok.com", "tiktok.com", "vm.tiktok.com", "vt.tiktok.com"].includes(url.hostname);
+      if (url.protocol !== "https:" || url.username || url.password || url.port || !tiktok || url.pathname.includes("/photo/")) continue;
+      url.search = "";
+      url.hash = "";
+      posts.push({ id: doc.id, url: url.href });
+    } catch {}
+  }
+  await writeCache("catalog/video-playback-manifest.json", { count: posts.length, posts }, snapshotStartedAt);
+}
+
 const target = process.env.CATALOG_TARGET || "all";
 const exportsByTarget = {
   spreadsheet: () => exportProducts("liveproducts", "catalog/products.json", true),
   video: () => exportProducts("videoproducts", "catalog/video-products.json"),
-  interactions: exportInteractions
+  interactions: exportInteractions,
+  playback: exportPlaybackManifest
 };
 if (target !== "all" && !Object.hasOwn(exportsByTarget, target)) throw new Error("Unknown export target: " + target);
 const selected = target === "all" ? Object.entries(exportsByTarget) : [[target, exportsByTarget[target]]];

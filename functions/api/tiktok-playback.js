@@ -3,6 +3,7 @@ import { normalizeTikTokMedia, signedVideoKey } from "../../lib/tiktok-media.js"
 
 const firestore = "https://firestore.googleapis.com/v1/projects/reps-central/databases/(default)/documents/videos/";
 const prefix = "tiktok-playback/v3/";
+const renewWithin = 2 * 60 * 60 * 1000;
 
 function canonical(value) {
   const validated = validateTikTokUrl(value);
@@ -78,7 +79,8 @@ export async function onRequestPost({ request, env }) {
   let stage = "cache-read";
   try {
     const { etag, record } = await getCache(bucket, key);
-    if (valid(record, source)) return json(record.media);
+    if (valid(record, source) && (body.renew !== true || record.media.expiresAt > Date.now() + renewWithin ||
+        media.expiresAt <= record.media.expiresAt)) return json(record.media);
     stage = "published-record";
     if (!(await publishedVideo(body.id, source))) return json({ error: "Published video not found." }, 404);
     stage = "post-media-verification";

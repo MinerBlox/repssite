@@ -4,7 +4,7 @@ import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/fi
 import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js";
 
 import { createNativePlayer, createSlideshow, createTikTokPlayer } from "/native-video-player.js?v=avc";
-import { forgetTikTokMedia, lookupSharedTikTokMedia, lookupTikTokMedia, mediaCacheKey, readTikTokMedia } from "/tiktok-playback-cache.js?v=avc";
+import { forgetTikTokMedia, lookupSharedTikTokMedia, lookupTikTokMedia, mediaCacheKey, readSharedTikTokMedia, readTikTokMedia } from "/tiktok-playback-cache.js?v=prewarm";
 
 const get = id => document.getElementById(id);
 const grid = get("video-grid");
@@ -376,6 +376,25 @@ list.addEventListener("click", event => {
   if (outbound) window.rcTrackProductInteraction?.(outbound.dataset.outboundItem, "outboundClicks");
 });
 
+const prefetchedVideoKeys = new Set();
+
+function prefetchVideoLink(video) {
+  const source = tiktokUrl(video?.tiktokUrl);
+  if (!source || video.mediaUrl || new URL(source).pathname.includes("/photo/")) return;
+  const key = mediaCacheKey(source);
+  if (readTikTokMedia(key) || prefetchedVideoKeys.has(key)) return;
+  prefetchedVideoKeys.add(key);
+  void readSharedTikTokMedia(video.id, key, AbortSignal.timeout?.(3500)).catch(() => {});
+}
+
+function prefetchFocusedTile(event) {
+  const id = event.target.closest("[data-video-id]")?.dataset.videoId;
+  if (id) prefetchVideoLink(videosById.get(id));
+}
+
+grid.addEventListener("pointerover", prefetchFocusedTile);
+grid.addEventListener("focusin", prefetchFocusedTile);
+
 const videoParam = "videoid";
 const linkedVideoId = () => new URL(location.href).searchParams.get(videoParam);
 let videosLoaded = false;
@@ -449,6 +468,13 @@ onSnapshot(collection(db, "videos"), snapshot => {
   const videos = sortVideos(snapshot.docs.map(entry => ({ ...entry.data(), id: entry.id }))
     .filter(video => video.isActive !== false));
   videosById = new Map(videos.map(video => [video.id, video]));
+  if (!videosLoaded && !linkedVideoId() && !navigator.connection?.saveData) {
+    const fetchFirstLinks = () => {
+      if (!document.hidden) videos.slice(0, 4).forEach(prefetchVideoLink);
+    };
+    if (window.requestIdleCallback) window.requestIdleCallback(fetchFirstLinks, { timeout: 1000 });
+    else setTimeout(fetchFirstLinks, 500);
+  }
   videosLoaded = true;
   renderVideoGrid(grid, videos, "No videos have been added yet.", { showTitle: false });
   if (dialog.open) {

@@ -6,6 +6,8 @@ import {
 import { enableAppCheck } from "/firebase-app-check.js?v=2026-07-01-preview-skip";
 import { assetUrl, escapeHtml, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js";
 
+import { lookupSharedTikTokMedia, mediaCacheKey } from "/tiktok-playback-cache.js?v=prewarm";
+
 const firebaseConfig = { apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA", authDomain: "reps-central.firebaseapp.com", projectId: "reps-central", storageBucket: "reps-central.firebasestorage.app", messagingSenderId: "812299387060", appId: "1:812299387060:web:1c93d1e7bf30b05653d7e1", measurementId: "G-8T7F9F1FZ9" };
 const ADMIN_UID = "3jC9pWkF5ZeHIDtd1LrPR1Ptvbz1";
 
@@ -493,6 +495,7 @@ form.addEventListener("submit", async event => {
       sortOrder: Number(fields.sortOrder.value) || 0, itemIds: items.map(item => item.id), items,
       updatedAt: serverTimestamp()
     };
+    let publishedId = savingDraft.id;
     const fromDraft = savingDraft.awaiting ? doc(draftsRef, savingDraft.id) : null;
     if (pending && !fromDraft) {
       await addDoc(draftsRef, { ...changes, status: "awaiting", createdAt: serverTimestamp() });
@@ -528,8 +531,12 @@ form.addEventListener("submit", async event => {
       });
       editDrafts.delete(savingDraft.id);
     } else {
-      await addDoc(videosRef, { ...changes, tiktokId: tiktokId({ tiktokUrl: url }), isActive: true, createdAt: serverTimestamp() });
+      const entry = await addDoc(videosRef, { ...changes, tiktokId: tiktokId({ tiktokUrl: url }), isActive: true, createdAt: serverTimestamp() });
+      publishedId = entry.id;
       addDraft = newDraft();
+    }
+    if (!pending && publishedId && url && !mediaUrl && !new URL(url).pathname.includes("/photo/")) {
+      void lookupSharedTikTokMedia(publishedId, mediaCacheKey(url), AbortSignal.timeout?.(12000)).catch(() => {});
     }
     if (draft === savingDraft) {
       const status = pending ? "Draft saved." : savingDraft.id && !savingDraft.awaiting ? "Video saved." : "Video is live.";

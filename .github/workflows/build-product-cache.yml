@@ -6,7 +6,7 @@ on:
       target:
         description: Catalogue export to run
         type: choice
-        options: [video, spreadsheet, interactions, all]
+        options: [video, spreadsheet, interactions, playback, all]
         default: video
   schedule:
     - cron: "17 0 * * *"

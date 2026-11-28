@@ -26,3 +26,11 @@ Video item documents are public because the Videos page reads them to show curre
 4. Confirm that the run saved `catalog/video-products.json`. The next scheduled run will refresh both catalogues at 12:17 a.m. Pacific. Changes made in Spreadsheet Admin update the shared cache immediately. Changes made directly in Firestore appear after the next export.
 
 To check that the build ran, open [the Video Items cache on dev](https://dev.repscentral.pages.dev/api/catalog?album=video) and look for a `generatedAt` timestamp. [GitHub Actions schedule documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#onschedule)
+
+## Keep TikTok playback URLs ready
+
+The daily **Build Product Cache** job also saves a list of published TikTok videos to R2. **Warm Video Playback** checks that list at minute 23 of each hour and refreshes signed H.264 URLs with two hours or less left. It uses the existing R2 secrets. It reaches Firestore only when the site verifies an actual refresh, plus the daily manifest export.
+
+After merging to `main`, run **Build Product Cache** with `all` to refresh the catalogues and build the manifest. You can choose `playback` to build just the manifest. Then run **Warm Video Playback** once and check the counts in its logs. The warmer defaults to `https://repscentral.pages.dev`. Set the `PLAYBACK_ORIGIN` Actions variable if your production API runs on a different origin.
+
+Video Manager also warms a TikTok link after publishing. During viewing, the site can reuse the signed URL from R2 and will look it up on demand if it is missing or expired. TikTok CDN buffering and browser autoplay settings still apply.
