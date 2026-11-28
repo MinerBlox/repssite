@@ -73,21 +73,24 @@
       .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     #reorder-videos { margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; }
-    #reorder-videos summary { cursor: pointer; font-weight: 700; }
-    #video-order-list { padding-left: 1.6rem; }
-    #video-order-list li { padding: 7px 0; border-bottom: 1px solid var(--border); }
     .order-actions { display: inline-flex; gap: 6px; margin-left: 10px; vertical-align: middle; }
     #reorder-mode { margin-top: 10px; }
-    #video-order-list li { display: flex; align-items: center; gap: 8px; }
-    #video-order-list li > span { flex: 1; }
-    #video-order-list .drag-handle { cursor: grab; touch-action: none; min-width: 44px; }
-    #video-order-list { max-height: 60vh; overflow: auto; }
-    #video-order-list li.drop-target { background: var(--surface2); box-shadow: inset 0 2px var(--blue); }
-    #video-order-list li.dragging { opacity: .65; outline: 1px solid var(--blue); }
     .slide-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
     .slide-controls input, .slide-controls select { padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
     .slide-controls input[type="number"] { width: 70px; }
-    .selected-slide-item { display: inline-flex; gap: 3px; }
+    .reorder-toggle { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+    .reorder-toggle input { width: 18px; height: 18px; }
+    #saved-videos.is-reordering .video-tile, .selected-item-card { cursor: grab; touch-action: none; }
+    #saved-videos .dragging, .selected-item-card.dragging { opacity: .55; }
+    #saved-videos .drop-target, .selected-item-card.drop-target { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .clone-items { margin: 12px 0; }
+    .clone-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .clone-row select { flex: 1 1 200px; min-width: 0; padding: 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+    #item-order-hint { margin-bottom: 7px; }
+    .selected-item-card { display: inline-flex; align-items: center; gap: 8px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 9px; max-width: 100%; }
+    .selected-item-card:focus-visible { outline: 2px solid var(--blue); }
+    .selected-item-card img { width: 34px; height: 34px; object-fit: contain; border-radius: 5px; }
+    .selected-item-card .remove-item { min-height: 34px; padding: 0 8px; }
   </style>
 </head>
 <body>
@@ -121,10 +124,9 @@
       </div>
       <h2>Published videos</h2>
       <div id="reorder-videos" hidden>
-        <button class="btn" id="start-reorder" type="button" aria-pressed="false">Rearrange videos</button>
+        <label class="reorder-toggle"><input id="start-reorder" type="checkbox"> Rearrange mode</label>
         <div id="reorder-mode" hidden>
-          <p class="hint">Drag the handles to set the display order.</p>
-          <ol id="video-order-list"></ol>
+          <p class="hint">Drag the video cards below, or use the arrow keys on a focused card.</p>
           <button class="btn primary" id="save-order" type="button">Save order</button>
           <button class="btn" id="cancel-order" type="button">Cancel</button>
         </div>
@@ -183,7 +185,15 @@
             <label for="slide-choice">Assign items to</label><select id="slide-choice"></select>
             <label class="no-slide-items"><input id="slide-empty" type="checkbox"> No items on this slide</label>
           </section>
-          <div class="selected" id="selected-items"></div>
+          <div class="clone-items field">
+            <label for="clone-source">Copy items from another video</label>
+            <div class="clone-row">
+              <select id="clone-source"><option value="">Choose a video</option></select>
+              <button class="btn" id="clone-items" type="button" disabled>Copy items</button>
+            </div>
+          </div>
+          <p class="hint" id="item-order-hint">Drag the item cards to reorder them.</p>
+          <div class="selected" id="selected-items" role="list"></div>
         </div>
       </div>
 
@@ -213,6 +223,6 @@
       <p class="status" id="editor-status" role="status"></p>
     </form>
   </main>
-  <script type="module" src="./manager.js?v=slides-audio"></script>
+  <script type="module" src="./manager.js?v=drag-items"></script>
 </body>
 </html>

@@ -31,7 +31,6 @@ let savedVideos = new Map();
 let reordering = false;
 let orderDraft = null;
 let orderStart = "";
-let activeDrag = null;
 let queuedVideos = new Map();
 let unsubscribeDrafts = null;
 let pollTimer;
@@ -124,6 +123,7 @@ function showEditor(nextDraft = null, message = "") {
   setStatus("metadata-status");
   renderPreview();
   renderSelected();
+  renderCloneSources();
   if (draft.slides.length || isPhotoLink(draft.tiktokUrl)) void fillMetadata();
   fields.title.focus();
 }
@@ -282,17 +282,59 @@ function renderSelected() {
   const group = isPhoto ? currentSlide() : slide;
   const ids = group ? group.itemIds : [...draft.items.keys()];
   get("selected-count").textContent = ids.length + (ids.length === 1 ? " item selected" : " items selected");
-  get("selected-items").innerHTML = ids.map((id, index) => {
+  get("item-order-hint").hidden = ids.length < 2;
+  get("selected-items").innerHTML = ids.map(id => {
     const item = draft.items.get(id);
     const name = item?.name || availableCatalogue()?.byId.get(id)?.name || id;
-    const remove = '<button class="btn" type="button" data-unadd="' + escapeHtml(id) +
-      '" aria-label="Unadd ' + escapeHtml(name) + '">' + escapeHtml(name) + ' ×</button>';
-    if (!group) return remove;
-    return '<span class="selected-slide-item">' + remove +
-      '<button class="btn" type="button" data-item-move="-1" data-id="' + escapeHtml(id) + '" aria-label="Move item up"' + (!index ? ' disabled' : '') + '>↑</button>' +
-      '<button class="btn" type="button" data-item-move="1" data-id="' + escapeHtml(id) + '" aria-label="Move item down"' + (index === ids.length - 1 ? ' disabled' : '') + '>↓</button></span>';
+    const image = assetUrl(item?.imageUrl);
+    return `<div class="selected-item-card" role="listitem" tabindex="0" data-selected-id="${escapeHtml(id)}" aria-label="${escapeHtml(name)}">
+      <span aria-hidden="true">⠿</span>
+      ${image ? '<img alt="" loading="lazy" src="' + escapeHtml(image) + '">' : ""}
+      <span>${escapeHtml(name)}</span><button class="btn remove-item" type="button" data-unadd="${escapeHtml(id)}" aria-label="Unadd ${escapeHtml(name)}">×</button>
+    </div>`;
   }).join("");
 }
+
+function renderCloneSources() {
+  const select = get("clone-source");
+  const previous = select.value;
+  const videos = publishedVideos().filter(video => video.id !== draft?.id && linkedItems(video).length);
+  select.innerHTML = '<option value="">Choose a video</option>' + videos.map(video =>
+    '<option value="' + escapeHtml(video.id) + '">' + escapeHtml(video.title || "Untitled video") + '</option>').join("");
+  if (videos.some(video => video.id === previous)) select.value = previous;
+  get("clone-items").disabled = !select.value;
+}
+
+get("clone-source").addEventListener("change", event => {
+  get("clone-items").disabled = !event.target.value;
+});
+get("clone-items").addEventListener("click", () => {
+  if (!draft || saving) return;
+  const source = savedVideos.get(get("clone-source").value);
+  if (!source || source.id === draft.id) return;
+  const originals = new Map(linkedItems(source).map(item => [item.id, item]));
+  const slides = Array.isArray(source.slides) ? source.slides : [];
+  const sourceOrder = [...new Set([
+    ...slides.flatMap(slide => Array.isArray(slide?.itemIds) && !slide.noItems ? slide.itemIds : []),
+    ...originals.keys()
+  ])];
+  const slide = isPhotoLink(draft.tiktokUrl) || draft.photoMedia ? currentSlide() : null;
+  let added = 0;
+  for (const id of sourceOrder) {
+    const item = originals.get(id);
+    if (!item || (slide ? slide.itemIds.includes(id) : draft.items.has(id))) continue;
+    if (!draft.items.has(id)) draft.items.set(id, { ...item });
+    if (slide) {
+      slide.itemIds.push(id);
+      slide.noItems = false;
+    }
+    added++;
+  }
+  renderSelected();
+  renderCatalogue();
+  setStatus("editor-status", added ? added + (added === 1 ? " item copied." : " items copied.") : "Those items are already selected.");
+});
+
 
 get("slide-choice").addEventListener("change", event => {
   draft.activeSlide = Number(event.target.value);
@@ -318,7 +360,7 @@ get("slide-empty").addEventListener("change", event => {
 });
 
 function removeSelectedItem(id) {
-  const slide = isPhotoLink(draft.tiktokUrl) ? currentSlide() : null;
+  const slide = isPhotoLink(draft.tiktokUrl) || draft.photoMedia ? currentSlide() : null;
   if (slide) slide.itemIds = slide.itemIds.filter(value => value !== id);
   if (!slide || !draft.slides.some(group => group.itemIds.includes(id))) draft.items.delete(id);
 }
@@ -405,7 +447,7 @@ function renderCatalogue() {
 
 function pickerAction(id) {
   const current = draft.items.get(String(id));
-  const slide = isPhotoLink(draft.tiktokUrl) ? currentSlide() : null;
+  const slide = isPhotoLink(draft.tiktokUrl) || draft.photoMedia ? currentSlide() : null;
   if (!current || (slide && !slide.itemIds.includes(String(id)))) return "ADD";
   return (current.collection === "videoproducts") === (pickerSource === "video") ? "UNADD" : "USE THIS VERSION";
 }
@@ -507,109 +549,131 @@ function publishedVideos() {
   return sortVideos([...savedVideos.values()].filter(video => video.isActive !== false));
 }
 
-const orderList = get("video-order-list");
 const orderMode = get("reorder-mode");
 const startOrder = get("start-reorder");
 const saveOrder = get("save-order");
+const selectedItems = get("selected-items");
+
+function bindCardReorder(container, selector, enabled, onMove) {
+  let drag = null;
+  const cardAt = target => {
+    const card = target?.closest(selector);
+    return card?.parentElement === container ? card : null;
+  };
+  function move(card, delta) {
+    if (!delta) return;
+    const id = card.dataset.videoId || card.dataset.selectedId;
+    onMove(id, delta);
+    const moved = [...container.querySelectorAll(selector)].find(item => (item.dataset.videoId || item.dataset.selectedId) === id);
+    moved?.focus({ preventScroll: true });
+  }
+
+  container.addEventListener("pointerdown", event => {
+    if (drag || !enabled() || event.button !== 0 || event.target.closest(".remove-item")) return;
+    const card = cardAt(event.target);
+    if (!card) return;
+    container.setPointerCapture(event.pointerId);
+    card.classList.add("dragging");
+    drag = { card, target: card, pointerId: event.pointerId };
+    event.preventDefault();
+  });
+  container.addEventListener("pointermove", event => {
+    if (drag?.pointerId !== event.pointerId) return;
+    const row = cardAt(document.elementFromPoint(event.clientX, event.clientY));
+    if (!row || row === drag.target) return;
+    drag.target.classList.remove("drop-target");
+    drag.target = row;
+    row.classList.add("drop-target");
+  });
+  function finish(event) {
+    if (drag?.pointerId !== event.pointerId) return;
+    const { card, target } = drag;
+    drag = null;
+    card.classList.remove("dragging");
+    target.classList.remove("drop-target");
+    if (event.type !== "pointerup" || !enabled()) return;
+    const cards = [...container.querySelectorAll(selector)];
+    move(card, cards.indexOf(target) - cards.indexOf(card));
+  }
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) container.addEventListener(type, finish);
+  container.addEventListener("keydown", event => {
+    if (!enabled()) return;
+    const card = cardAt(event.target);
+    if (!card || event.target !== card) return;
+    const delta = { ArrowUp: -1, ArrowLeft: -1, ArrowDown: 1, ArrowRight: 1 }[event.key];
+    if (!delta) return;
+    event.preventDefault();
+    move(card, delta);
+  });
+}
 
 function orderVersion(videos) {
   return JSON.stringify(videos.map(video => [video.id, videoSortOrder(video)]));
 }
 
-function renderOrderDraft() {
+function renderOrderMode() {
   orderMode.hidden = !orderDraft;
-  startOrder.setAttribute("aria-pressed", String(Boolean(orderDraft)));
-  if (!orderDraft) return;
-  orderList.innerHTML = orderDraft.map((video, index) => {
-    const title = escapeHtml(video.title || "Untitled video");
-    const id = escapeHtml(video.id);
-    return `<li data-order-id="${id}"><button class="btn drag-handle" type="button" data-drag aria-label="Drag ${title}">⠿</button><span>${index + 1}. ${title}</span><div class="order-actions">
-      <button class="btn" type="button" data-move="-1" aria-label="Move up ${title}" ${index === 0 ? "disabled" : ""}>↑</button>
-      <button class="btn" type="button" data-move="1" aria-label="Move down ${title}" ${index === orderDraft.length - 1 ? "disabled" : ""}>↓</button>
-    </div></li>`;
-  }).join("");
-  saveOrder.disabled = reordering || orderVersion(orderDraft) === orderStart;
+  startOrder.checked = Boolean(orderDraft);
+  grid.classList.toggle("is-reordering", Boolean(orderDraft));
+  const original = publishedVideos();
+  saveOrder.disabled = !orderDraft || reordering || orderDraft.every((video, index) => video.id === original[index]?.id);
 }
 
 function drawPublishedVideos() {
   const videos = publishedVideos();
-  renderVideoGrid(grid, videos, "No published videos yet.");
+  renderVideoGrid(grid, orderDraft || videos, "No published videos yet.");
   get("reorder-videos").hidden = videos.length < 2;
-  if (!activeDrag) renderOrderDraft();
+  renderOrderMode();
+  if (draft) renderCloneSources();
 }
 
-startOrder.addEventListener("click", () => {
+startOrder.addEventListener("change", () => {
   if (reordering) return;
-  if (orderDraft) orderDraft = null;
-  else {
-    orderDraft = publishedVideos().map(video => ({ ...video }));
-    orderStart = orderVersion(orderDraft);
-  }
-  renderOrderDraft();
+  orderDraft = startOrder.checked ? publishedVideos().map(video => ({ ...video })) : null;
+  orderStart = orderDraft ? orderVersion(orderDraft) : "";
+  drawPublishedVideos();
 });
 get("cancel-order").addEventListener("click", () => {
   if (reordering) return;
   orderDraft = null;
-  renderOrderDraft();
+  drawPublishedVideos();
   startOrder.focus();
 });
 
 function stageVideoMove(id, delta) {
   if (!orderDraft || !delta || reordering) return;
   const changes = new Map(moveVideoOrder(orderDraft, id, delta).map(change => [change.id, change.sortOrder]));
+  if (!changes.size) return;
   orderDraft = sortVideos(orderDraft.map(video => changes.has(video.id) ? { ...video, sortOrder: changes.get(video.id) } : video));
-  renderOrderDraft();
+  const tiles = new Map([...grid.children].map(tile => [tile.dataset.videoId, tile]));
+  if (orderDraft.some(video => !tiles.has(video.id))) {
+    drawPublishedVideos();
+    return;
+  }
+  for (const video of orderDraft) grid.append(tiles.get(video.id));
+  renderOrderMode();
 }
 
-orderList.addEventListener("click", event => {
-  const button = event.target.closest("[data-move]");
-  if (!button) return;
-  const id = button.closest("[data-order-id]").dataset.orderId;
-  const direction = button.dataset.move;
-  stageVideoMove(id, Number(direction));
-  const row = [...orderList.children].find(entry => entry.dataset.orderId === id);
-  (row?.querySelector(`[data-move="${direction}"]:not(:disabled)`) || row?.querySelector("[data-drag]"))?.focus();
+bindCardReorder(grid, "[data-video-id]", () => Boolean(orderDraft) && !reordering, stageVideoMove);
+bindCardReorder(selectedItems, "[data-selected-id]", () => Boolean(draft) && !saving, (id, delta) => {
+  const slide = isPhotoLink(draft.tiktokUrl) || draft.photoMedia ? currentSlide() : null;
+  const ids = slide ? [...slide.itemIds] : [...draft.items.keys()];
+  const index = ids.indexOf(id);
+  const next = index + delta;
+  if (index < 0 || next < 0 || next >= ids.length) return;
+  ids.splice(next, 0, ids.splice(index, 1)[0]);
+  if (slide) slide.itemIds = ids;
+  else draft.items = new Map(ids.map(key => [key, draft.items.get(key)]));
+  renderSelected();
 });
-orderList.addEventListener("pointerdown", event => {
-  const handle = event.target.closest("[data-drag]");
-  if (!handle || !orderDraft || reordering || event.button !== 0) return;
-  const row = handle.closest("[data-order-id]");
-  handle.setPointerCapture(event.pointerId);
-  row.classList.add("dragging");
-  activeDrag = { row, pointerId: event.pointerId, target: row };
-  event.preventDefault();
-});
-orderList.addEventListener("pointermove", event => {
-  if (activeDrag?.pointerId !== event.pointerId) return;
-  const bounds = orderList.getBoundingClientRect();
-  if (event.clientY < bounds.top + 25) orderList.scrollTop -= 12;
-  else if (event.clientY > bounds.bottom - 25) orderList.scrollTop += 12;
-  const row = document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-order-id]");
-  if (!row || row.parentElement !== orderList) return;
-  activeDrag.target.classList.remove("drop-target");
-  activeDrag.target = row;
-  row.classList.add("drop-target");
-});
-function endVideoDrag(event) {
-  if (activeDrag?.pointerId !== event.pointerId) return;
-  const { row, target } = activeDrag;
-  activeDrag = null;
-  row.classList.remove("dragging");
-  target.classList.remove("drop-target");
-  if (event.type !== "pointerup") return;
-  const rows = [...orderList.children];
-  stageVideoMove(row.dataset.orderId, rows.indexOf(target) - rows.indexOf(row));
-}
-orderList.addEventListener("pointerup", endVideoDrag);
-orderList.addEventListener("pointercancel", endVideoDrag);
 
 saveOrder.addEventListener("click", async () => {
   if (!orderDraft || reordering) return;
   const existing = publishedVideos();
   if (orderVersion(existing) !== orderStart) {
-    setStatus("view-status", "The video list changed. Reopen Rearrange videos and try again.", true);
+    setStatus("view-status", "The video list changed. Turn on Rearrange mode again and retry.", true);
     orderDraft = null;
-    renderOrderDraft();
+    drawPublishedVideos();
     return;
   }
   const before = new Map(existing.map(video => [video.id, videoSortOrder(video)]));
@@ -883,6 +947,7 @@ get("delete-video").addEventListener("click", async () => {
   }
 });
 get("video-library").addEventListener("click", event => {
+  if (orderDraft && event.target.closest("#saved-videos")) return;
   const id = event.target.closest("[data-video-id]")?.dataset.videoId;
   const video = queuedVideos.get(id) || savedVideos.get(id);
   if (!video) return;
@@ -912,7 +977,7 @@ results.addEventListener("click", event => {
   if (pickerAction(id) === "UNADD") removeSelectedItem(id);
   else {
     draft.items.set(id, productSnapshot(item, pickerSource));
-    const slide = isPhotoLink(draft.tiktokUrl) ? currentSlide() : null;
+    const slide = isPhotoLink(draft.tiktokUrl) || draft.photoMedia ? currentSlide() : null;
     if (slide) {
       slide.noItems = false;
       if (!slide.itemIds.includes(id)) slide.itemIds.push(id);
@@ -922,15 +987,6 @@ results.addEventListener("click", event => {
   renderSelected();
 });
 get("selected-items").addEventListener("click", event => {
-  const move = event.target.closest("[data-item-move]");
-  if (move && !saving && currentSlide()) {
-    const ids = currentSlide().itemIds;
-    const index = ids.indexOf(move.dataset.id);
-    const next = index + Number(move.dataset.itemMove);
-    if (index >= 0 && next >= 0 && next < ids.length) [ids[index], ids[next]] = [ids[next], ids[index]];
-    renderSelected();
-    return;
-  }
   const button = event.target.closest("[data-unadd]");
   if (!button || saving) return;
   const id = button.dataset.unadd;
@@ -965,7 +1021,6 @@ onAuthStateChanged(auth, user => {
     publishedReady = draftsReady = autoSyncDisabled = false;
     savedVideos.clear();
     orderDraft = null;
-    activeDrag = null;
     queuedVideos.clear();
     editDrafts.clear();
     addDraft = newDraft();

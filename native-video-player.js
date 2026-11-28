@@ -42,6 +42,59 @@ function playerSurface(label) {
   return element;
 }
 
+function createVolumeControl(media, label, id) {
+  const volumeControl = document.createElement("div");
+  volumeControl.className = "player-volume";
+  const sound = iconControl("Volume", "volume", () => {
+    volumeControl.classList.toggle("is-open");
+    updateVolumeVisibility();
+  });
+  sound.setAttribute("aria-controls", id);
+
+  const volumePanel = document.createElement("div");
+  volumePanel.className = "player-volume-slider";
+  const volume = document.createElement("input");
+  volume.id = id;
+  volume.type = "range";
+  volume.min = "0";
+  volume.max = "100";
+  volume.value = String(Math.round(media.volume * 100));
+  volume.setAttribute("aria-label", label);
+  volumePanel.append(volume);
+  volumeControl.append(volumePanel, sound);
+  function updateVolumeVisibility() {
+    const open = volumeControl.classList.contains("is-open") || volumeControl.matches(":hover");
+    sound.setAttribute("aria-expanded", String(open));
+    volume.tabIndex = open ? 0 : -1;
+  }
+  volumeControl.addEventListener("pointerenter", updateVolumeVisibility);
+  volumeControl.addEventListener("pointerleave", updateVolumeVisibility);
+  volumeControl.addEventListener("focusout", event => {
+    if (volumeControl.contains(event.relatedTarget)) return;
+    volumeControl.classList.remove("is-open");
+    updateVolumeVisibility();
+  });
+  volumeControl.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    if (!volumeControl.classList.contains("is-open")) return;
+    event.stopPropagation();
+    volumeControl.classList.remove("is-open");
+    sound.focus();
+    updateVolumeVisibility();
+  });
+  volume.addEventListener("input", () => {
+    const level = Number(volume.value) / 100;
+    volume.style.setProperty("--volume", volume.value + "%");
+    media.volume = level;
+    media.muted = level === 0;
+  });
+  media.addEventListener("volumechange", () => {
+    setIcon(sound, media.muted || media.volume === 0 ? "muted" : "volume");
+  });
+  updateVolumeVisibility();
+  return volumeControl;
+}
+
 export function createNativePlayer(url, title, onError, onEnded) {
   const element = playerSurface(title + " video player");
   const video = document.createElement("video");
@@ -75,61 +128,13 @@ export function createNativePlayer(url, title, onError, onEnded) {
       video.pause();
       return;
     }
-    if (video.muted && Number(volume.value) > 0) video.muted = false;
+    if (video.muted && video.volume > 0) video.muted = false;
     start();
   }
 
   const playback = iconControl("Play", "play", togglePlayback);
   playback.classList.add("player-toggle");
-  const volumeControl = document.createElement("div");
-  volumeControl.className = "player-volume";
-  const sound = iconControl("Volume", "volume", () => {
-    volumeControl.classList.toggle("is-open");
-    updateVolumeVisibility();
-  });
-  sound.setAttribute("aria-controls", "video-volume-slider");
-
-  const volumePanel = document.createElement("div");
-  volumePanel.className = "player-volume-slider";
-  const volume = document.createElement("input");
-  volume.id = "video-volume-slider";
-  volume.type = "range";
-  volume.min = "0";
-  volume.max = "100";
-  volume.value = "75";
-  volume.setAttribute("aria-label", "Video volume");
-  volumePanel.append(volume);
-  volumeControl.append(volumePanel, sound);
-  function updateVolumeVisibility() {
-    const open = volumeControl.classList.contains("is-open") || volumeControl.matches(":hover");
-    sound.setAttribute("aria-expanded", String(open));
-    volume.tabIndex = open ? 0 : -1;
-  }
-  volumeControl.addEventListener("pointerenter", updateVolumeVisibility);
-  volumeControl.addEventListener("pointerleave", updateVolumeVisibility);
-  volumeControl.addEventListener("focusout", event => {
-    if (volumeControl.contains(event.relatedTarget)) return;
-    volumeControl.classList.remove("is-open");
-    updateVolumeVisibility();
-  });
-  volumeControl.addEventListener("keydown", event => {
-    if (event.key !== "Escape") return;
-    if (!volumeControl.classList.contains("is-open")) return;
-    event.stopPropagation();
-    volumeControl.classList.remove("is-open");
-    sound.focus();
-    updateVolumeVisibility();
-  });
-  volume.addEventListener("input", () => {
-    const level = Number(volume.value) / 100;
-    volume.style.setProperty("--volume", volume.value + "%");
-    video.volume = level;
-    video.muted = level === 0;
-  });
-  video.addEventListener("volumechange", () => {
-    setIcon(sound, video.muted || video.volume === 0 ? "muted" : "volume");
-  });
-  updateVolumeVisibility();
+  const volumeControl = createVolumeControl(video, "Video volume", "video-volume-slider");
 
   const timeline = document.createElement("input");
   timeline.className = "player-progress";
@@ -212,7 +217,7 @@ export function createSlideshow(images, title, onError, audioUrl = "") {
 
   photo.addEventListener("error", onError, { once: true });
   element.addEventListener("keydown", event => {
-    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    if (event.target !== element || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
     event.preventDefault();
     show(index + (event.key === "ArrowLeft" ? -1 : 1));
   });
@@ -238,18 +243,19 @@ export function createSlideshow(images, title, onError, audioUrl = "") {
   if (audio) {
     audio.volume = 0.75;
     audio.preload = "auto";
-    const sound = iconControl("Play slideshow audio", "muted", () => {
+    const sound = iconControl("Play slideshow audio", "play", () => {
       if (audio.paused) playAudio();
       else audio.pause();
     });
     sound.classList.add("player-slideshow-sound");
     function syncSound() {
-      setIcon(sound, audio.paused ? "muted" : "volume");
+      setIcon(sound, audio.paused ? "play" : "pause");
       sound.setAttribute("aria-label", audio.paused ? "Play slideshow audio" : "Pause slideshow audio");
     }
     for (const event of ["play", "pause", "ended"]) audio.addEventListener(event, syncSound);
-    audio.addEventListener("error", () => { sound.hidden = true; }, { once: true });
-    element.append(sound);
+    const volume = createVolumeControl(audio, "Slideshow volume", "slideshow-volume-slider");
+    audio.addEventListener("error", () => { sound.hidden = volume.hidden = true; }, { once: true });
+    element.append(sound, volume);
   }
   return {
     element,
