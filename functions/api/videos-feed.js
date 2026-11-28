@@ -1,9 +1,9 @@
 import { isAdmin } from "./catalog-index.js";
 
-const feedKey = "catalog/public-videos-feed.json";
+const feedKey = "catalog/public-videos-feed-v2.json";
 const lifetime = 60 * 60 * 1000;
 const base = "https://firestore.googleapis.com/v1/projects/reps-central/databases/(default)/documents/videos";
-const fields = ["isActive", "title", "caption", "thumbnailUrl", "tiktokUrl", "mediaUrl", "sortOrder", "createdAt", "itemIds", "items"];
+const fields = ["isActive", "title", "caption", "thumbnailUrl", "thumbnailAuto", "authorAvatar", "authorHandle", "authorName", "slides", "tiktokUrl", "mediaUrl", "sortOrder", "createdAt", "itemIds", "items"];
 const headers = { "Cache-Control": "no-store" };
 const json = (data, status = 200) => Response.json(data, { status, headers });
 

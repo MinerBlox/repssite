@@ -77,6 +77,17 @@
     #video-order-list { padding-left: 1.6rem; }
     #video-order-list li { padding: 7px 0; border-bottom: 1px solid var(--border); }
     .order-actions { display: inline-flex; gap: 6px; margin-left: 10px; vertical-align: middle; }
+    #reorder-mode { margin-top: 10px; }
+    #video-order-list li { display: flex; align-items: center; gap: 8px; }
+    #video-order-list li > span { flex: 1; }
+    #video-order-list .drag-handle { cursor: grab; touch-action: none; min-width: 44px; }
+    #video-order-list { max-height: 60vh; overflow: auto; }
+    #video-order-list li.drop-target { background: var(--surface2); box-shadow: inset 0 2px var(--blue); }
+    #video-order-list li.dragging { opacity: .65; outline: 1px solid var(--blue); }
+    .slide-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+    .slide-controls input, .slide-controls select { padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+    .slide-controls input[type="number"] { width: 70px; }
+    .selected-slide-item { display: inline-flex; gap: 3px; }
   </style>
 </head>
 <body>
@@ -109,10 +120,15 @@
         <div class="video-grid" id="pending-videos"><p class="video-grid-message">Loading drafts…</p></div>
       </div>
       <h2>Published videos</h2>
-      <details id="reorder-videos" hidden>
-        <summary>Reorder videos</summary>
-        <ol id="video-order-list"></ol>
-      </details>
+      <div id="reorder-videos" hidden>
+        <button class="btn" id="start-reorder" type="button" aria-pressed="false">Rearrange videos</button>
+        <div id="reorder-mode" hidden>
+          <p class="hint">Drag the handles to set the display order.</p>
+          <ol id="video-order-list"></ol>
+          <button class="btn primary" id="save-order" type="button">Save order</button>
+          <button class="btn" id="cancel-order" type="button">Cancel</button>
+        </div>
+      </div>
       <div class="video-grid" id="saved-videos"><p class="video-grid-message">Loading videos…</p></div>
     </section>
 
@@ -162,6 +178,11 @@
             <button class="btn" id="toggle-items" type="button" aria-expanded="false" aria-controls="picker">Add items</button>
             <p class="hint" id="selected-count" aria-live="polite"></p>
           </div>
+          <section class="slide-controls" id="slide-controls" hidden>
+            <label for="slide-count">Number of slides</label><input id="slide-count" type="number" min="1" max="35">
+            <label for="slide-choice">Assign items to</label><select id="slide-choice"></select>
+            <label class="no-slide-items"><input id="slide-empty" type="checkbox"> No items on this slide</label>
+          </section>
           <div class="selected" id="selected-items"></div>
         </div>
       </div>
@@ -192,6 +213,6 @@
       <p class="status" id="editor-status" role="status"></p>
     </form>
   </main>
-  <script type="module" src="./manager.js?v=slide-order"></script>
+  <script type="module" src="./manager.js?v=slides"></script>
 </body>
 </html>

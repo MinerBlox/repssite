@@ -137,7 +137,7 @@ async function exportPlaybackManifest() {
     try {
       const url = new URL(tiktokUrl);
       const tiktok = ["www.tiktok.com", "m.tiktok.com", "tiktok.com", "vm.tiktok.com", "vt.tiktok.com"].includes(url.hostname);
-      if (url.protocol !== "https:" || url.username || url.password || url.port || !tiktok || url.pathname.includes("/photo/")) continue;
+      if (url.protocol !== "https:" || url.username || url.password || url.port || !tiktok) continue;
       url.search = "";
       url.hash = "";
       posts.push({ id: doc.id, url: url.href });

@@ -217,15 +217,15 @@ export async function onRequest(context) {
     return json({ ok: false, error: "Paste a valid TikTok URL." }, 400);
   }
 
-  const oembed = await fetchOEmbed(tiktokUrl).catch(() => null);
-  if (oembed?.caption && oembed.thumbnailUrl) return json({ ok: true, url: tiktokUrl, ...oembed });
-
-  const page = await fetchHtmlMeta(tiktokUrl).catch(() => null);
+  const [oembed, page] = await Promise.all([
+    fetchOEmbed(tiktokUrl).catch(() => null),
+    fetchHtmlMeta(tiktokUrl).catch(() => null)
+  ]);
   const resolved = page?.url && page.url !== tiktokUrl && !(page.caption && page.thumbnailUrl)
     ? await fetchOEmbed(page.url).catch(() => null) : null;
   const preferred = [resolved, oembed, page].find(meta => meta?.caption || meta?.thumbnailUrl);
   const caption = resolved?.caption || oembed?.caption || page?.caption || "";
-  const thumbnailUrl = resolved?.thumbnailUrl || oembed?.thumbnailUrl || page?.thumbnailUrl || "";
+  const thumbnailUrl = page?.thumbnailUrl || resolved?.thumbnailUrl || oembed?.thumbnailUrl || "";
   if (caption || thumbnailUrl) {
     return json({
       ...preferred, ok: true, url: page?.url || tiktokUrl, caption, thumbnailUrl,

@@ -104,6 +104,9 @@
     .player-toggle svg { width: 19px; height: 19px; transition: transform 140ms ease; }
     @media (hover: hover) { .player-toggle:hover svg { transform: scale(.87); } }
     .player-toggle { position: absolute; left: 50%; bottom: 7px; z-index: 1; transform: translateX(-50%); }
+    .player-slideshow-sound { position: absolute; right: 7px; bottom: 7px; z-index: 1; }
+    .details-slide-heading { color: var(--text); font-weight: 800; text-transform: uppercase; margin: 12px 0 2px; }
+    .details-slide-empty { color: var(--muted); font-size: 13px; padding: 3px 0 8px; }
     .player-volume { position: absolute; right: 7px; bottom: 7px; z-index: 1; display: grid; justify-items: center; }
     .player-volume-slider {
       position: absolute; bottom: 100%; width: 36px; height: 102px; padding: 8px 0;
@@ -371,6 +374,6 @@
     });
   </script>
 
-  <script type="module" src="/videos-page.js?v=shared-feed"></script>
+  <script type="module" src="/videos-page.js?v=slides"></script>
 </body>
 </html>

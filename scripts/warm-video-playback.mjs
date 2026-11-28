@@ -1,6 +1,6 @@
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { setTimeout as delay } from "node:timers/promises";
-import { normalizeTikTokMedia, signedVideoKey, tikwmOrigin } from "../lib/tiktok-media.js";
+import { normalizeSharedSlideshow, normalizeTikTokMedia, signedVideoKey, tikwmOrigin } from "../lib/tiktok-media.js";
 
 const renewWithin = 2 * 60 * 60 * 1000;
 const manifestKey = "catalog/video-playback-manifest.json";
@@ -13,6 +13,32 @@ function required(name) {
 
 function lookupUrl(origin, post) {
   return origin + "/api/tiktok-playback?" + new URLSearchParams({ id: post.id, url: post.url });
+}
+
+async function storeSlideshow(post, media) {
+  if (!/^[\w-]{1,128}$/.test(post.id)) throw new Error("Invalid slideshow ID");
+  const Key = "tiktok-playback/v3/" + post.id + ".json";
+  const Bucket = required("R2_BUCKET_NAME");
+  let etag;
+  try {
+    const object = await client.send(new GetObjectCommand({ Bucket, Key }));
+    etag = object.ETag;
+    const record = JSON.parse(await object.Body.transformToString());
+    if (record.source === post.url && record.media?.expiresAt >= media.expiresAt) return "current";
+  } catch (error) {
+    if (error.name !== "NoSuchKey" && error.$metadata?.httpStatusCode !== 404) throw error;
+  }
+  try {
+    await client.send(new PutObjectCommand({
+      Bucket, Key, Body: JSON.stringify({ source: post.url, media }),
+      ContentType: "application/json",
+      ...(etag ? { IfMatch: etag } : { IfNoneMatch: "*" })
+    }));
+    return "refreshed";
+  } catch (error) {
+    if (error.$metadata?.httpStatusCode === 412) return "current";
+    throw error;
+  }
 }
 
 async function renew(origin, post) {
@@ -33,7 +59,12 @@ async function renew(origin, post) {
   if (!result.ok) throw new Error("TikWM returned HTTP " + result.status);
   const data = await result.json();
   if (data.code !== 0) throw new Error("TikWM did not return a playable post");
-  if (data.data?.images?.length) return "photo";
+  if (data.data?.images?.length) {
+    const candidate = normalizeTikTokMedia(post.url, data.data);
+    const media = normalizeSharedSlideshow(post.url, candidate);
+    if (!media || media.expiresAt <= Date.now()) throw new Error("TikWM returned invalid slideshow assets");
+    return await storeSlideshow(post, media);
+  }
   const media = normalizeTikTokMedia(post.url, { play: data.data?.play });
   if (!media || !signedVideoKey(media.videoUrl) || media.expiresAt <= Date.now() + renewWithin) {
     throw new Error("TikWM did not return a standard video link with enough validity");
@@ -67,7 +98,7 @@ const object = await client.send(new GetObjectCommand({
 const { posts } = JSON.parse(await object.Body.transformToString());
 if (!Array.isArray(posts)) throw new Error("The playback manifest is invalid.");
 
-const counts = { current: 0, refreshed: 0, photo: 0, removed: 0, failed: 0 };
+const counts = { current: 0, refreshed: 0, removed: 0, failed: 0 };
 for (const post of posts) {
   try {
     const status = await renew(origin, post);

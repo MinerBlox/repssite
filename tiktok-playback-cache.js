@@ -1,4 +1,4 @@
-import { normalizeTikTokMedia, tikwmOrigin } from "/lib/tiktok-media.js?v=avc";
+import { normalizeTikTokMedia, tikwmOrigin } from "/lib/tiktok-media.js?v=slides";
 
 const storageKey = "rc-tiktok-media-v3";
 const maxEntries = 32;
@@ -50,7 +50,17 @@ function remember(key, entry, now = Date.now()) {
   return entry;
 }
 
-export async function lookupTikTokMedia(key, signal) {
+const pendingLookups = new Map();
+
+export function lookupTikTokMedia(key, signal) {
+  if (signal) return fetchTikTokMedia(key, signal);
+  if (!pendingLookups.has(key)) {
+    pendingLookups.set(key, fetchTikTokMedia(key, AbortSignal.timeout?.(8000)).finally(() => pendingLookups.delete(key)));
+  }
+  return pendingLookups.get(key);
+}
+
+async function fetchTikTokMedia(key, signal) {
   const response = await fetch(tikwmOrigin + "/api/", {
     method: "POST",
     body: new URLSearchParams({ url: key, hd: "1" }),
@@ -83,7 +93,7 @@ export async function readSharedTikTokMedia(id, key, signal) {
 export async function lookupSharedTikTokMedia(id, key, signal) {
   const cached = await readSharedTikTokMedia(id, key, signal);
   if (cached) return cached;
-  const media = await lookupTikTokMedia(key, signal);
+  const media = await (pendingLookups.get(key) || lookupTikTokMedia(key, signal));
   if (media?.videoUrl) {
     void fetch("/api/tiktok-playback", {
       method: "POST",

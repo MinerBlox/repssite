@@ -1,3 +1,5 @@
+import { lookupTikTokMedia, mediaCacheKey, readTikTokMedia } from "/tiktok-playback-cache.js?v=slides";
+
 export function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, character => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
@@ -103,6 +105,7 @@ function addCoverImage(cover, url, failure) {
   image.alt = "";
   image.loading = "lazy";
   image.decoding = "async";
+  image.referrerPolicy = "no-referrer";
   image.addEventListener("error", () => {
     image.remove();
     failure?.();
@@ -125,8 +128,16 @@ export function fetchVideoMetadata(url) {
 
 async function refreshCover(cover, url) {
   const metadata = await fetchVideoMetadata(url);
+  const previewPhoto = async () => {
+    if (!cover.isConnected || !new URL(url).pathname.includes("/photo/")) return;
+    const key = mediaCacheKey(url);
+    const media = readTikTokMedia(key) || await lookupTikTokMedia(key).catch(() => null);
+    const first = assetUrl(media?.images?.[0]);
+    if (first && cover.isConnected) addCoverImage(cover, first);
+  };
   const image = assetUrl(metadata?.thumbnailUrl);
-  if (image && cover.isConnected) addCoverImage(cover, image);
+  if (image && !expiredCover(image) && cover.isConnected) addCoverImage(cover, image, () => void previewPhoto());
+  else await previewPhoto();
 }
 
 export function renderVideoGrid(grid, videos, emptyMessage, { showTitle = true } = {}) {
@@ -162,7 +173,8 @@ export function renderVideoGrid(grid, videos, emptyMessage, { showTitle = true }
 
     const thumbnail = assetUrl(video.thumbnailUrl);
     const source = tiktokUrl(video.tiktokUrl);
-    const canRefresh = source && (!thumbnail || video.thumbnailAuto === true);
+    const signedThumbnail = thumbnail && /[?&](?:x-expires|Expires)=/i.test(thumbnail);
+    const canRefresh = source && (!thumbnail || video.thumbnailAuto === true || signedThumbnail);
     if (thumbnail && !(canRefresh && expiredCover(thumbnail))) {
       addCoverImage(cover, thumbnail, canRefresh ? () => void refreshCover(cover, source) : null);
     } else if (canRefresh) {

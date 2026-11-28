@@ -171,11 +171,25 @@ export function createNativePlayer(url, title, onError, onEnded) {
   return { element, start() { playback.focus(); start(); } };
 }
 
-export function createSlideshow(images, title, onError) {
+const primedImages = new Map();
+
+export function preloadSlideshow(images, start = 0) {
+  for (const url of images.slice(start, start + 2)) {
+    if (primedImages.has(url)) continue;
+    const image = new Image();
+    image.referrerPolicy = "no-referrer";
+    image.src = url;
+    primedImages.set(url, image);
+    if (primedImages.size > 60) primedImages.delete(primedImages.keys().next().value);
+  }
+}
+
+export function createSlideshow(images, title, onError, audioUrl = "") {
   const element = playerSurface(title + " slideshow");
   const photo = document.createElement("img");
   photo.className = "player-photo";
   photo.draggable = false;
+  photo.referrerPolicy = "no-referrer";
   const status = document.createElement("span");
   status.className = "player-photo-count";
   status.setAttribute("aria-live", "polite");
@@ -193,6 +207,7 @@ export function createSlideshow(images, title, onError) {
     photo.alt = "Slide " + (index + 1) + " of " + images.length;
     photo.src = images[index];
     status.textContent = (index + 1) + " / " + images.length;
+    preloadSlideshow(images, index + 1);
   }
 
   photo.addEventListener("error", onError, { once: true });
@@ -216,7 +231,36 @@ export function createSlideshow(images, title, onError) {
   }, { passive: true });
   element.append(photo, previous, status, next);
   element.tabIndex = 0;
-  return { element, start() { show(0); element.focus(); } };
+  const audio = audioUrl ? new Audio(audioUrl) : null;
+  function playAudio() {
+    if (audio) void audio.play().catch(() => {});
+  }
+  if (audio) {
+    audio.volume = 0.75;
+    audio.preload = "auto";
+    const sound = iconControl("Play slideshow audio", "muted", () => {
+      if (audio.paused) playAudio();
+      else audio.pause();
+    });
+    sound.classList.add("player-slideshow-sound");
+    function syncSound() {
+      setIcon(sound, audio.paused ? "muted" : "volume");
+      sound.setAttribute("aria-label", audio.paused ? "Play slideshow audio" : "Pause slideshow audio");
+    }
+    for (const event of ["play", "pause", "ended"]) audio.addEventListener(event, syncSound);
+    audio.addEventListener("error", () => { sound.hidden = true; }, { once: true });
+    element.append(sound);
+  }
+  return {
+    element,
+    start() { show(0); element.focus(); playAudio(); },
+    destroy() {
+      if (!audio) return;
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+    }
+  };
 }
 
 export function createTikTokPlayer(id, title, { onEnded, onError, slideshow = false }) {

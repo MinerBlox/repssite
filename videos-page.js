@@ -1,8 +1,8 @@
 import "/site-analytics.js?v=2026-07-07-videos-firestore";
-import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js?v=order";
+import { assetUrl, fetchVideoMetadata, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl } from "/video-grid.js?v=slides";
 
-import { createNativePlayer, createSlideshow, createTikTokPlayer } from "/native-video-player.js?v=avc";
-import { forgetTikTokMedia, lookupSharedTikTokMedia, lookupTikTokMedia, mediaCacheKey, readSharedTikTokMedia, readTikTokMedia } from "/tiktok-playback-cache.js?v=prewarm";
+import { createNativePlayer, createSlideshow, createTikTokPlayer, preloadSlideshow } from "/native-video-player.js?v=slides";
+import { forgetTikTokMedia, lookupSharedTikTokMedia, lookupTikTokMedia, mediaCacheKey, readSharedTikTokMedia, readTikTokMedia } from "/tiktok-playback-cache.js?v=slides";
 
 const get = id => document.getElementById(id);
 const grid = get("video-grid");
@@ -69,12 +69,14 @@ function setPlayerAvailability() {
 
 function showProfile(video, session) {
   const metadata = session.metadata;
-  const name = metadata?.authorName || "Reps Central";
-  const handle = metadata?.authorHandle || postHandle(session.url);
+  const media = session.mediaProfile;
+  const name = media?.authorName || metadata?.authorName || video.authorName || "Reps Central";
+  const handle = media?.authorHandle || metadata?.authorHandle || video.authorHandle || postHandle(session.url);
   get("details-author").textContent = name;
   get("details-handle").textContent = handle ? "@" + handle : "";
   get("details-handle").hidden = !handle;
-  setImage(avatar, assetUrl(metadata?.authorAvatar) || defaultAvatar);
+  const authorImages = [media?.authorAvatar, metadata?.authorAvatar, video.authorAvatar].map(assetUrl);
+  setImage(avatar, authorImages.find(url => url && !session.failedAvatars.has(url)) || defaultAvatar);
 
   const caption = get("details-caption");
   caption.textContent = video.caption || metadata?.caption || "";
@@ -88,7 +90,7 @@ function showProfile(video, session) {
 function openMedia(video, url, initialCover) {
   stopPlayback();
   const session = {
-    id: video.id, url, postId: postId(url), mediaUrl: assetUrl(video.mediaUrl), savedThumbnail: video.thumbnailUrl,
+    id: video.id, url, failedAvatars: new Set(), postId: postId(url), mediaUrl: assetUrl(video.mediaUrl), savedThumbnail: video.thumbnailUrl,
     productKey: "", products: new Map(), slideshow: Boolean(url && new URL(url).pathname.includes("/photo/"))
   };
   detail = session;
@@ -175,6 +177,7 @@ function productHref(value) {
 
 function drawItems(items, session) {
   const fragment = document.createDocumentFragment();
+  const rows = new Map();
   for (const item of items) {
     const current = session.products.get(item.id);
     const product = { ...item, ...current };
@@ -218,10 +221,35 @@ function drawItems(items, session) {
       link.dataset.outboundItem = item.id;
     }
     row.append(picture, copy, link);
+    rows.set(item.id, row);
+  }
+  const video = videosById.get(session.id);
+  const slides = Array.isArray(video?.slides) ? video.slides : [];
+  const assigned = new Set();
+  function heading(label) {
+    const row = document.createElement("li");
+    row.className = "details-slide-heading";
+    row.textContent = label;
     fragment.append(row);
   }
+  slides.forEach((slide, index) => {
+    heading("Slide " + (index + 1));
+    const slideItems = (Array.isArray(slide?.itemIds) ? slide.itemIds : []).filter(id => rows.has(id));
+    if (slide?.noItems || !slideItems.length) {
+      const row = document.createElement("li");
+      row.className = "details-slide-empty";
+      row.textContent = "No items on this slide";
+      fragment.append(row);
+    } else for (const id of slideItems) {
+      fragment.append(rows.get(id).cloneNode(true));
+      assigned.add(id);
+    }
+  });
+  const remainder = items.filter(item => !assigned.has(item.id));
+  if (slides.length && remainder.length) heading("Other items");
+  for (const item of remainder) fragment.append(rows.get(item.id));
   list.replaceChildren(fragment);
-  get("details-empty").hidden = items.length > 0;
+  get("details-empty").hidden = items.length > 0 || slides.length > 0;
 }
 
 function renderItems(video, session) {
@@ -350,7 +378,14 @@ async function startPlayback(allowCached = true) {
   const videoUrl = session.mediaUrl || media?.videoUrl;
   if (media?.images.length) {
     session.slideshow = true;
-    mount(createSlideshow(media.images, title, handleMediaError));
+    session.mediaProfile = media;
+    session.imageCount = media.images.length;
+    const current = videosById.get(session.id);
+    if (current) {
+      showProfile(current, session);
+      renderItems(current, session);
+    }
+    mount(createSlideshow(media.images, title, handleMediaError, media.audioUrl));
   } else if (videoUrl) {
     mount(createNativePlayer(videoUrl, title, handleMediaError, finish));
   } else if (session.slideshow && session.postId) {
@@ -363,7 +398,13 @@ async function startPlayback(allowCached = true) {
 play.addEventListener("click", () => void startPlayback());
 
 avatar.addEventListener("error", () => {
-  if (avatar.getAttribute("src") !== defaultAvatar) setImage(avatar, defaultAvatar);
+  const current = avatar.getAttribute("src");
+  const video = videosById.get(detail?.id);
+  const candidates = [detail?.mediaProfile?.authorAvatar, detail?.metadata?.authorAvatar, video?.authorAvatar]
+    .map(assetUrl).filter(Boolean);
+  detail?.failedAvatars?.add(current);
+  const next = candidates.find(url => url !== current && !detail?.failedAvatars?.has(url));
+  if (current !== defaultAvatar) setImage(avatar, next || defaultAvatar);
 });
 cover.addEventListener("error", () => {
   setImage(cover, assetUrl(detail?.metadata?.thumbnailUrl) !== cover.getAttribute("src")
@@ -378,11 +419,17 @@ const prefetchedVideoKeys = new Set();
 
 function prefetchVideoLink(video) {
   const source = tiktokUrl(video?.tiktokUrl);
-  if (!source || video.mediaUrl || new URL(source).pathname.includes("/photo/")) return;
+  if (!source || video.mediaUrl) return;
   const key = mediaCacheKey(source);
-  if (readTikTokMedia(key) || prefetchedVideoKeys.has(key)) return;
+  const cached = readTikTokMedia(key);
+  if (cached?.images?.length) { preloadSlideshow(cached.images); return; }
+  if (cached || prefetchedVideoKeys.has(key)) return;
   prefetchedVideoKeys.add(key);
-  void readSharedTikTokMedia(video.id, key, AbortSignal.timeout?.(3500)).catch(() => {});
+  const photo = new URL(source).pathname.includes("/photo/");
+  void readSharedTikTokMedia(video.id, key, AbortSignal.timeout?.(3500)).then(async entry => {
+    const media = entry || (photo ? await lookupTikTokMedia(key) : null);
+    if (media?.images?.length) preloadSlideshow(media.images);
+  }).catch(() => {});
 }
 
 function prefetchFocusedTile(event) {

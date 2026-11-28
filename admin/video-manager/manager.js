@@ -4,10 +4,10 @@ import {
   getFirestore, collection, addDoc, doc, onSnapshot, runTransaction, serverTimestamp, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { enableAppCheck } from "/firebase-app-check.js?v=2026-07-01-preview-skip";
-import { assetUrl, escapeHtml, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl, nextVideoSortOrder, moveVideoOrder } from "/video-grid.js?v=order";
+import { assetUrl, escapeHtml, gridMessage, linkedItems, renderVideoGrid, sortVideos, tiktokUrl, nextVideoSortOrder, moveVideoOrder, videoSortOrder } from "/video-grid.js?v=slides";
 
-import { lookupSharedTikTokMedia, mediaCacheKey } from "/tiktok-playback-cache.js?v=prewarm";
-import { normalizeTikTokMedia, tikwmOrigin } from "/lib/tiktok-media.js?v=avc";
+import { lookupSharedTikTokMedia, mediaCacheKey } from "/tiktok-playback-cache.js?v=slides";
+import { normalizeTikTokMedia, tikwmOrigin } from "/lib/tiktok-media.js?v=slides";
 
 const firebaseConfig = { apiKey: "AIzaSyDTTzoJlvr0mYxwx82cQ9JJn8rXrMEy7JA", authDomain: "reps-central.firebaseapp.com", projectId: "reps-central", storageBucket: "reps-central.firebasestorage.app", messagingSenderId: "812299387060", appId: "1:812299387060:web:1c93d1e7bf30b05653d7e1", measurementId: "G-8T7F9F1FZ9" };
 const ADMIN_UID = "3jC9pWkF5ZeHIDtd1LrPR1Ptvbz1";
@@ -29,6 +29,9 @@ const pageSize = 24;
 
 let savedVideos = new Map();
 let reordering = false;
+let orderDraft = null;
+let orderStart = "";
+let activeDrag = null;
 let queuedVideos = new Map();
 let unsubscribeDrafts = null;
 let pollTimer;
@@ -65,6 +68,12 @@ function newDraft(video = {}) {
     thumbnailUrl: video.thumbnailUrl || "",
     captionAuto: video.captionAuto === true,
     thumbnailAuto: video.thumbnailAuto === true,
+    authorAvatar: video.authorAvatar || "", authorHandle: video.authorHandle || "", authorName: video.authorName || "",
+    slides: Array.isArray(video.slides) ? video.slides.slice(0, 35).map(slide => ({
+      itemIds: Array.isArray(slide?.itemIds) ? [...new Set(slide.itemIds)] : [], noItems: slide?.noItems === true
+    })) : [],
+    photoMedia: null,
+    activeSlide: 0,
     items: new Map(linkedItems(video).map(item => [item.id, item]))
   };
 }
@@ -115,7 +124,13 @@ function showEditor(nextDraft = null, message = "") {
   setStatus("metadata-status");
   renderPreview();
   renderSelected();
+  if (draft.slides.length || isPhotoLink(draft.tiktokUrl)) void fillMetadata();
   fields.title.focus();
+}
+
+function isPhotoLink(value) {
+  const url = tiktokUrl(value);
+  return Boolean(url && new URL(url).pathname.includes("/photo/"));
 }
 
 async function lookupPhotoMetadata(url, signal) {
@@ -128,15 +143,17 @@ async function lookupPhotoMetadata(url, signal) {
   if (!response.ok) return null;
   const result = await response.json();
   if (result.code !== 0) return null;
-  const images = normalizeTikTokMedia(url, result.data)?.images;
-  if (!images?.length) return null;
+  const media = normalizeTikTokMedia(url, result.data);
+  if (!media?.images?.length) return null;
   const handle = String(result.data.author?.unique_id || "");
   const id = String(result.data.id || result.data.video_id || "");
   return {
     ok: true,
     url: /^[a-z\d_.]+$/i.test(handle) && /^\d+$/.test(id) ? "https://www.tiktok.com/@" + handle + "/photo/" + id : url,
     caption: typeof result.data.title === "string" ? result.data.title : "",
-    thumbnailUrl: images[0]
+    thumbnailUrl: media.images[0],
+    slideshow: media,
+    authorAvatar: media.authorAvatar, authorHandle: media.authorHandle, authorName: media.authorName
   };
 }
 
@@ -176,7 +193,7 @@ async function fillMetadata({ retry = false } = {}) {
   const currentDraft = draft;
   const url = tiktokUrl(fields.tiktokUrl.value);
   if (!currentDraft || !url) return "Paste a valid TikTok link.";
-  if (fields.caption.value.trim() && fields.thumbnailUrl.value.trim()) {
+  if (fields.caption.value.trim() && fields.thumbnailUrl.value.trim() && (!isPhotoLink(url) || currentDraft.photoMedia) && !retry) {
     setStatus("metadata-status", retry ? "Clear a field to fill it again from TikTok." : "");
     return "";
   }
@@ -186,6 +203,16 @@ async function fillMetadata({ retry = false } = {}) {
     const metadata = await lookupMetadata(url, retry);
     if (draft !== currentDraft || tiktokUrl(fields.tiktokUrl.value) !== url) return "";
     const canonical = tiktokUrl(metadata.url);
+    for (const field of ["authorAvatar", "authorHandle", "authorName"]) {
+      if (metadata[field]) currentDraft[field] = metadata[field];
+    }
+    if (metadata.slideshow) {
+      currentDraft.photoMedia = metadata.slideshow;
+      for (let index = currentDraft.slides.length; index < metadata.slideshow.images.length; index++) {
+        currentDraft.slides.push({ itemIds: [], noItems: false });
+      }
+      renderSelected();
+    }
     if (canonical && new URL(canonical).pathname.includes("/photo/") && canonical !== url) {
       fields.tiktokUrl.value = currentDraft.tiktokUrl = canonical;
     }
@@ -216,6 +243,10 @@ function onUrlInput() {
   if (draft.captionAuto) fields.caption.value = draft.caption = "";
   if (draft.thumbnailAuto) fields.thumbnailUrl.value = draft.thumbnailUrl = "";
   draft.captionAuto = draft.thumbnailAuto = false;
+  draft.photoMedia = null;
+  draft.authorAvatar = draft.authorHandle = draft.authorName = "";
+  if (isPhotoLink(fields.tiktokUrl.value) && !draft.slides.length) draft.slides.push({ itemIds: [], noItems: false });
+  renderSelected();
   renderPreview();
   if (tiktokUrl(fields.tiktokUrl.value)) metadataTimer = setTimeout(() => void fillMetadata(), 450);
 }
@@ -232,14 +263,64 @@ function productSnapshot(item, source) {
   };
 }
 
+function currentSlide() {
+  return draft.slides[draft.activeSlide];
+}
+
 function renderSelected() {
-  const count = draft.items.size;
-  get("selected-count").textContent = count === 1 ? "1 item selected" : count + " items selected";
-  get("selected-items").innerHTML = [...draft.items.values()].map(item => {
-    const name = item.name || availableCatalogue()?.byId.get(item.id)?.name || item.id;
-    return '<button class="btn" type="button" data-unadd="' + escapeHtml(item.id) +
+  const isPhoto = isPhotoLink(draft.tiktokUrl) || Boolean(draft.photoMedia);
+  const slide = isPhoto ? currentSlide() : null;
+  get("slide-controls").hidden = !isPhoto;
+  if (isPhoto) {
+    if (!draft.slides.length) draft.slides.push({ itemIds: [], noItems: false });
+    get("slide-count").value = draft.slides.length;
+    get("slide-choice").innerHTML = draft.slides.map((_, index) => '<option value="' + index + '">Slide ' + (index + 1) + '</option>').join("");
+    get("slide-choice").value = draft.activeSlide;
+    get("slide-empty").checked = currentSlide().noItems;
+    get("slide-empty").disabled = currentSlide().itemIds.length > 0;
+  }
+  const group = isPhoto ? currentSlide() : slide;
+  const ids = group ? group.itemIds : [...draft.items.keys()];
+  get("selected-count").textContent = ids.length + (ids.length === 1 ? " item selected" : " items selected");
+  get("selected-items").innerHTML = ids.map((id, index) => {
+    const item = draft.items.get(id);
+    const name = item?.name || availableCatalogue()?.byId.get(id)?.name || id;
+    const remove = '<button class="btn" type="button" data-unadd="' + escapeHtml(id) +
       '" aria-label="Unadd ' + escapeHtml(name) + '">' + escapeHtml(name) + ' ×</button>';
+    if (!group) return remove;
+    return '<span class="selected-slide-item">' + remove +
+      '<button class="btn" type="button" data-item-move="-1" data-id="' + escapeHtml(id) + '" aria-label="Move item up"' + (!index ? ' disabled' : '') + '>↑</button>' +
+      '<button class="btn" type="button" data-item-move="1" data-id="' + escapeHtml(id) + '" aria-label="Move item down"' + (index === ids.length - 1 ? ' disabled' : '') + '>↓</button></span>';
   }).join("");
+}
+
+get("slide-choice").addEventListener("change", event => {
+  draft.activeSlide = Number(event.target.value);
+  renderSelected();
+  renderCatalogue();
+});
+get("slide-count").addEventListener("change", event => {
+  const count = Number(event.target.value);
+  if (!Number.isInteger(count) || count < 1 || count > 35 || draft.slides.slice(count).some(slide => slide.itemIds.length)) {
+    event.target.value = draft.slides.length;
+    setStatus("editor-status", "Remove any items from the slides you want to delete first.", true);
+    return;
+  }
+  draft.slides.length = Math.min(draft.slides.length, count);
+  while (draft.slides.length < count) draft.slides.push({ itemIds: [], noItems: false });
+  draft.activeSlide = Math.min(draft.activeSlide, count - 1);
+  renderSelected();
+  renderCatalogue();
+});
+get("slide-empty").addEventListener("change", event => {
+  const slide = currentSlide();
+  if (slide && !slide.itemIds.length) slide.noItems = event.target.checked;
+});
+
+function removeSelectedItem(id) {
+  const slide = isPhotoLink(draft.tiktokUrl) ? currentSlide() : null;
+  if (slide) slide.itemIds = slide.itemIds.filter(value => value !== id);
+  if (!slide || !draft.slides.some(group => group.itemIds.includes(id))) draft.items.delete(id);
 }
 
 async function loadCatalogue(source = pickerSource) {
@@ -324,7 +405,8 @@ function renderCatalogue() {
 
 function pickerAction(id) {
   const current = draft.items.get(String(id));
-  if (!current) return "ADD";
+  const slide = isPhotoLink(draft.tiktokUrl) ? currentSlide() : null;
+  if (!current || (slide && !slide.itemIds.includes(String(id)))) return "ADD";
   return (current.collection === "videoproducts") === (pickerSource === "video") ? "UNADD" : "USE THIS VERSION";
 }
 
@@ -425,48 +507,127 @@ function publishedVideos() {
   return sortVideos([...savedVideos.values()].filter(video => video.isActive !== false));
 }
 
+const orderList = get("video-order-list");
+const orderMode = get("reorder-mode");
+const startOrder = get("start-reorder");
+const saveOrder = get("save-order");
+
+function orderVersion(videos) {
+  return JSON.stringify(videos.map(video => [video.id, videoSortOrder(video)]));
+}
+
+function renderOrderDraft() {
+  orderMode.hidden = !orderDraft;
+  startOrder.setAttribute("aria-pressed", String(Boolean(orderDraft)));
+  if (!orderDraft) return;
+  orderList.innerHTML = orderDraft.map((video, index) => {
+    const title = escapeHtml(video.title || "Untitled video");
+    const id = escapeHtml(video.id);
+    return `<li data-order-id="${id}"><button class="btn drag-handle" type="button" data-drag aria-label="Drag ${title}">⠿</button><span>${index + 1}. ${title}</span><div class="order-actions">
+      <button class="btn" type="button" data-move="-1" aria-label="Move up ${title}" ${index === 0 ? "disabled" : ""}>↑</button>
+      <button class="btn" type="button" data-move="1" aria-label="Move down ${title}" ${index === orderDraft.length - 1 ? "disabled" : ""}>↓</button>
+    </div></li>`;
+  }).join("");
+  saveOrder.disabled = reordering || orderVersion(orderDraft) === orderStart;
+}
+
 function drawPublishedVideos() {
   const videos = publishedVideos();
   renderVideoGrid(grid, videos, "No published videos yet.");
-  const list = get("video-order-list");
-  list.innerHTML = videos.map((video, index) =>
-    `<li><span>${escapeHtml(video.title || "Untitled video")}</span><div class="order-actions">
-      <button class="btn" type="button" data-move="-1" data-id="${escapeHtml(video.id)}" aria-label="Move up ${escapeHtml(video.title || "video")}" ${index === 0 || reordering ? "disabled" : ""}>↑</button>
-      <button class="btn" type="button" data-move="1" data-id="${escapeHtml(video.id)}" aria-label="Move down ${escapeHtml(video.title || "video")}" ${index === videos.length - 1 || reordering ? "disabled" : ""}>↓</button>
-    </div></li>`).join("");
   get("reorder-videos").hidden = videos.length < 2;
+  if (!activeDrag) renderOrderDraft();
 }
 
-get("video-order-list").addEventListener("click", async event => {
+startOrder.addEventListener("click", () => {
+  if (reordering) return;
+  if (orderDraft) orderDraft = null;
+  else {
+    orderDraft = publishedVideos().map(video => ({ ...video }));
+    orderStart = orderVersion(orderDraft);
+  }
+  renderOrderDraft();
+});
+get("cancel-order").addEventListener("click", () => {
+  if (reordering) return;
+  orderDraft = null;
+  renderOrderDraft();
+  startOrder.focus();
+});
+
+function stageVideoMove(id, delta) {
+  if (!orderDraft || !delta || reordering) return;
+  const changes = new Map(moveVideoOrder(orderDraft, id, delta).map(change => [change.id, change.sortOrder]));
+  orderDraft = sortVideos(orderDraft.map(video => changes.has(video.id) ? { ...video, sortOrder: changes.get(video.id) } : video));
+  renderOrderDraft();
+}
+
+orderList.addEventListener("click", event => {
   const button = event.target.closest("[data-move]");
-  if (!button || reordering || saving) return;
-  const { id, move } = button.dataset;
-  const changes = moveVideoOrder(publishedVideos(), id, Number(move));
-  if (!changes.length) return;
-  if (changes.length > 500) {
-    setStatus("view-status", "Too many entries share the same position to reorder in one save.", true);
+  if (!button) return;
+  const id = button.closest("[data-order-id]").dataset.orderId;
+  const direction = button.dataset.move;
+  stageVideoMove(id, Number(direction));
+  const row = [...orderList.children].find(entry => entry.dataset.orderId === id);
+  (row?.querySelector(`[data-move="${direction}"]:not(:disabled)`) || row?.querySelector("[data-drag]"))?.focus();
+});
+orderList.addEventListener("pointerdown", event => {
+  const handle = event.target.closest("[data-drag]");
+  if (!handle || !orderDraft || reordering || event.button !== 0) return;
+  const row = handle.closest("[data-order-id]");
+  handle.setPointerCapture(event.pointerId);
+  row.classList.add("dragging");
+  activeDrag = { row, pointerId: event.pointerId, target: row };
+  event.preventDefault();
+});
+orderList.addEventListener("pointermove", event => {
+  if (activeDrag?.pointerId !== event.pointerId) return;
+  const bounds = orderList.getBoundingClientRect();
+  if (event.clientY < bounds.top + 25) orderList.scrollTop -= 12;
+  else if (event.clientY > bounds.bottom - 25) orderList.scrollTop += 12;
+  const row = document.elementFromPoint(event.clientX, event.clientY)?.closest("[data-order-id]");
+  if (!row || row.parentElement !== orderList) return;
+  activeDrag.target.classList.remove("drop-target");
+  activeDrag.target = row;
+  row.classList.add("drop-target");
+});
+function endVideoDrag(event) {
+  if (activeDrag?.pointerId !== event.pointerId) return;
+  const { row, target } = activeDrag;
+  activeDrag = null;
+  row.classList.remove("dragging");
+  target.classList.remove("drop-target");
+  if (event.type !== "pointerup") return;
+  const rows = [...orderList.children];
+  stageVideoMove(row.dataset.orderId, rows.indexOf(target) - rows.indexOf(row));
+}
+orderList.addEventListener("pointerup", endVideoDrag);
+orderList.addEventListener("pointercancel", endVideoDrag);
+
+saveOrder.addEventListener("click", async () => {
+  if (!orderDraft || reordering) return;
+  const existing = publishedVideos();
+  if (orderVersion(existing) !== orderStart) {
+    setStatus("view-status", "The video list changed. Reopen Rearrange videos and try again.", true);
+    orderDraft = null;
+    renderOrderDraft();
     return;
   }
-
+  const before = new Map(existing.map(video => [video.id, videoSortOrder(video)]));
+  const changes = orderDraft.filter(video => before.get(video.id) !== videoSortOrder(video));
+  if (!changes.length || changes.length > 500) return;
   reordering = true;
-  for (const button of get("video-order-list").querySelectorAll("button")) button.disabled = true;
+  saveOrder.disabled = true;
   try {
     const batch = writeBatch(db);
-    for (const change of changes) batch.update(doc(videosRef, change.id), { sortOrder: change.sortOrder });
+    for (const video of changes) batch.update(doc(videosRef, video.id), { sortOrder: videoSortOrder(video) });
     await batch.commit();
-    for (const change of changes) {
-      const video = savedVideos.get(change.id);
-      if (video) video.sortOrder = change.sortOrder;
-    }
+    orderDraft = null;
     setStatus("view-status", "Video order saved." + await invalidateVideoFeed());
   } catch {
     setStatus("view-status", "Couldn’t save the video order.", true);
   } finally {
     reordering = false;
     drawPublishedVideos();
-    const buttons = [...get("video-order-list").querySelectorAll("[data-move]")];
-    (buttons.find(button => button.dataset.id === id && button.dataset.move === move && !button.disabled)
-      || buttons.find(button => button.dataset.id === id && !button.disabled))?.focus();
   }
 });
 
@@ -597,6 +758,8 @@ form.addEventListener("submit", async event => {
     }
     const changes = {
       title, tiktokUrl: url, mediaUrl,
+      authorAvatar: savingDraft.authorAvatar, authorHandle: savingDraft.authorHandle, authorName: savingDraft.authorName,
+      slides: isPhotoLink(url) ? savingDraft.slides : [],
       caption: fields.caption.value.trim(), thumbnailUrl: thumbnail,
       captionAuto: savingDraft.captionAuto, thumbnailAuto: savingDraft.thumbnailAuto,
       itemIds: items.map(item => item.id), items,
@@ -644,6 +807,15 @@ form.addEventListener("submit", async event => {
       addDraft = newDraft();
     }
     const cacheWarning = pending ? "" : await invalidateVideoFeed();
+    if (!pending && publishedId && url && savingDraft.photoMedia) {
+      const body = JSON.stringify({ id: publishedId, url: mediaCacheKey(url), slideshow: savingDraft.photoMedia, renew: true });
+      void auth.currentUser.getIdToken().then(token => fetch("/api/tiktok-playback", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+        body,
+        keepalive: body.length < 60000
+      })).catch(() => {});
+    }
     if (!pending && publishedId && url && !mediaUrl && !new URL(url).pathname.includes("/photo/")) {
       void lookupSharedTikTokMedia(publishedId, mediaCacheKey(url), AbortSignal.timeout?.(12000)).catch(() => {});
     }
@@ -737,16 +909,32 @@ results.addEventListener("click", event => {
   const item = availableCatalogue()?.byId.get(button?.dataset.pick);
   if (!item || saving) return;
   const id = String(item.id);
-  if (pickerAction(id) === "UNADD") draft.items.delete(id);
-  else draft.items.set(id, productSnapshot(item, pickerSource));
+  if (pickerAction(id) === "UNADD") removeSelectedItem(id);
+  else {
+    draft.items.set(id, productSnapshot(item, pickerSource));
+    const slide = isPhotoLink(draft.tiktokUrl) ? currentSlide() : null;
+    if (slide) {
+      slide.noItems = false;
+      if (!slide.itemIds.includes(id)) slide.itemIds.push(id);
+    }
+  }
   syncPickButton(button, item);
   renderSelected();
 });
 get("selected-items").addEventListener("click", event => {
+  const move = event.target.closest("[data-item-move]");
+  if (move && !saving && currentSlide()) {
+    const ids = currentSlide().itemIds;
+    const index = ids.indexOf(move.dataset.id);
+    const next = index + Number(move.dataset.itemMove);
+    if (index >= 0 && next >= 0 && next < ids.length) [ids[index], ids[next]] = [ids[next], ids[index]];
+    renderSelected();
+    return;
+  }
   const button = event.target.closest("[data-unadd]");
   if (!button || saving) return;
   const id = button.dataset.unadd;
-  draft.items.delete(id);
+  removeSelectedItem(id);
   renderSelected();
   const cardButton = [...results.querySelectorAll("[data-pick]")].find(result => result.dataset.pick === id);
   if (cardButton) syncPickButton(cardButton, availableCatalogue().byId.get(id));
@@ -776,6 +964,8 @@ onAuthStateChanged(auth, user => {
     pollTimer = null;
     publishedReady = draftsReady = autoSyncDisabled = false;
     savedVideos.clear();
+    orderDraft = null;
+    activeDrag = null;
     queuedVideos.clear();
     editDrafts.clear();
     addDraft = newDraft();

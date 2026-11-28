@@ -1,5 +1,7 @@
 import { fetchTikTokAvcKeys, validateTikTokUrl } from "./tiktok-meta.js";
-import { normalizeTikTokMedia, signedVideoKey } from "../../lib/tiktok-media.js";
+import { normalizeSharedSlideshow, normalizeTikTokMedia, signedVideoKey } from "../../lib/tiktok-media.js";
+
+import { isAdmin } from "./catalog-index.js";
 
 const firestore = "https://firestore.googleapis.com/v1/projects/reps-central/databases/(default)/documents/videos/";
 const prefix = "tiktok-playback/v3/";
@@ -61,20 +63,22 @@ export async function onRequestPost({ request, env }) {
   if (request.headers.get("Origin") !== new URL(request.url).origin) {
     return json({ error: "Same-origin request required." }, 403);
   }
-  if (Number(request.headers.get("Content-Length")) > 8192) return json({ error: "Request too large." }, 413);
+  if (Number(request.headers.get("Content-Length")) > 98304) return json({ error: "Request too large." }, 413);
   const raw = await request.text();
-  if (raw.length > 8192) return json({ error: "Request too large." }, 413);
+  if (raw.length > 98304) return json({ error: "Request too large." }, 413);
   let body;
   try { body = JSON.parse(raw); } catch { return json({ error: "Invalid request." }, 400); }
 
   const bucket = env.CATALOG_INDEX_BUCKET;
   const post = input(body?.id, body?.url);
   const mediaKey = signedVideoKey(body?.videoUrl);
-  if (!post || !mediaKey) return json({ error: "Invalid video link." }, 400);
+  const isSlideshow = Array.isArray(body?.slideshow?.images);
+  if (!post || (!mediaKey && !isSlideshow)) return json({ error: "Invalid video link." }, 400);
+  if (isSlideshow && !(await isAdmin(request))) return json({ error: "Admin sign-in required." }, 401);
   if (!bucket) return json({ error: "Shared video storage is unavailable." }, 503);
 
   const { source, key } = post;
-  const media = normalizeTikTokMedia(source, { play: body.videoUrl });
+  const media = isSlideshow ? normalizeSharedSlideshow(source, body.slideshow) : normalizeTikTokMedia(source, { play: body.videoUrl });
   if (!media || media.expiresAt <= Date.now()) return json({ error: "Video link expired." }, 400);
   let stage = "cache-read";
   try {
@@ -84,14 +88,16 @@ export async function onRequestPost({ request, env }) {
     stage = "published-record";
     if (!(await publishedVideo(body.id, source))) return json({ error: "Published video not found." }, 404);
     stage = "post-media-verification";
-    if (!(await fetchTikTokAvcKeys(source)).has(mediaKey)) {
+    if (!isSlideshow && !(await fetchTikTokAvcKeys(source)).has(mediaKey)) {
       return json({ error: "The media link is not a verified H.264 version of the public TikTok post." }, 422);
     }
     stage = "cdn-verification";
-    const check = await fetch(media.videoUrl, { method: "HEAD", signal: AbortSignal.timeout(3500) });
-    if (!check.ok || signedVideoKey(check.url || media.videoUrl) !== mediaKey ||
-        !(check.headers.get("content-type") || "").startsWith("video/")) {
-      return json({ error: "The media link is not currently playable." }, 422);
+    if (!isSlideshow) {
+      const check = await fetch(media.videoUrl, { method: "HEAD", signal: AbortSignal.timeout(3500) });
+      if (!check.ok || signedVideoKey(check.url || media.videoUrl) !== mediaKey ||
+          !(check.headers.get("content-type") || "").startsWith("video/")) {
+        return json({ error: "The media link is not currently playable." }, 422);
+      }
     }
     stage = "cache-write";
     const stored = await bucket.put(key, JSON.stringify({ source, media }), {
